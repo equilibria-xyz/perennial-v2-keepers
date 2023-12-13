@@ -69,7 +69,7 @@ export const chainInfos: { [key in number]: ChainInfos } = {
       [getAddress('0xD6E02d53621F961a517608C28294C44c5162eaF2')]: squeethPayoff,
     },
     MultiInvoker: MultiInvokerAddress[arbitrumGoerli.id],
-    BatchLiqAddress: getAddress('0x1a702abbDd5b9f3AE3b6109205870Aad6F8A6892'),
+    BatchLiqAddress: getAddress('0x0000000000000000000000000000000000000000'),
     OrderLens: getAddress('0x17ebca0060c3e84812ab4e208cc33e5fd8a3b255'),
   },
   [arbitrum.id]: {
@@ -77,7 +77,7 @@ export const chainInfos: { [key in number]: ChainInfos } = {
       [getAddress('0x0000000000000000000000000000000000000000')]: linearPayoff,
     },
     MultiInvoker: MultiInvokerAddress[arbitrum.id],
-    BatchLiqAddress: getAddress('0x3E32946498Aed14710c9e7504679Cc712C581016'),
+    BatchLiqAddress: getAddress('0x0000000000000000000000000000000000000000'),
     OrderLens: getAddress('0xbFE123F0Fa484109b548de0779077763C01d0AC4'),
   },
 }

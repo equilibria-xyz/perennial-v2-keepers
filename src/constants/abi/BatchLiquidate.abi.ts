@@ -1,28 +1,72 @@
 export const BatchLiquidateAbi = [
   {
-    inputs: [{ internalType: 'contract IMultiInvoker', name: 'invoker_', type: 'address' }],
+    inputs: [
+      { internalType: 'Token18', name: 'DSU_', type: 'address' },
+      { internalType: 'address', name: 'owner_', type: 'address' },
+    ],
     stateMutability: 'nonpayable',
     type: 'constructor',
   },
   {
+    inputs: [{ internalType: 'uint256', name: 'version', type: 'uint256' }],
+    name: 'UInitializableAlreadyInitializedError',
+    type: 'error',
+  },
+  { inputs: [], name: 'UInitializableNotInitializingError', type: 'error' },
+  { inputs: [], name: 'UInitializableZeroVersionError', type: 'error' },
+  {
+    inputs: [{ internalType: 'address', name: 'sender', type: 'address' }],
+    name: 'UOwnableNotOwnerError',
+    type: 'error',
+  },
+  {
+    inputs: [{ internalType: 'address', name: 'sender', type: 'address' }],
+    name: 'UOwnableNotPendingOwnerError',
+    type: 'error',
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: false, internalType: 'uint256', name: 'version', type: 'uint256' }],
+    name: 'Initialized',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, internalType: 'address', name: 'newOwner', type: 'address' }],
+    name: 'OwnerUpdated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, internalType: 'address', name: 'newPendingOwner', type: 'address' }],
+    name: 'PendingOwnerUpdated',
+    type: 'event',
+  },
+  { inputs: [], name: 'acceptOwner', outputs: [], stateMutability: 'nonpayable', type: 'function' },
+  {
     inputs: [],
-    name: 'NO_REASON',
-    outputs: [{ internalType: 'bytes', name: '', type: 'bytes' }],
+    name: 'owner',
+    outputs: [{ internalType: 'address', name: '', type: 'address' }],
     stateMutability: 'view',
     type: 'function',
   },
   {
     inputs: [],
-    name: 'OTHER_REASON',
-    outputs: [{ internalType: 'bytes', name: '', type: 'bytes' }],
+    name: 'pendingOwner',
+    outputs: [{ internalType: 'address', name: '', type: 'address' }],
     stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'contract IMarket', name: 'market', type: 'address' }],
+    name: 'pullCollateral',
+    outputs: [],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
   {
     inputs: [
       { internalType: 'contract IMarket', name: 'market', type: 'address' },
-      { internalType: 'address', name: 'feeReceiver', type: 'address' },
-      { internalType: 'Token6', name: 'collatToken', type: 'address' },
       { internalType: 'address[]', name: 'accounts', type: 'address[]' },
       { internalType: 'bytes', name: 'commit', type: 'bytes' },
     ],
@@ -41,6 +85,13 @@ export const BatchLiquidateAbi = [
       { internalType: 'bytes', name: 'commitRevertReason', type: 'bytes' },
     ],
     stateMutability: 'payable',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'address', name: 'newPendingOwner', type: 'address' }],
+    name: 'updatePendingOwner',
+    outputs: [],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
 ] as const

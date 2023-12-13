@@ -9,7 +9,7 @@ import { MarketImpl, BatchLiquidateAbi } from '../../constants/abi/index.js'
 import { Price } from '@pythnetwork/pyth-evm-js'
 import { getMarkets } from '../../utils/marketUtils.js'
 import { marketAddressToMarketTag } from '../../constants/addressTagging.js'
-import { MaxSimSizes, USDCAddresses } from '../../constants/network.js'
+import { MaxSimSizes } from '../../constants/network.js'
 import { Big6Math } from '../../constants/Big6Math.js'
 
 export class MarketUserListener {
@@ -157,7 +157,7 @@ export class MarketUserListener {
       try {
         const { commit } = await this.priceListener.getVAAAndCommit(feedId, marketDetails.oracleProvider)
         return tracer.trace('liquidator.liquidateList', () =>
-          this.liquidateList(m, USDCAddresses[Chain.id], marketDetails.marketUsers, commit),
+          this.liquidateList(m, marketDetails.marketUsers, commit),
         )
       } catch (e) {
         console.error(`${feedId}: Error fetching VAA for feed ${e}`)
@@ -172,7 +172,7 @@ export class MarketUserListener {
   //                       LQUIDATION LOGIC                     //
   //////////////////////////////////////////////////////////////*/
 
-  private async liquidateList(market: Address, token: Address, marketUsers: MarketUsers, commit: InvokeArg | null) {
+  private async liquidateList(market: Address, marketUsers: MarketUsers, commit: InvokeArg | null) {
     const marketTag = marketAddressToMarketTag(Chain.id, market)
     const userAddrs = marketUsers.long.self.map((user) => user.address)
     /* .concat(users.short.self.map((user) => user.address))
@@ -186,7 +186,7 @@ export class MarketUserListener {
       market: marketAddressToMarketTag(Chain.id, market),
     })
 
-    const liqUsers = await this.runLiquidationSim(marketUsers, marketTag, market, token, userAddrs, commit)
+    const liqUsers = await this.runLiquidationSim(marketUsers, marketTag, market, userAddrs, commit)
     console.log(`${marketTag}: Liquidation sim took ${Date.now() - now}ms`)
     tracer.dogstatsd.distribution('liquidator.simulation.time', Date.now() - now, {
       chain: Chain.id,
@@ -199,7 +199,6 @@ export class MarketUserListener {
     marketUsers: MarketUsers,
     marketTag: string,
     market: Address,
-    token: Address,
     accounts: Address[],
     commit: InvokeArg | null,
   ): Promise<Address[] | undefined> {
@@ -208,19 +207,18 @@ export class MarketUserListener {
 
     let liqUsers: Address[] = []
     for (let i = 0; i < len; i += maxSimSize) {
-      const lensRes = await this.simulateBatchLiquidation(market, token, accounts.slice(i, i + maxSimSize), commit)
+      const lensRes = await this.simulateBatchLiquidation(market, accounts.slice(i, i + maxSimSize), commit)
 
       if (!lensRes) continue
 
       liqUsers = liqUsers.concat(lensRes[0].filter((res) => res.canLiq).map((res) => res.user))
-      await this.executeLiquidations(marketUsers, marketTag, market, token, liqUsers, commit)
+      await this.executeLiquidations(marketUsers, marketTag, market, liqUsers, commit)
     }
     return liqUsers
   }
 
   private async simulateBatchLiquidation(
     market: Address,
-    token: Address,
     accounts: Address[],
     commit: InvokeArg | null,
   ) {
@@ -229,7 +227,7 @@ export class MarketUserListener {
         address: chainInfos[Chain.id].BatchLiqAddress,
         abi: BatchLiquidateAbi,
         functionName: 'tryLiquidate',
-        args: [market, liquidatorAccount.address, token, accounts, commit ? commit.args : toHex('')],
+        args: [market, accounts, commit ? commit.args : toHex('')],
         value: 1n,
         account: liquidatorAccount,
       })
@@ -249,7 +247,6 @@ export class MarketUserListener {
     marketUsers: MarketUsers,
     marketTag: string,
     market: Address,
-    token: Address,
     accounts: Address[],
     commit: InvokeArg | null,
   ) {
@@ -260,7 +257,7 @@ export class MarketUserListener {
         chain: Chain.id,
       })
       console.log(`${marketTag}: Executing liquidation of: ${accounts}`)
-      const { result: liqRes, hash, receipt } = await this.sendLiquidations(market, token, accounts, commit)
+      const { result: liqRes, hash, receipt } = await this.sendLiquidations(market, accounts, commit)
       console.log(`${marketTag}: Liquidation txn hash: ${hash}`)
 
       liqRes[0].forEach((userRes) => {
@@ -288,12 +285,12 @@ export class MarketUserListener {
     return true
   }
 
-  private async sendLiquidations(market: Address, token: Address, users: Address[], commit: InvokeArg | null) {
+  private async sendLiquidations(market: Address, users: Address[], commit: InvokeArg | null) {
     const { request, result } = await client.simulateContract({
       address: chainInfos[Chain.id].BatchLiqAddress,
       abi: BatchLiquidateAbi,
       functionName: 'tryLiquidate',
-      args: [market, liquidatorAccount.address, token, users, commit ? commit.args : toHex('')],
+      args: [market, users, commit ? commit.args : toHex('')],
       value: 1n,
       account: liquidatorAccount,
     })
