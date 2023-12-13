@@ -1,11 +1,11 @@
-import { Hex, getAddress, getContract } from 'viem'
+import { Hex, getAddress } from 'viem'
 import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUtils'
 import { gql } from '../../../types/gql/gql'
 import { GraphDefaultPageSize, queryAll } from '../../utils/graphUtils'
 import { Chain, client, graphClient, orderSigner, pythConnection } from '../../config'
-import { BatchExecuteAbi, PythOracleImpl } from '../../constants/abi'
+import { BatchExecuteAbi } from '../../constants/abi'
 import { chainInfos } from '../marketListener/types'
-import { buildCommit, getRecentVaa } from '../../utils/pythUtils'
+import { buildCommit2, getRecentVaa } from '../../utils/pythUtils'
 import { notEmpty } from '../../utils/arrayUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
@@ -26,7 +26,7 @@ export class OrderListener {
 
       const pythPrices = await getRecentVaa({
         pyth: pythConnection,
-        feeds: this.markets.map((m) => ({ providerId: m.feed, minValidTime: m.minValidTime })),
+        feeds: this.markets.map((m) => ({ providerId: m.feed, minValidTime: m.validFrom })),
       })
 
       const executableOrders_ = await Promise.all(
@@ -129,18 +129,13 @@ export class OrderListener {
     if (orders.length === 0) return null
 
     // Try execute orders
-    const providerContract = getContract({
-      abi: PythOracleImpl,
-      address: market.oracleProvider,
-      publicClient: client,
-    })
     const accounts = orders.map((o) => getAddress(o.account))
     const nonces = orders.map((o) => BigInt(o.nonce))
-    const commit = buildCommit({
-      oracleProvider: market.oracleProvider,
+    const commit = buildCommit2({
+      oracleProviderFactory: market.providerFactory,
       version,
       value: 1n,
-      index: await providerContract.read.versionListLength(),
+      ids: [market.feed],
       vaa: pythVaa,
       revertOnFailure: false,
     })

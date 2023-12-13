@@ -2,8 +2,9 @@ import { Address, PublicClient, getAbiItem, getContract, parseAbi, zeroAddress }
 import { MarketFactoryAddress, SupportedChainId } from '../constants/network.js'
 import { FactoryAbi } from '../constants/abi/Factory.abi.js'
 import { MarketImpl } from '../constants/abi/MarketImpl.abi.js'
-import { PythOracleImpl } from '../constants/abi/PythOracleImpl.abi.js'
 import { PayoffAbi } from '../constants/abi/Payoff.abi.js'
+import { KeeperOracleImpl } from '../constants/abi/KeeperOracleImpl.abi.js'
+import { PythFactoryImpl } from '../constants/abi/PythFactoryImpl.abi.js'
 
 export type MarketDetails = Awaited<ReturnType<typeof getMarkets>>[number]
 export async function getMarkets(chainId: SupportedChainId, client: PublicClient) {
@@ -25,33 +26,53 @@ export async function getMarkets(chainId: SupportedChainId, client: PublicClient
       marketContract.read.token(),
     ])
 
-    // Oracle -> Provider
+    // Oracle -> KeeperOracle
     const [current] = await client.readContract({
       address: oracle,
       abi: parseAbi(['function global() view returns (uint128,uint128)'] as const),
       functionName: 'global',
     })
-    const [provider] = await client.readContract({
+    const [keeperOracle] = await client.readContract({
       address: oracle,
       abi: parseAbi(['function oracles(uint256) view returns ((address, uint96))'] as const),
       functionName: 'oracles',
       args: [current],
     })
 
-    // Provider -> Feed
-    const providerContract = getContract({ abi: PythOracleImpl, address: provider, publicClient: client })
-    const [feed, minValidTime] = await Promise.all([
-      providerContract.read.id(),
-      providerContract.read.MIN_VALID_TIME_AFTER_VERSION(),
+    // KeeperOracle -> Feed
+    const keeperOracleContract = getContract({ abi: KeeperOracleImpl, address: keeperOracle, publicClient: client })
+    const [timeout, providerFactory] = await Promise.all([
+      keeperOracleContract.read.timeout(),
+      keeperOracleContract.read.factory(),
     ])
+
+    const providerFactoryContract = getContract({
+      abi: PythFactoryImpl,
+      address: providerFactory,
+      publicClient: client,
+    })
+    const feedEvents = await providerFactoryContract.getEvents.OracleCreated({ oracle: keeperOracle })
+    const feed = feedEvents[0].args.id
+    if (!feed) throw new Error(`No feed found for ${keeperOracle}`)
+
+    const [validFrom, validTo, underlyingId] = await Promise.all([
+      providerFactoryContract.read.validFrom(),
+      providerFactoryContract.read.validTo(),
+      providerFactoryContract.read.toUnderlyingId([feed]),
+    ])
+
     return {
       market: marketAddress,
       oracle,
-      oracleProvider: provider,
+      keeperOracle,
+      providerFactory,
       payoff,
       feed,
+      underlyingId,
       token,
-      minValidTime,
+      timeout,
+      validFrom,
+      validTo,
     }
   })
 

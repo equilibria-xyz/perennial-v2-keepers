@@ -59,8 +59,8 @@ export class MarketUserListener {
     })
 
     const marketDetails = await Promise.all(
-      markets.map(async ({ market, oracle, oracleProvider, feed }) =>
-        this.createMarket(market, oracle, oracleProvider, feed, chainInfo),
+      markets.map(async ({ market, oracle, providerFactory, feed }) =>
+        this.createMarket(market, oracle, providerFactory, feed, chainInfo),
       ),
     )
 
@@ -76,7 +76,7 @@ export class MarketUserListener {
   private async createMarket(
     market: Address,
     oracle: Address,
-    oracleProvider: Address,
+    oracleProviderFactory: Address,
     feedId: string,
     chainInfo: ChainInfos,
   ): Promise<{ market: Address; marketDetails: MarketDetails; feedId: string }> {
@@ -93,7 +93,7 @@ export class MarketUserListener {
     const marketDetails: MarketDetails = {
       address: getAddress(market),
       oracle: oracle,
-      oracleProvider: oracleProvider,
+      oracleProviderFactory: oracleProviderFactory,
       payoff: chainInfo.payoffMap[payoff],
       riskParams: riskParams,
       feedId: feedId,
@@ -155,7 +155,7 @@ export class MarketUserListener {
       const marketDetails = this.allMarkets[m]
 
       try {
-        const { commit } = await this.priceListener.getVAAAndCommit(feedId, marketDetails.oracleProvider)
+        const { commit } = await this.priceListener.getVAAAndCommit(feedId, marketDetails.oracleProviderFactory)
         return tracer.trace('liquidator.liquidateList', () =>
           this.liquidateList(m, USDCAddresses[Chain.id], marketDetails.marketUsers, commit),
         )

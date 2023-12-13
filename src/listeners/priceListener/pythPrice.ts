@@ -32,8 +32,8 @@ export class PriceListener extends PythOracleListener {
     await super.init()
 
     this.idToOracle = {}
-    for (const address of this.oracleAddresses) {
-      const oracleContract = PriceListener.getOracleContract(address)
+    for (const { oracle } of this.oracleAddresses) {
+      const oracleContract = PriceListener.getOracleContract(oracle)
       const priceFeedId = await oracleContract.read.id()
 
       this.idToOracle[priceFeedId] = oracleContract

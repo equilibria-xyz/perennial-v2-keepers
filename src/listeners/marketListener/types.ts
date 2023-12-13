@@ -19,7 +19,7 @@ export type MarketUserRaw = {
 export type MarketDetails = {
   address: Address
   oracle: Address
-  oracleProvider: Address
+  oracleProviderFactory: Address
   payoff: Payoff
   riskParams: RiskParameter
   feedId: string
