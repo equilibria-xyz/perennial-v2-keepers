@@ -3,12 +3,12 @@ import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUti
 import { gql } from '../../../types/gql/gql'
 import { GraphDefaultPageSize, queryAll } from '../../utils/graphUtils'
 import { Chain, client, graphClient, orderSigner, pythConnection } from '../../config'
-import { BatchExecuteAbi } from '../../constants/abi'
-import { chainInfos } from '../marketListener/types'
+import { BatchKeeperAbi } from '../../constants/abi'
 import { buildCommit2, getRecentVaa } from '../../utils/pythUtils'
 import { notEmpty } from '../../utils/arrayUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
+import { BatchKeeperAddresses } from '../../constants/network'
 
 export class OrderListener {
   public static PollingInterval = 4000 // 4s
@@ -50,17 +50,10 @@ export class OrderListener {
       for (let i = 0; i < executableOrders.length; i++) {
         const { market, orders, commit } = executableOrders[i]
         const { request } = await client.simulateContract({
-          address: chainInfos[Chain.id].OrderLens,
-          abi: BatchExecuteAbi,
+          address: BatchKeeperAddresses[Chain.id],
+          abi: BatchKeeperAbi,
           functionName: 'tryExecute',
-          args: [
-            market.market, // market
-            orderSigner.account.address, // feeReceiver
-            market.token, // token
-            orders.map((o) => o.user), // accounts
-            orders.map((o) => o.nonce), // nonces
-            commit.args, // commit
-          ],
+          args: [market.market, orders.map((o) => o.user), orders.map((o) => o.nonce), [commit], 1n],
           value: 1n,
           account: orderSigner.account,
         })
@@ -141,10 +134,10 @@ export class OrderListener {
     })
 
     const { result } = await client.simulateContract({
-      address: chainInfos[Chain.id].OrderLens,
-      abi: BatchExecuteAbi,
+      address: BatchKeeperAddresses[Chain.id],
+      abi: BatchKeeperAbi,
       functionName: 'tryExecute',
-      args: [market.market, orderSigner.account.address, market.token, accounts, nonces, commit.args],
+      args: [market.market, accounts, nonces, [commit], 1n],
       value: 1n,
       account: orderSigner.account,
     })

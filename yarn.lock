@@ -1131,17 +1131,17 @@
   resolved "https://registry.yarnpkg.com/@datadog/sketches-js/-/sketches-js-2.1.0.tgz#8c7e8028a5fc22ad102fa542b0a446c956830455"
   integrity sha512-smLocSfrt3s53H/XSVP3/1kP42oqvrkjUPtyaFd1F79ux24oE31BKt+q0c6lsa6hOYrFzsIwyc5GXAI5JmfOew==
 
-"@equilibria/perennial-v2@^1.0.0-rc4":
-  version "1.0.0-rc4"
-  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2/-/perennial-v2-1.0.0-rc4.tgz#e78392b2aa5824a194c9e9fa762419a51dd7ab03"
-  integrity sha512-z8P9RpACHR+Jyj1G9WrChAd6+ccjxr+J3sHYMY8q2XkJ0QnQjt74IybFk9lt85m3fIKthmIbPBqKNeKfh59Nzw==
+"@equilibria/perennial-v2@1.1.0-rc0":
+  version "1.1.0-rc0"
+  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2/-/perennial-v2-1.1.0-rc0.tgz#7d5a338f9644c03a1cd780e19ee250ed41979101"
+  integrity sha512-JuYqgBXulnKWOi1oveVO/oKdaqegUoHGsL30iA8H1t4PLCtItfDjMaSKL75lq0OjdDA3Zf/UCcyDQbUXpAV1AA==
   dependencies:
     "@chainlink/contracts" "0.3.1"
 
-"@equilibria/root@^2.0.0-rc2":
-  version "2.0.0-rc2"
-  resolved "https://registry.yarnpkg.com/@equilibria/root/-/root-2.0.0-rc2.tgz#9012a9bbbe3e26c9b1153e7fbaa8be798513b56b"
-  integrity sha512-+zeqGpvqq8QdgGu/2eXngBHZkKw2QKhb3JBSbDpU0aiCG7OXLWca0FgJFyuY4EwemPzBklYZQg8gXzaD8csKAw==
+"@equilibria/root@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@equilibria/root/-/root-2.1.0.tgz#019434689dd96bf2fb701fcedc7bacf01a841b52"
+  integrity sha512-SLIHUjzCBVcMKxMFmf6Hw0n9gqfENxzIZ1Ug0DkYpGNuoFfKN0ktrCMeM4Z4lrcou1KPxGlOeHAr1sYp3kVk8g==
   dependencies:
     "@openzeppelin/contracts" "4.6.0"
 

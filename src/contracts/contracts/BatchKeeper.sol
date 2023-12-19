@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.19;
 
-import {Token18, UFixed18} from '@equilibria/perennial-v2/contracts/interfaces/IMarket.sol';
+import {IMarket, IPayoffProvider, Position, Local, OracleVersion, RiskParameter, UFixed6, Fixed6, Fixed6Lib, UFixed6Lib, UFixed18, Token18} from '@equilibria/perennial-v2/contracts/interfaces/IMarket.sol';
+import {Token6} from '@equilibria/root/token/types/Token6.sol';
+import {Ownable} from '@equilibria/root/attribute/Ownable.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 interface IMultiInvoker {
     enum PerennialAction {
@@ -25,68 +28,178 @@ interface IMultiInvoker {
     function invoke(Invocation[] calldata invocations) external payable;
 }
 
-interface IPythOracle {
+interface IKeeperFactory {
     function commit(
-        uint256 index,
+        bytes32[] memory ids,
         uint256 version,
-        bytes memory data
+        bytes calldata data
     ) external payable;
 }
 
-contract BatchKeeper {
-    bytes public constant OTHER_REASON = hex'01';
+contract BatchKeeper is Ownable {
+    bytes public constant FAILURE = hex'01';
     bytes public constant NO_REASON = hex'00';
+    Fixed6 public constant MARKETR_MAGIC_VALUE_WITHDRAW_ALL_COLLATERAL =
+        Fixed6.wrap(type(int256).min);
 
-    /// @dev Gets DSU balance before and after function call and pushes profits of function to receiver
-    modifier PushProceeds(Token18 collatToken, address feeReceiver) {
-        UFixed18 balanceBefore = collatToken.balanceOf(address(this)); // TODO: assume this is 0?
-        _;
-        UFixed18 profit = collatToken.balanceOf(address(this)).sub(
-            balanceBefore
-        );
-        if (!profit.isZero()) {
-            collatToken.push(feeReceiver, profit);
-        }
+    IMultiInvoker immutable invoker;
+
+    constructor(IMultiInvoker invoker_) {
+        invoker = invoker_;
+        __Ownable__initialize();
     }
 
-    /// @notice Helper function to commit a price to an oracle
-    /// @param args encoded args of price commit
-    /// @return revertReason error bytes of commit
-    ///         (0x00 = success or no commit reqested, 0x11 = unknown error in committing, else 4-byte error hash)
-    function _tryCommitPrice(
-        bytes calldata args
-    ) internal returns (bytes memory revertReason) {
-        if (2 > args.length) return NO_REASON;
-        (
-            address oracleProvider,
-            uint256 value,
-            uint256 index,
-            uint256 version,
-            bytes memory data,
-            bool revertOnFailure
-        ) = abi.decode(args, (address, uint256, uint256, uint256, bytes, bool));
+    /**
+     * @dev Struct representing the result of a liquidation attempt.
+     */
+    struct LiqRes {
+        address user;
+        bool canLiq;
+        bytes reason;
+        UFixed6 reward;
+    }
 
-        if (revertOnFailure) {
-            IPythOracle(oracleProvider).commit{value: value}(
-                index,
-                version,
-                data
-            );
-            revertReason = NO_REASON;
-        } else {
+    /**
+     * @dev Attempts to liquidate positions for multiple accounts in a market.
+     * @param market The market contract to perform the liquidation on.
+     * @param accounts An array of accounts to attempt liquidation on
+     * @param commitment Price update commitment to execute before liquidation
+     * @return res An array of `LiqRes` structs containing the liquidation results for each account
+     */
+    function tryLiquidate(
+        IMarket market,
+        address[] memory accounts,
+        IMultiInvoker.Invocation[] memory commitment,
+        uint256 commitmentValue
+    ) external payable returns (LiqRes[] memory res) {
+        invoker.invoke{value: commitmentValue}(commitment);
+
+        res = new LiqRes[](accounts.length);
+        for (uint i = 0; i < accounts.length; ++i) {
+            // current account context
+            address currUser = accounts[i];
+            LiqRes memory currRes = LiqRes({
+                user: currUser,
+                canLiq: false,
+                reason: NO_REASON,
+                reward: UFixed6Lib.ZERO
+            });
+
             try
-                IPythOracle(oracleProvider).commit{value: value}(
-                    index,
-                    version,
-                    data
+                market.update(
+                    currUser,
+                    UFixed6Lib.ZERO,
+                    UFixed6Lib.ZERO,
+                    UFixed6Lib.ZERO,
+                    Fixed6Lib.ZERO,
+                    true
                 )
             {
-                revertReason = NO_REASON;
+                currRes.canLiq = true;
+                currRes.reward = market.locals(currUser).protectionAmount;
             } catch (bytes memory reason) {
-                // Catch named or unnamed error and return
-                payable(msg.sender).transfer(msg.value);
-                revertReason = reason.length > 1 ? reason : OTHER_REASON;
+                currRes.reason = reason.length > 1 ? reason : FAILURE;
             }
+
+            res[i] = currRes;
         }
     }
+
+    /**
+     * @dev Struct representing the result of an order execution attempt
+     */
+    struct ExecRes {
+        address user;
+        uint256 nonce;
+        bool canExec;
+        bytes reason;
+    }
+
+    /**
+     * @dev Attempts to execute orders for multiple accounts in a market
+     * @param market The market contract to perform order execution for
+     * @param accounts An array of accounts to attempt order execution for
+     * @param nonces An array of nonces to attempt order execution for
+     * @param commitment Price update commitment to execute before execution
+     * @return res An array of `ExecRes` structs containing the execution results for each account
+     */
+    function tryExecute(
+        IMarket market,
+        address[] calldata accounts,
+        uint256[] calldata nonces,
+        IMultiInvoker.Invocation[] memory commitment,
+        uint256 commitmentValue
+    ) public payable returns (ExecRes[] memory res, UFixed18 reward) {
+        // try commit VAA
+        invoker.invoke{value: commitmentValue}(commitment);
+
+        UFixed18 balanceBefore = market.token().balanceOf(address(this));
+
+        IMultiInvoker.Invocation[]
+            memory invocations = new IMultiInvoker.Invocation[](1);
+
+        invocations[0] = IMultiInvoker.Invocation({
+            action: IMultiInvoker.PerennialAction.EXEC_ORDER,
+            args: hex'00'
+        });
+
+        res = new ExecRes[](accounts.length);
+        for (uint256 i = 0; i < accounts.length; ++i) {
+            address currUser = accounts[i];
+            ExecRes memory currRes = ExecRes({
+                user: currUser,
+                nonce: nonces[i],
+                canExec: false,
+                reason: NO_REASON
+            });
+
+            invocations[0].args = abi.encode(currUser, market, nonces[i]);
+            try invoker.invoke(invocations) {
+                currRes.canExec = true;
+            } catch (bytes memory reason) {
+                currRes.reason = reason.length > 1 ? reason : FAILURE;
+            }
+
+            res[i] = currRes;
+        }
+
+        reward = UFixed18(market.token().balanceOf(address(this))).sub(
+            balanceBefore
+        );
+    }
+
+    /**
+     * @dev Withdraws all collateral from the specified markets
+     * @param markets An array of markets to withdraw collateral from
+     */
+    function marketWithdraw(IMarket[] memory markets) external onlyOwner {
+        for (uint256 i = 0; i < markets.length; ++i) {
+            markets[i].update(
+                address(this),
+                UFixed6Lib.ZERO,
+                UFixed6Lib.ZERO,
+                UFixed6Lib.ZERO,
+                MARKETR_MAGIC_VALUE_WITHDRAW_ALL_COLLATERAL,
+                false
+            );
+        }
+    }
+
+    /**
+     * @dev Transfers the specified amount of the specified token to the specified address
+     * @param token The token to transfer
+     * @param to The address to transfer to
+     * @param amount The amount to transfer
+     */
+    function transferToken(
+        IERC20 token,
+        address to,
+        uint256 amount
+    ) public onlyOwner {
+        token.transfer(to, amount);
+    }
+
+    receive() external payable {}
+
+    fallback() external payable {}
 }

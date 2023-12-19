@@ -1,3 +1,7 @@
+import { Address } from 'viem'
+import { gql } from '../../types/gql/gql'
+import { graphClient } from '../config'
+
 export const GraphDefaultPageSize = 1000
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function queryAll<T extends { [key: string]: any }>(query: (page: number) => Promise<T>): Promise<T> {
@@ -21,4 +25,34 @@ export async function queryAll<T extends { [key: string]: any }>(query: (page: n
   }
 
   return data
+}
+
+export async function getMarketsUsers(markets: Address[]) {
+  const query = gql(`
+    query GetMarketsUsers(
+      $markets: [Bytes!]!,
+      $first: Int!,
+      $skip: Int!,
+    ) {
+    marketAccountPositions(
+      where:{
+        market_in: $markets
+        collateral_gt: 0
+      }
+      first: $first
+      skip: $skip
+    ) {
+      account
+      market
+      collateral
+    }
+  }`)
+
+  return queryAll(async (page: number) => {
+    return graphClient.request(query, {
+      markets,
+      first: GraphDefaultPageSize,
+      skip: page * GraphDefaultPageSize,
+    })
+  })
 }

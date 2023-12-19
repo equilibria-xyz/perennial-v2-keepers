@@ -51,8 +51,11 @@ export async function getMarkets(chainId: SupportedChainId, client: PublicClient
       address: providerFactory,
       publicClient: client,
     })
-    const feedEvents = await providerFactoryContract.getEvents.OracleCreated({ oracle: keeperOracle })
-    const feed = feedEvents[0].args.id
+    const feedEvents = await providerFactoryContract.getEvents.OracleCreated(
+      { oracle: keeperOracle },
+      { fromBlock: 0n, toBlock: 'latest' },
+    )
+    const feed = feedEvents.at(0)?.args.id
     if (!feed) throw new Error(`No feed found for ${keeperOracle}`)
 
     const [validFrom, validTo, underlyingId] = await Promise.all([

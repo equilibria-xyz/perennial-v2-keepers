@@ -65,6 +65,13 @@ export const GelatoDedicatedSenderAddresses: AddressMapping = {
   [hardhat.id]: getAddress('0x016fCB340fE8A4d57bf57E1f10314551ADEBc6E8'),
 }
 
+export const BatchKeeperAddresses: AddressMapping = {
+  [arbitrum.id]: zeroAddress,
+  [arbitrumGoerli.id]: zeroAddress,
+  [arbitrumSepolia.id]: getAddress('0xe04290314a35f5c29d0b0f7da0c1499a0ecc44f7'),
+  [hardhat.id]: zeroAddress,
+}
+
 export const PythUrls: {
   [key in SupportedChainId]: string
 } = {
