@@ -1131,12 +1131,51 @@
   resolved "https://registry.yarnpkg.com/@datadog/sketches-js/-/sketches-js-2.1.0.tgz#8c7e8028a5fc22ad102fa542b0a446c956830455"
   integrity sha512-smLocSfrt3s53H/XSVP3/1kP42oqvrkjUPtyaFd1F79ux24oE31BKt+q0c6lsa6hOYrFzsIwyc5GXAI5JmfOew==
 
-"@equilibria/perennial-v2@1.1.0-rc0":
-  version "1.1.0-rc0"
-  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2/-/perennial-v2-1.1.0-rc0.tgz#7d5a338f9644c03a1cd780e19ee250ed41979101"
-  integrity sha512-JuYqgBXulnKWOi1oveVO/oKdaqegUoHGsL30iA8H1t4PLCtItfDjMaSKL75lq0OjdDA3Zf/UCcyDQbUXpAV1AA==
+"@equilibria/emptyset-batcher@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@equilibria/emptyset-batcher/-/emptyset-batcher-0.1.0.tgz#2068d202d38614a337d115d4109f05cf72e48d09"
+  integrity sha512-joALMtS47fdXw9nvSO4gmmcsYvfErXlC92nYDGV2wRGqyUneOZKPVC1s0TctSBK/OeXJ+ielzXVLqB84H5PZKg==
+  dependencies:
+    "@equilibria/root" "0.1.5"
+    "@openzeppelin/contracts" "4.6.0"
+
+"@equilibria/perennial-v2-extensions@1.1.0-rc1":
+  version "1.1.0-rc1"
+  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2-extensions/-/perennial-v2-extensions-1.1.0-rc1.tgz#42e7bf61718636bc0cc7c38fdb5ee419732513e9"
+  integrity sha512-qMduSx13GoU/e2w6+tnwvWcg23eGXwMKxASsEWZbp+zP87T56JsEEmz6bjdNiEd+lfpW5zInGXZd5WPcie7bqw==
+  dependencies:
+    "@equilibria/emptyset-batcher" "^0.1.0"
+    "@equilibria/perennial-v2" "1.1.0-rc1"
+    "@equilibria/perennial-v2-oracle" "1.1.0-rc1"
+    "@equilibria/perennial-v2-payoff" "1.1.0-rc1"
+
+"@equilibria/perennial-v2-oracle@1.1.0-rc1":
+  version "1.1.0-rc1"
+  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2-oracle/-/perennial-v2-oracle-1.1.0-rc1.tgz#1a4100c604ddbe816fa20089d7e76c64c8d76cfc"
+  integrity sha512-02qMyi8CbDPYSbfQaof1PxQoz/KNAJLwbEjf9tQdGxda0QRbyOPsMKGJMRHBNRx/y8ikpqaswmQZQ6G/wxDdfQ==
+  dependencies:
+    "@equilibria/perennial-v2" "1.1.0-rc1"
+
+"@equilibria/perennial-v2-payoff@1.1.0-rc1":
+  version "1.1.0-rc1"
+  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2-payoff/-/perennial-v2-payoff-1.1.0-rc1.tgz#8f2ae1fb851928a0c76d632f9b9c55dd2b935334"
+  integrity sha512-5K/GN7mVqdqkdBxfufmm/XAGLf+wSrsuYS6sxljXduN1DXLr8zogjqnzqDEO3z5DVmT6Vls4+PB/pDvjBKkeOg==
+  dependencies:
+    "@equilibria/perennial-v2" "1.1.0-rc1"
+
+"@equilibria/perennial-v2@1.1.0-rc1":
+  version "1.1.0-rc1"
+  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2/-/perennial-v2-1.1.0-rc1.tgz#22ada8ba768a0e1f13fa26dba3ac4b3dbcc98c72"
+  integrity sha512-V7mjG7z+dCJBBnoVXa4cMgzRZR3a3eVqGZUlOmeAbIZDyoyzQn/UzXq6d3aUI5HJ9iEaRn0UTM7ai52i60BN8w==
   dependencies:
     "@chainlink/contracts" "0.3.1"
+
+"@equilibria/root@0.1.5":
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/@equilibria/root/-/root-0.1.5.tgz#f9fb606fed2d0f3d7426d37d7bc45f176b26f80e"
+  integrity sha512-K++w/DyJktl58dQe4P78K0dzduQe1CKPU+Z52DsISik99FN7OwdMTQZt1APpJfovfZh0focsHMnTiRpLmIti7Q==
+  dependencies:
+    "@openzeppelin/contracts" "4.6.0"
 
 "@equilibria/root@^2.1.0":
   version "2.1.0"

@@ -1,32 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import {IMarket, IPayoffProvider, Position, Local, OracleVersion, RiskParameter, UFixed6, Fixed6, Fixed6Lib, UFixed6Lib, UFixed18, Token18} from '@equilibria/perennial-v2/contracts/interfaces/IMarket.sol';
-import {Token6} from '@equilibria/root/token/types/Token6.sol';
-import {Ownable} from '@equilibria/root/attribute/Ownable.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-
-interface IMultiInvoker {
-    enum PerennialAction {
-        NO_OP, // 0
-        UPDATE_POSITION, // 1
-        UPDATE_VAULT, // 2
-        PLACE_ORDER, // 3
-        CANCEL_ORDER, // 4
-        EXEC_ORDER, // 5
-        COMMIT_PRICE, // 6
-        LIQUIDATE, // 7
-        APPROVE, // 8
-        CHARGE_FEE // 9
-    }
-
-    struct Invocation {
-        PerennialAction action;
-        bytes args;
-    }
-
-    function invoke(Invocation[] calldata invocations) external payable;
-}
+import '@equilibria/perennial-v2/contracts/interfaces/IMarket.sol';
+import '@equilibria/perennial-v2-extensions/contracts/interfaces/IMultiInvoker.sol';
+import '@equilibria/root/attribute/Ownable.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 interface IKeeperFactory {
     function commit(

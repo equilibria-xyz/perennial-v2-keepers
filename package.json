@@ -47,7 +47,9 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@equilibria/perennial-v2": "1.1.0-rc0",
+    "@equilibria/perennial-v2": "1.1.0-rc1",
+    "@equilibria/perennial-v2-extensions": "1.1.0-rc1",
+    "@equilibria/perennial-v2-oracle": "1.1.0-rc1",
     "@equilibria/root": "^2.1.0",
     "@gelatonetwork/automate-sdk": "2.17.1-beta",
     "@gelatonetwork/web3-functions-sdk": "^2.1.4",
