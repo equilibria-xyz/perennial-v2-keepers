@@ -9,6 +9,7 @@
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.0",
     "@graphql-codegen/client-preset": "^4.1.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.3",
     "@types/chai": "^4.3.6",
     "@types/jest": "~29.5",
     "@types/mocha": "^10.0.1",
