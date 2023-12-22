@@ -29,7 +29,7 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
           [getAddress('0xD9c296A7Bee1c201B9f3531c7AC9c9310ef3b738')]: 'link',
           [getAddress('0x362c6bC2A4EA2033063bf20409A4c5E8C5754056')]: 'bnb',
           [getAddress('0x2402E92f8C58886F716F5554039fA6398d7A1EfB')]: 'xrp',
-          [getAddress('0x3D1D603073b3CEAB5974Db5C54568058a9551cCC')]: 'xrp',
+          [getAddress('0x3D1D603073b3CEAB5974Db5C54568058a9551cCC')]: 'arb',
         }[market] ?? market
       )
     }
