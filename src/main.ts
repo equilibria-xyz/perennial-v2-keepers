@@ -6,6 +6,7 @@ import { MetricsListener } from './listeners/metricsListener/metricsListener.js'
 import deployBatchKeeper from './scripts/DeployBatchKeeper.js'
 import { OrderListener } from './listeners/orderListener/orderListener.js'
 import { LiqListener } from './listeners/liqListener/liqListener.js'
+import { SettlementListener } from './listeners/settlementListener/settlementListener.js'
 
 const run = async () => {
   switch (Task) {
@@ -42,6 +43,19 @@ const run = async () => {
           pythListener.run(oracleAccount, oracleSigner)
         },
         IsMainnet ? PythOracleListener.PollingInterval : 2 * PythOracleListener.PollingInterval,
+      )
+      break
+    }
+    case TaskType.settlement: {
+      const settlementListener = new SettlementListener()
+      await settlementListener.init()
+
+      settlementListener.listen()
+      setInterval(
+        () => {
+          settlementListener.run()
+        },
+        IsMainnet ? SettlementListener.PollingInterval : 2 * SettlementListener.PollingInterval,
       )
       break
     }

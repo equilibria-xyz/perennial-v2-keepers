@@ -70,6 +70,14 @@ export const orderSigner = createWalletClient({
   account: orderAccount,
 })
 
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+export const settlementAccount = privateKeyToAccount(process.env.SETTLEMENT_PRIVATE_KEY! as Hex)
+export const settlementSigner = createWalletClient({
+  chain: Chain,
+  transport: http(NodeUrls[Chain.id]),
+  account: settlementAccount,
+})
+
 export const pythConnection = new EvmPriceServiceConnection(PythUrls[Chain.id], {
   priceFeedRequestConfig: { binary: true },
 })
@@ -81,6 +89,7 @@ export enum TaskType {
   'liq',
   'orders',
   'oracle',
+  'settlement',
   'deploy',
   'metrics',
 }
