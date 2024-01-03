@@ -37,12 +37,22 @@ contract BatchKeeper is Ownable {
         bytes reason;
     }
 
+    /// @dev Modifier to return any remaining Ether to the caller
+    modifier returnEther {
+        _;
+
+        Address.sendValue(payable(msg.sender), address(this).balance);
+    }
+
     /// @notice Constructs a new BatchKeeper contract
     /// @param invoker_ The address of the MultiInvoker contract to use
     constructor(IMultiInvoker invoker_) {
         __Ownable__initialize();
         invoker = invoker_;
     }
+
+    /// @dev Allow the contract to receive Ether
+    receive() external payable { }
 
     /// @notice Attempts to liquidate positions for multiple accounts in a market.
     /// @param market The market contract to perform the liquidation on.
@@ -116,12 +126,5 @@ contract BatchKeeper is Ownable {
     /// @param token The token to claim
     function claim(Token18 token) external onlyOwner {
         token.push(msg.sender);
-    }
-
-    /// @dev Modifier to return any remaining Ether to the caller
-    modifier returnEther {
-        _;
-
-        Address.sendValue(payable(msg.sender), address(this).balance);
     }
 }
