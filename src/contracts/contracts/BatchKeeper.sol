@@ -3,181 +3,128 @@ pragma solidity ^0.8.19;
 
 import '@equilibria/perennial-v2/contracts/interfaces/IMarket.sol';
 import '@equilibria/perennial-v2-extensions/contracts/interfaces/IMultiInvoker.sol';
+import '@equilibria/root/token/types/Token18.sol';
 import '@equilibria/root/attribute/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-interface IKeeperFactory {
-    function commit(
-        bytes32[] memory ids,
-        uint256 version,
-        bytes calldata data
-    ) external payable;
-}
-
 contract BatchKeeper is Ownable {
-    bytes public constant FAILURE = hex'01';
-    bytes public constant NO_REASON = hex'00';
-    Fixed6 public constant MARKETR_MAGIC_VALUE_WITHDRAW_ALL_COLLATERAL =
-        Fixed6.wrap(type(int256).min);
+    /// @dev The market update collateral magic value for signaling a full withdrawal
+    Fixed6 public constant WITHDRAW_ALL = Fixed6.wrap(type(int256).min);
 
+    /// @dev The market update position magic value for signaling closing the position fully
+    UFixed6 public constant CLOSE_POSITION = UFixed6.wrap(type(uint256).max - 1);
+
+    /// @dev The MultiInvoker contract
     IMultiInvoker immutable invoker;
 
-    constructor(IMultiInvoker invoker_) {
-        invoker = invoker_;
-        __Ownable__initialize();
-    }
-
-    /**
-     * @dev Struct representing the result of a liquidation attempt.
-     */
-    struct LiqRes {
-        address user;
-        bool canLiq;
-        bytes reason;
+    /// @dev Struct representing the result of a liquidation attempt.
+    struct LiquidationResult {
+        address account;
         UFixed6 reward;
+        Result result;
     }
 
-    /**
-     * @dev Attempts to liquidate positions for multiple accounts in a market.
-     * @param market The market contract to perform the liquidation on.
-     * @param accounts An array of accounts to attempt liquidation on
-     * @param commitment Price update commitment to execute before liquidation
-     * @return res An array of `LiqRes` structs containing the liquidation results for each account
-     */
+    /// @dev Struct representing the result of an order execution attempt.
+    struct ExecutionResult {
+        address account;
+        uint256 nonce;
+        Result result;
+    }
+
+    /// @dev Struct representing the common result of an action.
+    struct Result {
+        bool success;
+        bytes reason;
+    }
+
+    /// @dev Modifier to return any remaining Ether to the caller
+    modifier returnEther {
+        _;
+
+        Address.sendValue(payable(msg.sender), address(this).balance);
+    }
+
+    /// @notice Constructs a new BatchKeeper contract
+    /// @param invoker_ The address of the MultiInvoker contract to use
+    constructor(IMultiInvoker invoker_) {
+        __Ownable__initialize();
+        invoker = invoker_;
+    }
+
+    /// @dev Allow the contract to receive Ether
+    receive() external payable { }
+
+    /// @notice Attempts to liquidate positions for multiple accounts in a market.
+    /// @param market The market contract to perform the liquidation on.
+    /// @param accounts An array of accounts to attempt liquidation on
+    /// @param commitment Price update commitment to execute before liquidation
+    /// @return results An array of `LiqRes` structs containing the liquidation results for each account
     function tryLiquidate(
         IMarket market,
         address[] memory accounts,
-        IMultiInvoker.Invocation[] memory commitment,
-        uint256 commitmentValue
-    ) external payable returns (LiqRes[] memory res) {
-        invoker.invoke{value: commitmentValue}(commitment);
+        IMultiInvoker.Invocation[] memory commitment
+    ) external payable returnEther returns (LiquidationResult[] memory results) {
+        invoker.invoke{value: msg.value}(commitment);
 
-        res = new LiqRes[](accounts.length);
-        for (uint i = 0; i < accounts.length; ++i) {
-            // current account context
-            address currUser = accounts[i];
-            LiqRes memory currRes = LiqRes({
-                user: currUser,
-                canLiq: false,
-                reason: NO_REASON,
-                reward: UFixed6Lib.ZERO
-            });
+        results = new LiquidationResult[](accounts.length);
+        for (uint256 i; i < accounts.length; i++) {
+            results[i].account = accounts[i];
 
-            try
-                market.update(
-                    currUser,
-                    UFixed6Lib.ZERO,
-                    UFixed6Lib.ZERO,
-                    UFixed6Lib.ZERO,
-                    Fixed6Lib.ZERO,
-                    true
-                )
-            {
-                currRes.canLiq = true;
-                currRes.reward = market.locals(currUser).protectionAmount;
+            try market.update(accounts[i], CLOSE_POSITION, CLOSE_POSITION, CLOSE_POSITION, Fixed6Lib.ZERO, true) {
+                results[i].result.success = true;
+                results[i].reward = market.locals(accounts[i]).protectionAmount;
             } catch (bytes memory reason) {
-                currRes.reason = reason.length > 1 ? reason : FAILURE;
+                results[i].result.reason = reason;
             }
-
-            res[i] = currRes;
         }
     }
 
-    /**
-     * @dev Struct representing the result of an order execution attempt
-     */
-    struct ExecRes {
-        address user;
-        uint256 nonce;
-        bool canExec;
-        bytes reason;
-    }
-
-    /**
-     * @dev Attempts to execute orders for multiple accounts in a market
-     * @param market The market contract to perform order execution for
-     * @param accounts An array of accounts to attempt order execution for
-     * @param nonces An array of nonces to attempt order execution for
-     * @param commitment Price update commitment to execute before execution
-     * @return res An array of `ExecRes` structs containing the execution results for each account
-     */
+    /// @notice Attempts to execute orders for multiple accounts in a market
+    /// @param market The market contract to perform order execution for
+    /// @param accounts An array of accounts to attempt order execution for
+    /// @param nonces An array of nonces to attempt order execution for
+    /// @param commitment Price update commitment to execute before execution
+    /// @return results An array of `ExecRes` structs containing the execution results for each account
+    /// @return reward The total reward earned by the keeper
     function tryExecute(
         IMarket market,
         address[] calldata accounts,
         uint256[] calldata nonces,
-        IMultiInvoker.Invocation[] memory commitment,
-        uint256 commitmentValue
-    ) public payable returns (ExecRes[] memory res, UFixed18 reward) {
-        // try commit VAA
-        invoker.invoke{value: commitmentValue}(commitment);
+        IMultiInvoker.Invocation[] memory commitment
+    ) public payable returnEther returns (ExecutionResult[] memory results, UFixed18 reward) {
+        invoker.invoke{value: msg.value}(commitment);
 
-        UFixed18 balanceBefore = market.token().balanceOf(address(this));
+        UFixed18 balanceBefore = market.token().balanceOf();
 
-        IMultiInvoker.Invocation[]
-            memory invocations = new IMultiInvoker.Invocation[](1);
+        IMultiInvoker.Invocation[] memory invocations = new IMultiInvoker.Invocation[](1);
+        invocations[0].action = IMultiInvoker.PerennialAction.EXEC_ORDER;
 
-        invocations[0] = IMultiInvoker.Invocation({
-            action: IMultiInvoker.PerennialAction.EXEC_ORDER,
-            args: hex'00'
-        });
+        results = new ExecutionResult[](accounts.length);
+        for (uint256 i; i < accounts.length; i++) {
+            results[i].account = accounts[i];
+            results[i].nonce = nonces[i];
 
-        res = new ExecRes[](accounts.length);
-        for (uint256 i = 0; i < accounts.length; ++i) {
-            address currUser = accounts[i];
-            ExecRes memory currRes = ExecRes({
-                user: currUser,
-                nonce: nonces[i],
-                canExec: false,
-                reason: NO_REASON
-            });
-
-            invocations[0].args = abi.encode(currUser, market, nonces[i]);
+            invocations[0].args = abi.encode(accounts[i], market, nonces[i]);
             try invoker.invoke(invocations) {
-                currRes.canExec = true;
-            } catch (bytes memory reason) {
-                currRes.reason = reason.length > 1 ? reason : FAILURE;
+                results[i].result.success = true;
+            } catch (bytes memory reason)  {
+                results[i].result.reason = reason;
             }
-
-            res[i] = currRes;
         }
 
-        reward = UFixed18(market.token().balanceOf(address(this))).sub(
-            balanceBefore
-        );
+        reward = market.token().balanceOf().sub(balanceBefore);
     }
 
-    /**
-     * @dev Withdraws all collateral from the specified markets
-     * @param markets An array of markets to withdraw collateral from
-     */
-    function marketWithdraw(IMarket[] memory markets) external onlyOwner {
-        for (uint256 i = 0; i < markets.length; ++i) {
-            markets[i].update(
-                address(this),
-                UFixed6Lib.ZERO,
-                UFixed6Lib.ZERO,
-                UFixed6Lib.ZERO,
-                MARKETR_MAGIC_VALUE_WITHDRAW_ALL_COLLATERAL,
-                false
-            );
-        }
+    /// @notice Withdraws all collateral from the specified markets
+    /// @param markets An array of markets to withdraw collateral from
+    function withdraw(IMarket[] memory markets) external onlyOwner {
+        for (uint256 i = 0; i < markets.length; ++i)
+            markets[i].update(address(this), UFixed6Lib.ZERO, UFixed6Lib.ZERO, UFixed6Lib.ZERO, WITHDRAW_ALL, false);
     }
 
-    /**
-     * @dev Transfers the specified amount of the specified token to the specified address
-     * @param token The token to transfer
-     * @param to The address to transfer to
-     * @param amount The amount to transfer
-     */
-    function transferToken(
-        IERC20 token,
-        address to,
-        uint256 amount
-    ) public onlyOwner {
-        token.transfer(to, amount);
+    /// @notice Claims the full balance of `token`
+    /// @param token The token to claim
+    function claim(Token18 token) external onlyOwner {
+        token.push(msg.sender);
     }
-
-    receive() external payable {}
-
-    fallback() external payable {}
 }

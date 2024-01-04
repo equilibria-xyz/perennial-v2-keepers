@@ -110,7 +110,7 @@ export class LiqListener {
 
       if (!lensRes) continue
 
-      liqUsers = liqUsers.concat(lensRes.filter((res) => res.canLiq).map((res) => res.user))
+      liqUsers = liqUsers.concat(lensRes.filter((res) => res.result.success).map((res) => res.account))
     }
     return liqUsers
   }
@@ -121,7 +121,7 @@ export class LiqListener {
         address: BatchKeeperAddresses[Chain.id],
         abi: BatchKeeperAbi,
         functionName: 'tryLiquidate',
-        args: [market, accounts, [commit], 1n],
+        args: [market, accounts, [commit]],
         value: 1n,
         account: liquidatorAccount,
       })
@@ -150,10 +150,10 @@ export class LiqListener {
       console.log(`${marketTag}: Liquidation txn hash: ${hash}`)
 
       liqRes.forEach((userRes) => {
-        if (userRes.canLiq) {
-          console.log(`${marketTag}: Liquidated ${userRes.user}`)
+        if (userRes.result.success) {
+          console.log(`${marketTag}: Liquidated ${userRes.account}`)
         } else {
-          console.log(`${marketTag}: Could not execute liquidation for user ${userRes.reason}`)
+          console.log(`${marketTag}: Could not execute liquidation for user ${userRes.result.reason}`)
         }
       })
 
@@ -177,7 +177,7 @@ export class LiqListener {
       address: BatchKeeperAddresses[Chain.id],
       abi: BatchKeeperAbi,
       functionName: 'tryLiquidate',
-      args: [market, users, [commit], 1n],
+      args: [market, users, [commit]],
       value: 1n,
       account: liquidatorAccount,
     })
