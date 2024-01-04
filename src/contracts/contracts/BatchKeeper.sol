@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import '@equilibria/perennial-v2/contracts/interfaces/IMarket.sol';
-import '@equilibria/perennial-v2-extensions/contracts/interfaces/IMultiInvoker.sol';
-import '@equilibria/root/token/types/Token18.sol';
-import '@equilibria/root/attribute/Ownable.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import "@equilibria/perennial-v2/contracts/interfaces/IMarket.sol";
+import "@equilibria/perennial-v2-extensions/contracts/interfaces/IMultiInvoker.sol";
+import "@equilibria/root/token/types/Token18.sol";
+import "@equilibria/root/attribute/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract BatchKeeper is Ownable {
     /// @dev The market update collateral magic value for signaling a full withdrawal
@@ -38,7 +38,7 @@ contract BatchKeeper is Ownable {
     }
 
     /// @dev Modifier to return any remaining Ether to the caller
-    modifier returnEther {
+    modifier returnEther() {
         _;
 
         Address.sendValue(payable(msg.sender), address(this).balance);
@@ -52,7 +52,7 @@ contract BatchKeeper is Ownable {
     }
 
     /// @dev Allow the contract to receive Ether
-    receive() external payable { }
+    receive() external payable {}
 
     /// @notice Attempts to liquidate positions for multiple accounts in a market.
     /// @param market The market contract to perform the liquidation on.
@@ -107,7 +107,7 @@ contract BatchKeeper is Ownable {
             invocations[0].args = abi.encode(accounts[i], market, nonces[i]);
             try invoker.invoke(invocations) {
                 results[i].result.success = true;
-            } catch (bytes memory reason)  {
+            } catch (bytes memory reason) {
                 results[i].result.reason = reason;
             }
         }
