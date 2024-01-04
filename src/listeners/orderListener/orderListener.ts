@@ -53,7 +53,7 @@ export class OrderListener {
           address: BatchKeeperAddresses[Chain.id],
           abi: BatchKeeperAbi,
           functionName: 'tryExecute',
-          args: [market.market, orders.map((o) => o.user), orders.map((o) => o.nonce), [commit], 1n],
+          args: [market.market, orders.map((o) => o.account), orders.map((o) => o.nonce), [commit]],
           value: 1n,
           account: orderSigner.account,
         })
@@ -137,12 +137,12 @@ export class OrderListener {
       address: BatchKeeperAddresses[Chain.id],
       abi: BatchKeeperAbi,
       functionName: 'tryExecute',
-      args: [market.market, accounts, nonces, [commit], 1n],
+      args: [market.market, accounts, nonces, [commit]],
       value: 1n,
       account: orderSigner.account,
     })
 
     // Return executable orders
-    return { orders: result[0].filter((r) => !!r.canExec), commit, market }
+    return { orders: result[0].filter((r) => !!r.result.success), commit, market }
   }
 }
