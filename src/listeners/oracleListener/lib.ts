@@ -5,11 +5,11 @@ import { Address, Hex, PublicClient, getAbiItem, getContract } from 'viem'
 import { Buffer } from 'buffer'
 import { PythFactoryImpl } from '../../constants/abi/PythFactoryImpl.abi.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
-import { PythOracleImpl } from '../../constants/abi/PythOracleImpl.abi.js'
 import { notEmpty, range } from '../../utils/arrayUtils.js'
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
 import { Big6Math } from '../../constants/Big6Math.js'
-import { buildCommit, getVaaWithBackupRetry } from '../../utils/pythUtils.js'
+import { buildCommit2, getVaaWithBackupRetry } from '../../utils/pythUtils.js'
+import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi.js'
 
 export type Commitment = {
   action: number
@@ -25,48 +25,44 @@ export type CommitmentWithMetrics = {
 export async function getOracleAddresses(client: PublicClient, pythFactoryAddress: Address) {
   const logs = await client.getLogs({
     address: pythFactoryAddress,
-    event: getAbiItem({ abi: PythFactoryImpl, name: 'InstanceRegistered' }),
+    event: getAbiItem({ abi: PythFactoryImpl, name: 'OracleCreated' }),
     strict: true,
     fromBlock: 0n,
     toBlock: 'latest',
   })
-  return logs.map((l) => l.args.instance)
+  return logs.map((l) => ({ id: l.args.id, oracle: l.args.oracle }))
 }
 
 export async function getCommitments(
   chainId: number,
   client: PublicClient,
   pythConnection: EvmPriceServiceConnection,
-  oracleAddresses: Address[],
+  factoryAddress: Address,
+  oracleAddresses: { oracle: Address; id: Hex }[],
 ): Promise<CommitmentWithMetrics[]> {
-  const commitmentPromises = oracleAddresses.map(async (address) => {
-    const providerTag = oracleProviderAddressToOracleProviderTag(chainId, address)
-    const oracleContract = getContract({
-      address: address,
-      abi: PythOracleImpl,
+  const commitmentPromises = oracleAddresses.map(async ({ oracle, id }) => {
+    const providerTag = oracleProviderAddressToOracleProviderTag(chainId, oracle)
+    const factoryContract = getContract({
+      address: factoryAddress,
+      abi: PythFactoryImpl,
       publicClient: client,
     })
-    const [
-      MinDelay,
-      MaxDelay,
-      GracePeriod,
-      nextVersion,
-      nextVersionIndexToCommit,
-      versionLength,
-      priceFeedId,
-      lastCommittedPublishTime,
-    ] = await Promise.all([
-      oracleContract.read.MIN_VALID_TIME_AFTER_VERSION(),
-      oracleContract.read.MAX_VALID_TIME_AFTER_VERSION(),
-      oracleContract.read.GRACE_PERIOD(),
-      oracleContract.read.nextVersionToCommit(),
-      oracleContract.read.nextVersionIndexToCommit(),
-      oracleContract.read.versionListLength(),
-      oracleContract.read.id(),
-      oracleContract.read.lastCommittedPublishTime(),
+    const oracleContract = getContract({
+      address: oracle,
+      abi: KeeperOracleImpl,
+      publicClient: client,
+    })
+
+    const [MinDelay, MaxDelay, GracePeriod, nextVersion, global, underlyingId] = await Promise.all([
+      factoryContract.read.validFrom(),
+      factoryContract.read.validTo(),
+      oracleContract.read.timeout(),
+      oracleContract.read.next(),
+      oracleContract.read.global(),
+      factoryContract.read.toUnderlyingId([id]),
     ])
 
-    const awaitingVersions = Number(versionLength - nextVersionIndexToCommit)
+    const awaitingVersions = Number(global.currentIndex - global.latestIndex)
     const nullCommitmentWithMetrics: CommitmentWithMetrics = {
       commitment: null,
       awaitingVersions: awaitingVersions,
@@ -78,7 +74,9 @@ export async function getCommitments(
     }
 
     console.log(
-      `${providerTag}: New version(s) to commit: ${nextVersion}. Next Index: ${nextVersionIndexToCommit}. Length: ${versionLength}`,
+      `${providerTag}: New version(s) to commit: ${nextVersion}. Next Index: ${global.latestIndex + 1n}. Length: ${
+        global.currentIndex
+      }`,
     )
 
     // If the last committed publish time is greater than the next version + minDelay, we need to offset the query
@@ -91,23 +89,34 @@ export async function getCommitments(
     // }
 
     const versionsToCommit = await Promise.all(
-      range(nextVersionIndexToCommit, versionLength).map(async (i) => ({
+      range(global.latestIndex + 1n, global.currentIndex + 1n).map(async (i) => ({
         index: i,
-        version: await oracleContract.read.versionList([i]),
+        version: await oracleContract.read.versions([i]),
       })),
     )
 
     console.log(`${providerTag}: Versions to commit: ${versionsToCommit.map((v) => v.version).join(', ')}`)
 
+    const now = BigInt(Math.floor(Date.now() / 1000))
     const vaas = await Promise.allSettled(
       versionsToCommit.map(async ({ version, index }, i) => {
-        const vaaQueryTime = Big6Math.max(lastCommittedPublishTime, version + MinDelay + windowOffset)
+        const vaaQueryTime = Big6Math.max(global.latestVersion, version + MinDelay + windowOffset)
         const [vaa, publishTime_] = await getVaaWithBackupRetry({
           pyth: pythConnection,
-          priceFeedId,
+          priceFeedId: underlyingId,
           vaaQueryTime: Number(vaaQueryTime),
         })
         const publishTime = BigInt(publishTime_)
+
+        // Create a VAA with no data to commit invalid
+        if (now - version > GracePeriod)
+          return {
+            version: versionsToCommit[i].version,
+            vaa: '',
+            publishTime: 0n,
+            index: versionsToCommit[i].index,
+            prevVersion: 0n,
+          }
 
         if (publishTime - version < MinDelay)
           throw new Error(`${providerTag}: VAA too early: Version: ${version}. Publish Time: ${publishTime}`)
@@ -120,7 +129,6 @@ export async function getCommitments(
 
     const commitments: CommitmentWithMetrics[] = []
 
-    const now = BigInt(Math.floor(Date.now() / 1000))
     for (let i = 0; i < vaas.length; i++) {
       const vaa = vaas[i]
       if (vaa.status === 'rejected') {
@@ -130,11 +138,11 @@ export async function getCommitments(
       }
 
       commitments.push({
-        commitment: buildCommit({
-          oracleProvider: address,
+        commitment: buildCommit2({
+          oracleProviderFactory: factoryAddress,
           version: vaa.value.version,
           value: 1n,
-          index: vaa.value.index,
+          ids: [id],
           vaa: updateDataToHex(vaa.value.vaa),
           revertOnFailure: true,
         }),

@@ -1,19 +1,19 @@
 /* eslint-disable */
-import { BatchLiquidateAbi } from '../constants/abi/index.js'
-import BatchLiquidateBytecode from '../../artifacts/src/contracts/contracts/BatchLiquidate.sol/BatchLiquidate.json'
+import { BatchKeeperAbi } from '../constants/abi/index.js'
+import BatchKeeperBytecode from '../../artifacts/src/contracts/contracts/BatchKeeper.sol/BatchKeeper.json'
 import { Chain, client, liquidatorAccount, liquidatorSigner } from '../config.js'
 import { Hex } from 'viem'
 import { MultiInvokerAddress } from '../constants/network.js'
 
-export default async function deployBatchLiq() {
+export default async function DeployBatchKeeper() {
   const hash = await liquidatorSigner.deployContract({
-    abi: BatchLiquidateAbi,
+    abi: BatchKeeperAbi,
     account: liquidatorAccount,
     args: [MultiInvokerAddress[Chain.id]],
-    bytecode: BatchLiquidateBytecode.bytecode as Hex,
+    bytecode: BatchKeeperBytecode.bytecode as Hex,
   })
 
   await client.waitForTransactionReceipt({ hash })
 
-  console.log('deployed liq batcher', hash)
+  console.log('deployed batched keeper', hash)
 }

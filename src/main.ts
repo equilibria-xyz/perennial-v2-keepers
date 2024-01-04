@@ -2,17 +2,24 @@ import 'dotenv/config'
 import './tracer.js'
 import { PythOracleListener } from './listeners/oracleListener/pythOracle.js'
 import { Chain, Task, TaskType, oracleAccount, client, oracleSigner, IsMainnet } from './config.js'
-import { MarketUserListener } from './listeners/marketListener/marketUserListener.js'
 import { MetricsListener } from './listeners/metricsListener/metricsListener.js'
-import deployBatchLiq from './scripts/DeployBatchLiq.js'
-import deployBatchExec from './scripts/DeployBatchExec.js'
+import deployBatchKeeper from './scripts/DeployBatchKeeper.js'
 import { OrderListener } from './listeners/orderListener/orderListener.js'
+import { LiqListener } from './listeners/liqListener/liqListener.js'
+import { SettlementListener } from './listeners/settlementListener/settlementListener.js'
 
 const run = async () => {
   switch (Task) {
     case TaskType.liq: {
-      const marketUsers = new MarketUserListener()
-      await marketUsers.init()
+      const liqListener = new LiqListener()
+      await liqListener.init()
+
+      setInterval(
+        () => {
+          liqListener.run()
+        },
+        IsMainnet ? LiqListener.PollingInterval : 5 * LiqListener.PollingInterval,
+      )
       break
     }
     case TaskType.orders: {
@@ -39,9 +46,21 @@ const run = async () => {
       )
       break
     }
+    case TaskType.settlement: {
+      const settlementListener = new SettlementListener()
+      await settlementListener.init()
+
+      settlementListener.listen()
+      setInterval(
+        () => {
+          settlementListener.run()
+        },
+        IsMainnet ? SettlementListener.PollingInterval : 2 * SettlementListener.PollingInterval,
+      )
+      break
+    }
     case TaskType.deploy: {
-      await deployBatchLiq()
-      await deployBatchExec()
+      await deployBatchKeeper()
       break
     }
     case TaskType.metrics: {

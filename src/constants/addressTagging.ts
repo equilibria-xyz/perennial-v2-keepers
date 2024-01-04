@@ -1,6 +1,6 @@
 import { getAddress } from 'viem'
 import { SupportedChainId } from './network.js'
-import { arbitrum, arbitrumGoerli } from 'viem/chains'
+import { arbitrum, arbitrumGoerli, arbitrumSepolia } from 'viem/chains'
 
 export function marketAddressToMarketTag(chainId: SupportedChainId, market_: string) {
   const market = getAddress(market_)
@@ -14,6 +14,13 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
           [getAddress('0x4443Ec03A347394D2CA331638B809A17617497af')]: 'sol',
           [getAddress('0x40a4b331E95D409cC9CEdDcA9eFDf5ff58da4344')]: 'matic',
           [getAddress('0xCF5cc9DC79F5172594E84f9d034D9d74d5F51007')]: 'tia',
+        }[market] ?? market
+      )
+    }
+    case arbitrumSepolia.id: {
+      return (
+        {
+          [getAddress('0x0142a8bfF8D887Fc4f04469fCA6c66F5e0936Ea7')]: 'eth',
         }[market] ?? market
       )
     }

@@ -33,6 +33,38 @@ export const MarketImpl = [
   {
     inputs: [
       {
+        internalType: 'uint256',
+        name: 'version',
+        type: 'uint256',
+      },
+    ],
+    name: 'InitializableAlreadyInitializedError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InitializableNotInitializingError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InitializableZeroVersionError',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'sender',
+        type: 'address',
+      },
+    ],
+    name: 'InstanceNotFactoryError',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
         internalType: 'address',
         name: 'sender',
         type: 'address',
@@ -88,11 +120,6 @@ export const MarketImpl = [
   },
   {
     inputs: [],
-    name: 'MarketInsufficientMaintenanceError',
-    type: 'error',
-  },
-  {
-    inputs: [],
     name: 'MarketInsufficientMarginError',
     type: 'error',
   },
@@ -110,11 +137,6 @@ export const MarketImpl = [
   {
     inputs: [],
     name: 'MarketInvalidProtectionError',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'MarketInvalidRewardError',
     type: 'error',
   },
   {
@@ -170,11 +192,6 @@ export const MarketImpl = [
   },
   {
     inputs: [],
-    name: 'MarketRewardAlreadySetError',
-    type: 'error',
-  },
-  {
-    inputs: [],
     name: 'MarketStalePriceError',
     type: 'error',
   },
@@ -186,6 +203,11 @@ export const MarketImpl = [
   {
     inputs: [],
     name: 'PositionStorageLocalInvalidError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ReentrancyGuardReentrantCallError',
     type: 'error',
   },
   {
@@ -202,32 +224,6 @@ export const MarketImpl = [
       },
     ],
     name: 'UFixed6UnderflowError',
-    type: 'error',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'uint256',
-        name: 'version',
-        type: 'uint256',
-      },
-    ],
-    name: 'UInitializableAlreadyInitializedError',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'UInitializableNotInitializingError',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'UInitializableZeroVersionError',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'UReentrancyGuardReentrantCallError',
     type: 'error',
   },
   {
@@ -286,9 +282,9 @@ export const MarketImpl = [
             type: 'uint256',
           },
           {
-            internalType: 'UFixed6',
+            internalType: 'Fixed6',
             name: 'positionFee',
-            type: 'uint256',
+            type: 'int256',
           },
           {
             internalType: 'UFixed6',
@@ -361,6 +357,89 @@ export const MarketImpl = [
       },
     ],
     name: 'Initialized',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'version',
+        type: 'uint256',
+      },
+      {
+        components: [
+          {
+            internalType: 'Fixed6',
+            name: 'maker',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'long',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'short',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'net',
+            type: 'int256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'skew',
+            type: 'uint256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'impact',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'utilization',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'efficiency',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'fee',
+            type: 'int256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'keeper',
+            type: 'uint256',
+          },
+        ],
+        indexed: false,
+        internalType: 'struct Order',
+        name: 'order',
+        type: 'tuple',
+      },
+      {
+        indexed: false,
+        internalType: 'Fixed6',
+        name: 'collateral',
+        type: 'int256',
+      },
+    ],
+    name: 'OrderCreated',
     type: 'event',
   },
   {
@@ -478,9 +557,9 @@ export const MarketImpl = [
       {
         components: [
           {
-            internalType: 'UFixed6',
+            internalType: 'Fixed6',
             name: 'positionFeeMaker',
-            type: 'uint256',
+            type: 'int256',
           },
           {
             internalType: 'UFixed6',
@@ -584,19 +663,6 @@ export const MarketImpl = [
       },
     ],
     name: 'RewardClaimed',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: 'Token18',
-        name: 'newReward',
-        type: 'address',
-      },
-    ],
-    name: 'RewardUpdated',
     type: 'event',
   },
   {
@@ -720,7 +786,7 @@ export const MarketImpl = [
           },
           {
             internalType: 'UFixed6',
-            name: 'virtualTaker',
+            name: 'skewScale',
             type: 'uint256',
           },
           {
@@ -800,42 +866,9 @@ export const MarketImpl = [
   },
   {
     inputs: [],
-    name: 'beneficiary',
-    outputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
     name: 'claimFee',
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'claimReward',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'coordinator',
-    outputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-    ],
-    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -983,6 +1016,16 @@ export const MarketImpl = [
           {
             internalType: 'uint256',
             name: 'protection',
+            type: 'uint256',
+          },
+          {
+            internalType: 'address',
+            name: 'protectionInitiator',
+            type: 'address',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'protectionAmount',
             type: 'uint256',
           },
         ],
@@ -1138,9 +1181,9 @@ export const MarketImpl = [
             type: 'uint256',
           },
           {
-            internalType: 'UFixed6',
+            internalType: 'Fixed6',
             name: 'fee',
-            type: 'uint256',
+            type: 'int256',
           },
           {
             internalType: 'UFixed6',
@@ -1226,9 +1269,9 @@ export const MarketImpl = [
             type: 'uint256',
           },
           {
-            internalType: 'UFixed6',
+            internalType: 'Fixed6',
             name: 'fee',
-            type: 'uint256',
+            type: 'int256',
           },
           {
             internalType: 'UFixed6',
@@ -1303,9 +1346,9 @@ export const MarketImpl = [
             type: 'uint256',
           },
           {
-            internalType: 'UFixed6',
+            internalType: 'Fixed6',
             name: 'fee',
-            type: 'uint256',
+            type: 'int256',
           },
           {
             internalType: 'UFixed6',
@@ -1386,9 +1429,9 @@ export const MarketImpl = [
             type: 'uint256',
           },
           {
-            internalType: 'UFixed6',
+            internalType: 'Fixed6',
             name: 'fee',
-            type: 'uint256',
+            type: 'int256',
           },
           {
             internalType: 'UFixed6',
@@ -1431,19 +1474,6 @@ export const MarketImpl = [
         internalType: 'struct Position',
         name: '',
         type: 'tuple',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'reward',
-    outputs: [
-      {
-        internalType: 'Token18',
-        name: '',
-        type: 'address',
       },
     ],
     stateMutability: 'view',
@@ -1571,7 +1601,7 @@ export const MarketImpl = [
           },
           {
             internalType: 'UFixed6',
-            name: 'virtualTaker',
+            name: 'skewScale',
             type: 'uint256',
           },
           {
@@ -1651,27 +1681,11 @@ export const MarketImpl = [
         name: 'newBeneficiary',
         type: 'address',
       },
-    ],
-    name: 'updateBeneficiary',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
       {
         internalType: 'address',
         name: 'newCoordinator',
         type: 'address',
       },
-    ],
-    name: 'updateCoordinator',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
       {
         components: [
           {
@@ -1751,19 +1765,6 @@ export const MarketImpl = [
       },
     ],
     name: 'updateParameter',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'Token18',
-        name: 'newReward',
-        type: 'address',
-      },
-    ],
-    name: 'updateReward',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -1888,7 +1889,7 @@ export const MarketImpl = [
           },
           {
             internalType: 'UFixed6',
-            name: 'virtualTaker',
+            name: 'skewScale',
             type: 'uint256',
           },
           {
