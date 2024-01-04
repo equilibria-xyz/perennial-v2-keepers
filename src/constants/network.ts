@@ -68,7 +68,7 @@ export const GelatoDedicatedSenderAddresses: AddressMapping = {
 export const BatchKeeperAddresses: AddressMapping = {
   [arbitrum.id]: zeroAddress,
   [arbitrumGoerli.id]: zeroAddress,
-  [arbitrumSepolia.id]: getAddress('0xf3E88d5a0036BFDc240A309DBc765C895Dc8b509'),
+  [arbitrumSepolia.id]: getAddress('0x61D0370f9db0b99282aE755c986E40C512DE577D'),
   [hardhat.id]: zeroAddress,
 }
 
