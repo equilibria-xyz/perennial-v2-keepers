@@ -1,39 +1,103 @@
 export const KeeperOracleImpl = [
   {
-    inputs: [{ internalType: 'uint256', name: 'timeout_', type: 'uint256' }],
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'timeout_',
+        type: 'uint256',
+      },
+    ],
     stateMutability: 'nonpayable',
     type: 'constructor',
   },
   {
-    inputs: [{ internalType: 'uint256', name: 'version', type: 'uint256' }],
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'version',
+        type: 'uint256',
+      },
+    ],
     name: 'InitializableAlreadyInitializedError',
     type: 'error',
   },
-  { inputs: [], name: 'InitializableNotInitializingError', type: 'error' },
-  { inputs: [], name: 'InitializableZeroVersionError', type: 'error' },
   {
-    inputs: [{ internalType: 'address', name: 'sender', type: 'address' }],
+    inputs: [],
+    name: 'InitializableNotInitializingError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InitializableZeroVersionError',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'sender',
+        type: 'address',
+      },
+    ],
     name: 'InstanceNotFactoryError',
     type: 'error',
   },
   {
-    inputs: [{ internalType: 'address', name: 'sender', type: 'address' }],
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'sender',
+        type: 'address',
+      },
+    ],
     name: 'InstanceNotOwnerError',
     type: 'error',
   },
-  { inputs: [], name: 'InstancePausedError', type: 'error' },
-  { inputs: [], name: 'KeeperOracleInvalidCallbackError', type: 'error' },
-  { inputs: [], name: 'KeeperOracleInvalidPriceError', type: 'error' },
-  { inputs: [], name: 'KeeperOracleVersionOutsideRangeError', type: 'error' },
-  { inputs: [], name: 'OracleProviderUnauthorizedError', type: 'error' },
+  {
+    inputs: [],
+    name: 'InstancePausedError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'KeeperOracleInvalidCallbackError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'KeeperOracleInvalidPriceError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'KeeperOracleVersionOutsideRangeError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'OracleProviderUnauthorizedError',
+    type: 'error',
+  },
   {
     anonymous: false,
     inputs: [
       {
         components: [
-          { internalType: 'contract IMarket', name: 'market', type: 'address' },
-          { internalType: 'address', name: 'account', type: 'address' },
-          { internalType: 'uint256', name: 'version', type: 'uint256' },
+          {
+            internalType: 'contract IMarket',
+            name: 'market',
+            type: 'address',
+          },
+          {
+            internalType: 'address',
+            name: 'account',
+            type: 'address',
+          },
+          {
+            internalType: 'uint256',
+            name: 'version',
+            type: 'uint256',
+          },
         ],
         indexed: true,
         internalType: 'struct IKeeperOracle.SettlementCallback',
@@ -49,9 +113,21 @@ export const KeeperOracleImpl = [
     inputs: [
       {
         components: [
-          { internalType: 'contract IMarket', name: 'market', type: 'address' },
-          { internalType: 'address', name: 'account', type: 'address' },
-          { internalType: 'uint256', name: 'version', type: 'uint256' },
+          {
+            internalType: 'contract IMarket',
+            name: 'market',
+            type: 'address',
+          },
+          {
+            internalType: 'address',
+            name: 'account',
+            type: 'address',
+          },
+          {
+            internalType: 'uint256',
+            name: 'version',
+            type: 'uint256',
+          },
         ],
         indexed: true,
         internalType: 'struct IKeeperOracle.SettlementCallback',
@@ -64,7 +140,14 @@ export const KeeperOracleImpl = [
   },
   {
     anonymous: false,
-    inputs: [{ indexed: false, internalType: 'uint256', name: 'version', type: 'uint256' }],
+    inputs: [
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'version',
+        type: 'uint256',
+      },
+    ],
     name: 'Initialized',
     type: 'event',
   },
@@ -73,9 +156,21 @@ export const KeeperOracleImpl = [
     inputs: [
       {
         components: [
-          { internalType: 'uint256', name: 'timestamp', type: 'uint256' },
-          { internalType: 'Fixed6', name: 'price', type: 'int256' },
-          { internalType: 'bool', name: 'valid', type: 'bool' },
+          {
+            internalType: 'uint256',
+            name: 'timestamp',
+            type: 'uint256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'price',
+            type: 'int256',
+          },
+          {
+            internalType: 'bool',
+            name: 'valid',
+            type: 'bool',
+          },
         ],
         indexed: false,
         internalType: 'struct OracleVersion',
@@ -88,19 +183,44 @@ export const KeeperOracleImpl = [
   },
   {
     anonymous: false,
-    inputs: [{ indexed: true, internalType: 'uint256', name: 'version', type: 'uint256' }],
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'uint256',
+        name: 'version',
+        type: 'uint256',
+      },
+    ],
     name: 'OracleProviderVersionRequested',
     type: 'event',
   },
   {
-    inputs: [{ internalType: 'uint256', name: 'timestamp', type: 'uint256' }],
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'timestamp',
+        type: 'uint256',
+      },
+    ],
     name: 'at',
     outputs: [
       {
         components: [
-          { internalType: 'uint256', name: 'timestamp', type: 'uint256' },
-          { internalType: 'Fixed6', name: 'price', type: 'int256' },
-          { internalType: 'bool', name: 'valid', type: 'bool' },
+          {
+            internalType: 'uint256',
+            name: 'timestamp',
+            type: 'uint256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'price',
+            type: 'int256',
+          },
+          {
+            internalType: 'bool',
+            name: 'valid',
+            type: 'bool',
+          },
         ],
         internalType: 'struct OracleVersion',
         name: 'oracleVersion',
@@ -114,9 +234,21 @@ export const KeeperOracleImpl = [
     inputs: [
       {
         components: [
-          { internalType: 'uint256', name: 'timestamp', type: 'uint256' },
-          { internalType: 'Fixed6', name: 'price', type: 'int256' },
-          { internalType: 'bool', name: 'valid', type: 'bool' },
+          {
+            internalType: 'uint256',
+            name: 'timestamp',
+            type: 'uint256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'price',
+            type: 'int256',
+          },
+          {
+            internalType: 'bool',
+            name: 'valid',
+            type: 'bool',
+          },
         ],
         internalType: 'struct OracleVersion',
         name: 'version',
@@ -124,21 +256,39 @@ export const KeeperOracleImpl = [
       },
     ],
     name: 'commit',
-    outputs: [{ internalType: 'bool', name: 'requested', type: 'bool' }],
+    outputs: [
+      {
+        internalType: 'bool',
+        name: 'requested',
+        type: 'bool',
+      },
+    ],
     stateMutability: 'nonpayable',
     type: 'function',
   },
   {
     inputs: [],
     name: 'current',
-    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
     stateMutability: 'view',
     type: 'function',
   },
   {
     inputs: [],
     name: 'factory',
-    outputs: [{ internalType: 'contract IFactory', name: '', type: 'address' }],
+    outputs: [
+      {
+        internalType: 'contract IFactory',
+        name: '',
+        type: 'address',
+      },
+    ],
     stateMutability: 'view',
     type: 'function',
   },
@@ -148,9 +298,21 @@ export const KeeperOracleImpl = [
     outputs: [
       {
         components: [
-          { internalType: 'uint64', name: 'latestVersion', type: 'uint64' },
-          { internalType: 'uint64', name: 'currentIndex', type: 'uint64' },
-          { internalType: 'uint64', name: 'latestIndex', type: 'uint64' },
+          {
+            internalType: 'uint64',
+            name: 'latestVersion',
+            type: 'uint64',
+          },
+          {
+            internalType: 'uint64',
+            name: 'currentIndex',
+            type: 'uint64',
+          },
+          {
+            internalType: 'uint64',
+            name: 'latestIndex',
+            type: 'uint64',
+          },
         ],
         internalType: 'struct IKeeperOracle.Global',
         name: '',
@@ -161,22 +323,52 @@ export const KeeperOracleImpl = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'uint256', name: 'version', type: 'uint256' }],
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'version',
+        type: 'uint256',
+      },
+    ],
     name: 'globalCallbacks',
-    outputs: [{ internalType: 'address[]', name: '', type: 'address[]' }],
+    outputs: [
+      {
+        internalType: 'address[]',
+        name: '',
+        type: 'address[]',
+      },
+    ],
     stateMutability: 'view',
     type: 'function',
   },
-  { inputs: [], name: 'initialize', outputs: [], stateMutability: 'nonpayable', type: 'function' },
+  {
+    inputs: [],
+    name: 'initialize',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
   {
     inputs: [],
     name: 'latest',
     outputs: [
       {
         components: [
-          { internalType: 'uint256', name: 'timestamp', type: 'uint256' },
-          { internalType: 'Fixed6', name: 'price', type: 'int256' },
-          { internalType: 'bool', name: 'valid', type: 'bool' },
+          {
+            internalType: 'uint256',
+            name: 'timestamp',
+            type: 'uint256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'price',
+            type: 'int256',
+          },
+          {
+            internalType: 'bool',
+            name: 'valid',
+            type: 'bool',
+          },
         ],
         internalType: 'struct OracleVersion',
         name: '',
@@ -188,25 +380,53 @@ export const KeeperOracleImpl = [
   },
   {
     inputs: [
-      { internalType: 'uint256', name: 'version', type: 'uint256' },
-      { internalType: 'contract IMarket', name: 'market', type: 'address' },
+      {
+        internalType: 'uint256',
+        name: 'version',
+        type: 'uint256',
+      },
+      {
+        internalType: 'contract IMarket',
+        name: 'market',
+        type: 'address',
+      },
     ],
     name: 'localCallbacks',
-    outputs: [{ internalType: 'address[]', name: '', type: 'address[]' }],
+    outputs: [
+      {
+        internalType: 'address[]',
+        name: '',
+        type: 'address[]',
+      },
+    ],
     stateMutability: 'view',
     type: 'function',
   },
   {
     inputs: [],
     name: 'next',
-    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
     stateMutability: 'view',
     type: 'function',
   },
   {
     inputs: [
-      { internalType: 'contract IMarket', name: 'market', type: 'address' },
-      { internalType: 'address', name: 'account', type: 'address' },
+      {
+        internalType: 'contract IMarket',
+        name: 'market',
+        type: 'address',
+      },
+      {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
     ],
     name: 'request',
     outputs: [],
@@ -215,9 +435,21 @@ export const KeeperOracleImpl = [
   },
   {
     inputs: [
-      { internalType: 'contract IMarket', name: 'market', type: 'address' },
-      { internalType: 'uint256', name: 'version', type: 'uint256' },
-      { internalType: 'uint256', name: 'maxCount', type: 'uint256' },
+      {
+        internalType: 'contract IMarket',
+        name: 'market',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: 'version',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'maxCount',
+        type: 'uint256',
+      },
     ],
     name: 'settle',
     outputs: [],
@@ -230,15 +462,31 @@ export const KeeperOracleImpl = [
     outputs: [
       {
         components: [
-          { internalType: 'uint256', name: 'timestamp', type: 'uint256' },
-          { internalType: 'Fixed6', name: 'price', type: 'int256' },
-          { internalType: 'bool', name: 'valid', type: 'bool' },
+          {
+            internalType: 'uint256',
+            name: 'timestamp',
+            type: 'uint256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'price',
+            type: 'int256',
+          },
+          {
+            internalType: 'bool',
+            name: 'valid',
+            type: 'bool',
+          },
         ],
         internalType: 'struct OracleVersion',
         name: '',
         type: 'tuple',
       },
-      { internalType: 'uint256', name: '', type: 'uint256' },
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
     stateMutability: 'view',
     type: 'function',
@@ -246,14 +494,32 @@ export const KeeperOracleImpl = [
   {
     inputs: [],
     name: 'timeout',
-    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
     stateMutability: 'view',
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
     name: 'versions',
-    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
     stateMutability: 'view',
     type: 'function',
   },
