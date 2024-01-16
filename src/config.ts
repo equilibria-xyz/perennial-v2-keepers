@@ -81,7 +81,7 @@ export const settlementSigner = createWalletClient({
 export const pythConnection = new EvmPriceServiceConnection(PythUrls[Chain.id], {
   priceFeedRequestConfig: { binary: true },
 })
-export const pythBackupConnection = new EvmPriceServiceConnection(process.env.P2P_HERMES_URL ?? '', {
+export const pythBackupConnection = new EvmPriceServiceConnection('https://hermes.pyth.network/', {
   priceFeedRequestConfig: { binary: true },
 })
 

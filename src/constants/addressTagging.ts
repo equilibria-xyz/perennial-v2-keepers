@@ -14,6 +14,7 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
           [getAddress('0x4443Ec03A347394D2CA331638B809A17617497af')]: 'sol',
           [getAddress('0x40a4b331E95D409cC9CEdDcA9eFDf5ff58da4344')]: 'matic',
           [getAddress('0xCF5cc9DC79F5172594E84f9d034D9d74d5F51007')]: 'tia',
+          [getAddress('0xe2bd1E1d2Ae22857508E9d59fb41FDCEEeda8EDD')]: 'msqbtc',
         }[market] ?? market
       )
     }
@@ -36,6 +37,8 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
           [getAddress('0xD9c296A7Bee1c201B9f3531c7AC9c9310ef3b738')]: 'link',
           [getAddress('0x362c6bC2A4EA2033063bf20409A4c5E8C5754056')]: 'bnb',
           [getAddress('0x2402E92f8C58886F716F5554039fA6398d7A1EfB')]: 'xrp',
+          [getAddress('0x3D1D603073b3CEAB5974Db5C54568058a9551cCC')]: 'arb',
+          [getAddress('0x768a5909f0B6997efa56761A89344eA2BD5560fd')]: 'msqbtc',
         }[market] ?? market
       )
     }
@@ -94,6 +97,7 @@ export function oracleProviderAddressToOracleProviderTag(chainId: number, oracle
           [getAddress('0x346d0cC80c02E4dF3Fd3e56323804671dE271829')]: 'pyth-link',
           [getAddress('0x79462E58A1E7B9E0373C83B494820216401A9cAb')]: 'pyth-bnb',
           [getAddress('0x5161158266A16837FDBE864D017a67e124516A2F')]: 'pyth-xrp',
+          [getAddress('0x2fbbf83eb0772eb5bc2fc17d6f69dc45c6ad89e3')]: 'pyth-arb',
         }[oracle] ?? oracle
       )
     }

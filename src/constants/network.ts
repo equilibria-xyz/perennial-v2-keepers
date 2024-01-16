@@ -75,7 +75,7 @@ export const BatchKeeperAddresses: AddressMapping = {
 export const PythUrls: {
   [key in SupportedChainId]: string
 } = {
-  [arbitrum.id]: 'https://hermes.pyth.network/',
+  [arbitrum.id]: process.env.P2P_HERMES_URL ?? 'https://hermes.pyth.network/',
   [arbitrumGoerli.id]: 'https://hermes-beta.pyth.network/',
   [arbitrumSepolia.id]: 'https://hermes.pyth.network/',
   [hardhat.id]: 'https://hermes-beta.pyth.network/',
