@@ -88,16 +88,16 @@ export function oracleProviderAddressToOracleProviderTag(chainId: number, oracle
     case arbitrum.id: {
       return (
         {
-          [getAddress('0x3a57708492c759f2Effb06F5ed1c7765518aF402')]: 'pyth-eth',
-          [getAddress('0x3b1f8BD9371F35FB73c275B15993783B8ee9d085')]: 'pyth-btc',
-          [getAddress('0x905502A4b5af1b09BEb6FDD08E8bFaA9Aa52A0Cf')]: 'pyth-sol',
-          [getAddress('0x78b444A7b0cB3EcA0C6C2D0116B4871e2f5A0DA9')]: 'pyth-matic',
-          [getAddress('0x4199640d7fDb2adC1a8bC37aaB4A6FE5f249950b')]: 'pyth-tia',
-          [getAddress('0xb3F1677B943c1fE383cBDE23346ef0EF87a03DC9')]: 'pyth-rlb',
-          [getAddress('0x346d0cC80c02E4dF3Fd3e56323804671dE271829')]: 'pyth-link',
-          [getAddress('0x79462E58A1E7B9E0373C83B494820216401A9cAb')]: 'pyth-bnb',
-          [getAddress('0x5161158266A16837FDBE864D017a67e124516A2F')]: 'pyth-xrp',
-          [getAddress('0x2fbbf83eb0772eb5bc2fc17d6f69dc45c6ad89e3')]: 'pyth-arb',
+          [getAddress('0xf9249ec6785221226cb3f66fa049aa1e5b6a4a57')]: 'pyth-eth',
+          [getAddress('0xcd98f0ffbe50e334dd6b84584483617557ddc012')]: 'pyth-btc',
+          [getAddress('0x9276d4c4210062303972fd1dca9042e4f19a3aac')]: 'pyth-sol',
+          [getAddress('0x6a44bcfc3abaa1dd1fa88d369e7be50cbe407e66')]: 'pyth-matic',
+          [getAddress('0x600e9fcf5a9913cb1eb54cfcb3856fe4854878ea')]: 'pyth-tia',
+          [getAddress('0x9545091d003c19aa811d9111ac6451fb9f5da509')]: 'pyth-rlb',
+          [getAddress('0x424d97420f0ecbcc75f3e3f4a52d532bbe2ff53e')]: 'pyth-link',
+          [getAddress('0xfe87515fe199288c2233edbf40eb096d297179ea')]: 'pyth-bnb',
+          [getAddress('0xa872d117867187220d45c142611dea5f6d35c718')]: 'pyth-xrp',
+          [getAddress('0xf7183e7d8ebc7bd07c5855598b446adec78f684f')]: 'pyth-arb',
         }[oracle] ?? oracle
       )
     }
