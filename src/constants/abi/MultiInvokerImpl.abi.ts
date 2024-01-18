@@ -32,8 +32,13 @@ export const MultiInvokerImplAbi = [
         type: 'address',
       },
       {
-        internalType: 'UFixed6',
-        name: 'keeperMultiplier_',
+        internalType: 'uint256',
+        name: 'keepBufferBase_',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'keepBufferCalldata_',
         type: 'uint256',
       },
     ],
@@ -65,6 +70,27 @@ export const MultiInvokerImplAbi = [
       },
     ],
     name: 'Fixed6OverflowError',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'version',
+        type: 'uint256',
+      },
+    ],
+    name: 'InitializableAlreadyInitializedError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InitializableNotInitializingError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InitializableZeroVersionError',
     type: 'error',
   },
   {
@@ -125,52 +151,6 @@ export const MultiInvokerImplAbi = [
     type: 'error',
   },
   {
-    inputs: [
-      {
-        internalType: 'uint256',
-        name: 'version',
-        type: 'uint256',
-      },
-    ],
-    name: 'UInitializableAlreadyInitializedError',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'UInitializableNotInitializingError',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'UInitializableZeroVersionError',
-    type: 'error',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'account',
-        type: 'address',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'to',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'UFixed6',
-        name: 'amount',
-        type: 'uint256',
-      },
-    ],
-    name: 'FeeCharged',
-    type: 'event',
-  },
-  {
     anonymous: false,
     inputs: [
       {
@@ -189,25 +169,73 @@ export const MultiInvokerImplAbi = [
       {
         indexed: true,
         internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'contract IMarket',
+        name: 'market',
+        type: 'address',
+      },
+      {
+        components: [
+          {
+            internalType: 'UFixed6',
+            name: 'amount',
+            type: 'uint256',
+          },
+          {
+            internalType: 'address',
+            name: 'receiver',
+            type: 'address',
+          },
+          {
+            internalType: 'bool',
+            name: 'unwrap',
+            type: 'bool',
+          },
+        ],
+        indexed: false,
+        internalType: 'struct InterfaceFee',
+        name: 'fee',
+        type: 'tuple',
+      },
+    ],
+    name: 'InterfaceFeeCharged',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
         name: 'sender',
         type: 'address',
       },
       {
         indexed: false,
         internalType: 'uint256',
-        name: 'gasUsed',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'UFixed18',
-        name: 'multiplier',
+        name: 'applicableGas',
         type: 'uint256',
       },
       {
         indexed: false,
         internalType: 'uint256',
-        name: 'buffer',
+        name: 'applicableValue',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'UFixed18',
+        name: 'baseFee',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'UFixed18',
+        name: 'calldataFee',
         type: 'uint256',
       },
       {
@@ -297,12 +325,6 @@ export const MultiInvokerImplAbi = [
         name: 'nonce',
         type: 'uint256',
       },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'positionId',
-        type: 'uint256',
-      },
     ],
     name: 'OrderExecuted',
     type: 'event',
@@ -355,6 +377,50 @@ export const MultiInvokerImplAbi = [
             name: 'delta',
             type: 'int256',
           },
+          {
+            components: [
+              {
+                internalType: 'UFixed6',
+                name: 'amount',
+                type: 'uint256',
+              },
+              {
+                internalType: 'address',
+                name: 'receiver',
+                type: 'address',
+              },
+              {
+                internalType: 'bool',
+                name: 'unwrap',
+                type: 'bool',
+              },
+            ],
+            internalType: 'struct InterfaceFee',
+            name: 'interfaceFee1',
+            type: 'tuple',
+          },
+          {
+            components: [
+              {
+                internalType: 'UFixed6',
+                name: 'amount',
+                type: 'uint256',
+              },
+              {
+                internalType: 'address',
+                name: 'receiver',
+                type: 'address',
+              },
+              {
+                internalType: 'bool',
+                name: 'unwrap',
+                type: 'bool',
+              },
+            ],
+            internalType: 'struct InterfaceFee',
+            name: 'interfaceFee2',
+            type: 'tuple',
+          },
         ],
         indexed: false,
         internalType: 'struct TriggerOrder',
@@ -367,12 +433,12 @@ export const MultiInvokerImplAbi = [
   },
   {
     inputs: [],
-    name: 'DSU',
+    name: 'ARB_FIXED_OVERHEAD',
     outputs: [
       {
-        internalType: 'Token18',
+        internalType: 'uint256',
         name: '',
-        type: 'address',
+        type: 'uint256',
       },
     ],
     stateMutability: 'view',
@@ -380,12 +446,25 @@ export const MultiInvokerImplAbi = [
   },
   {
     inputs: [],
-    name: 'GAS_BUFFER',
+    name: 'ARB_GAS_MULTIPLIER',
     outputs: [
       {
         internalType: 'uint256',
         name: '',
         type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'DSU',
+    outputs: [
+      {
+        internalType: 'Token18',
+        name: '',
+        type: 'address',
       },
     ],
     stateMutability: 'view',
@@ -499,10 +578,23 @@ export const MultiInvokerImplAbi = [
   },
   {
     inputs: [],
-    name: 'keeperMultiplier',
+    name: 'keepBufferBase',
     outputs: [
       {
-        internalType: 'UFixed6',
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'keepBufferCalldata',
+    outputs: [
+      {
+        internalType: 'uint256',
         name: '',
         type: 'uint256',
       },
@@ -595,6 +687,50 @@ export const MultiInvokerImplAbi = [
             internalType: 'Fixed6',
             name: 'delta',
             type: 'int256',
+          },
+          {
+            components: [
+              {
+                internalType: 'UFixed6',
+                name: 'amount',
+                type: 'uint256',
+              },
+              {
+                internalType: 'address',
+                name: 'receiver',
+                type: 'address',
+              },
+              {
+                internalType: 'bool',
+                name: 'unwrap',
+                type: 'bool',
+              },
+            ],
+            internalType: 'struct InterfaceFee',
+            name: 'interfaceFee1',
+            type: 'tuple',
+          },
+          {
+            components: [
+              {
+                internalType: 'UFixed6',
+                name: 'amount',
+                type: 'uint256',
+              },
+              {
+                internalType: 'address',
+                name: 'receiver',
+                type: 'address',
+              },
+              {
+                internalType: 'bool',
+                name: 'unwrap',
+                type: 'bool',
+              },
+            ],
+            internalType: 'struct InterfaceFee',
+            name: 'interfaceFee2',
+            type: 'tuple',
           },
         ],
         internalType: 'struct TriggerOrder',

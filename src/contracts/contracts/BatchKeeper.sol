@@ -1,92 +1,130 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.19;
 
-import {Token18, UFixed18} from '@equilibria/perennial-v2/contracts/interfaces/IMarket.sol';
+import "@equilibria/perennial-v2/contracts/interfaces/IMarket.sol";
+import "@equilibria/perennial-v2-extensions/contracts/interfaces/IMultiInvoker.sol";
+import "@equilibria/root/token/types/Token18.sol";
+import "@equilibria/root/attribute/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IMultiInvoker {
-    enum PerennialAction {
-        NO_OP, // 0
-        UPDATE_POSITION, // 1
-        UPDATE_VAULT, // 2
-        PLACE_ORDER, // 3
-        CANCEL_ORDER, // 4
-        EXEC_ORDER, // 5
-        COMMIT_PRICE, // 6
-        LIQUIDATE, // 7
-        APPROVE, // 8
-        CHARGE_FEE // 9
+contract BatchKeeper is Ownable {
+    /// @dev The market update collateral magic value for signaling a full withdrawal
+    Fixed6 public constant WITHDRAW_ALL = Fixed6.wrap(type(int256).min);
+
+    /// @dev The market update position magic value for signaling closing the position fully
+    UFixed6 public constant CLOSE_POSITION = UFixed6.wrap(type(uint256).max - 1);
+
+    /// @dev The MultiInvoker contract
+    IMultiInvoker immutable invoker;
+
+    /// @dev Struct representing the result of a liquidation attempt.
+    struct LiquidationResult {
+        address account;
+        UFixed6 reward;
+        Result result;
     }
 
-    struct Invocation {
-        PerennialAction action;
-        bytes args;
+    /// @dev Struct representing the result of an order execution attempt.
+    struct ExecutionResult {
+        address account;
+        uint256 nonce;
+        Result result;
     }
 
-    function invoke(Invocation[] calldata invocations) external payable;
-}
+    /// @dev Struct representing the common result of an action.
+    struct Result {
+        bool success;
+        bytes reason;
+    }
 
-interface IPythOracle {
-    function commit(
-        uint256 index,
-        uint256 version,
-        bytes memory data
-    ) external payable;
-}
-
-contract BatchKeeper {
-    bytes public constant OTHER_REASON = hex'01';
-    bytes public constant NO_REASON = hex'00';
-
-    /// @dev Gets DSU balance before and after function call and pushes profits of function to receiver
-    modifier PushProceeds(Token18 collatToken, address feeReceiver) {
-        UFixed18 balanceBefore = collatToken.balanceOf(address(this)); // TODO: assume this is 0?
+    /// @dev Modifier to return any remaining Ether to the caller
+    modifier returnEther() {
         _;
-        UFixed18 profit = collatToken.balanceOf(address(this)).sub(
-            balanceBefore
-        );
-        if (!profit.isZero()) {
-            collatToken.push(feeReceiver, profit);
-        }
+
+        Address.sendValue(payable(msg.sender), address(this).balance);
     }
 
-    /// @notice Helper function to commit a price to an oracle
-    /// @param args encoded args of price commit
-    /// @return revertReason error bytes of commit
-    ///         (0x00 = success or no commit reqested, 0x11 = unknown error in committing, else 4-byte error hash)
-    function _tryCommitPrice(
-        bytes calldata args
-    ) internal returns (bytes memory revertReason) {
-        if (2 > args.length) return NO_REASON;
-        (
-            address oracleProvider,
-            uint256 value,
-            uint256 index,
-            uint256 version,
-            bytes memory data,
-            bool revertOnFailure
-        ) = abi.decode(args, (address, uint256, uint256, uint256, bytes, bool));
+    /// @notice Constructs a new BatchKeeper contract
+    /// @param invoker_ The address of the MultiInvoker contract to use
+    constructor(IMultiInvoker invoker_) {
+        __Ownable__initialize();
+        invoker = invoker_;
+    }
 
-        if (revertOnFailure) {
-            IPythOracle(oracleProvider).commit{value: value}(
-                index,
-                version,
-                data
-            );
-            revertReason = NO_REASON;
-        } else {
-            try
-                IPythOracle(oracleProvider).commit{value: value}(
-                    index,
-                    version,
-                    data
-                )
-            {
-                revertReason = NO_REASON;
+    /// @dev Allow the contract to receive Ether
+    receive() external payable {}
+
+    /// @notice Attempts to liquidate positions for multiple accounts in a market.
+    /// @param market The market contract to perform the liquidation on.
+    /// @param accounts An array of accounts to attempt liquidation on
+    /// @param commitment Price update commitment to execute before liquidation
+    /// @return results An array of `LiqRes` structs containing the liquidation results for each account
+    function tryLiquidate(
+        IMarket market,
+        address[] memory accounts,
+        IMultiInvoker.Invocation[] memory commitment
+    ) external payable returnEther returns (LiquidationResult[] memory results) {
+        invoker.invoke{value: msg.value}(commitment);
+
+        results = new LiquidationResult[](accounts.length);
+        for (uint256 i; i < accounts.length; i++) {
+            results[i].account = accounts[i];
+
+            try market.update(accounts[i], CLOSE_POSITION, CLOSE_POSITION, CLOSE_POSITION, Fixed6Lib.ZERO, true) {
+                results[i].result.success = true;
+                results[i].reward = market.locals(accounts[i]).protectionAmount;
             } catch (bytes memory reason) {
-                // Catch named or unnamed error and return
-                payable(msg.sender).transfer(msg.value);
-                revertReason = reason.length > 1 ? reason : OTHER_REASON;
+                results[i].result.reason = reason;
             }
         }
+    }
+
+    /// @notice Attempts to execute orders for multiple accounts in a market
+    /// @param market The market contract to perform order execution for
+    /// @param accounts An array of accounts to attempt order execution for
+    /// @param nonces An array of nonces to attempt order execution for
+    /// @param commitment Price update commitment to execute before execution
+    /// @return results An array of `ExecRes` structs containing the execution results for each account
+    /// @return reward The total reward earned by the keeper
+    function tryExecute(
+        IMarket market,
+        address[] calldata accounts,
+        uint256[] calldata nonces,
+        IMultiInvoker.Invocation[] memory commitment
+    ) public payable returnEther returns (ExecutionResult[] memory results, UFixed18 reward) {
+        invoker.invoke{value: msg.value}(commitment);
+
+        UFixed18 balanceBefore = market.token().balanceOf();
+
+        IMultiInvoker.Invocation[] memory invocations = new IMultiInvoker.Invocation[](1);
+        invocations[0].action = IMultiInvoker.PerennialAction.EXEC_ORDER;
+
+        results = new ExecutionResult[](accounts.length);
+        for (uint256 i; i < accounts.length; i++) {
+            results[i].account = accounts[i];
+            results[i].nonce = nonces[i];
+
+            invocations[0].args = abi.encode(accounts[i], market, nonces[i]);
+            try invoker.invoke(invocations) {
+                results[i].result.success = true;
+            } catch (bytes memory reason) {
+                results[i].result.reason = reason;
+            }
+        }
+
+        reward = market.token().balanceOf().sub(balanceBefore);
+    }
+
+    /// @notice Withdraws all collateral from the specified markets
+    /// @param markets An array of markets to withdraw collateral from
+    function withdraw(IMarket[] memory markets) external onlyOwner {
+        for (uint256 i = 0; i < markets.length; ++i)
+            markets[i].update(address(this), UFixed6Lib.ZERO, UFixed6Lib.ZERO, UFixed6Lib.ZERO, WITHDRAW_ALL, false);
+    }
+
+    /// @notice Claims the full balance of `token`
+    /// @param token The token to claim
+    function claim(Token18 token) external onlyOwner {
+        token.push(msg.sender);
     }
 }

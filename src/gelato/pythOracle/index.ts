@@ -1,5 +1,5 @@
 import { Web3Function, Web3FunctionContext, Web3FunctionResult } from '@gelatonetwork/web3-functions-sdk'
-import { createPublicClient, encodeFunctionData, getAddress, http } from 'viem'
+import { Hex, createPublicClient, encodeFunctionData, getAddress, http } from 'viem'
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
 import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
 import { getCommitments } from '../../listeners/oracleListener/lib.js'
@@ -23,12 +23,16 @@ Web3Function.onRun(async (context: Web3FunctionContext): Promise<Web3FunctionRes
 
   const multiInvokerAddress = getAddress(<string>userArgs.multiInvokerAddress)
   const dedicatedMsgSender = getAddress(<string>userArgs.dedicatedMsgSender)
+  const pythFactoryAddress = getAddress(<string>userArgs.pythFactoryAddress)
   const pythUrl = <string>userArgs.pythUrl
 
   const pythConnection = new EvmPriceServiceConnection(pythUrl)
-  const oracleAddresses = (<string[]>userArgs.oracles).map((address: string) => getAddress(address))
+  const oracleAddresses = (<string[]>userArgs.oracles).map((address, i) => ({
+    oracle: getAddress(address),
+    id: (userArgs.oracleIds as Hex[])[i],
+  }))
 
-  const commitments = (await getCommitments(chain.id, client, pythConnection, oracleAddresses))
+  const commitments = (await getCommitments(chain.id, client, pythConnection, pythFactoryAddress, oracleAddresses))
     .map((commitment) => {
       return commitment.commitment
     })

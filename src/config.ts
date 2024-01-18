@@ -3,13 +3,14 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { PythUrls, SupportedChainId, SupportedChains } from './constants/network.js'
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
 import { GraphQLClient } from 'graphql-request'
-import { arbitrum, arbitrumGoerli, hardhat } from 'viem/chains'
+import { arbitrum, arbitrumGoerli, arbitrumSepolia, hardhat } from 'viem/chains'
 
 export const NodeUrls: {
   [key in SupportedChainId]: string
 } = {
   [arbitrum.id]: process.env.ARBITRUM_NODE_URL || '',
   [arbitrumGoerli.id]: process.env.ARBITRUM_GOERLI_NODE_URL || '',
+  [arbitrumSepolia.id]: process.env.ARBITRUM_SEPOLIA_NODE_URL || '',
   [hardhat.id]: process.env.HARDHAT_NODE_URL || '',
 }
 
@@ -18,6 +19,7 @@ export const GraphUrls: {
 } = {
   [arbitrum.id]: process.env.ARBITRUM_GRAPH_URL || '',
   [arbitrumGoerli.id]: process.env.ARBITRUM_GOERLI_GRAPH_URL || '',
+  [arbitrumSepolia.id]: process.env.ARBITRUM_SEPOLIA_GRAPH_URL || '',
   [hardhat.id]: process.env.ARBITRUM_GOERLI_GRAPH_URL || '',
 }
 
@@ -27,7 +29,7 @@ const _chain = SupportedChains.find((c) => c.id === Number(_chainId))
 if (!_chain) throw new Error('Invalid chainId argument')
 
 export const Chain = _chain
-export const IsMainnet = Chain.id !== arbitrumGoerli.id
+export const IsMainnet = !([arbitrumGoerli.id, arbitrumSepolia.id] as SupportedChainId[]).includes(Chain.id)
 
 export const client = createPublicClient({
   chain: Chain,
@@ -68,6 +70,14 @@ export const orderSigner = createWalletClient({
   account: orderAccount,
 })
 
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+export const settlementAccount = privateKeyToAccount(process.env.SETTLEMENT_PRIVATE_KEY! as Hex)
+export const settlementSigner = createWalletClient({
+  chain: Chain,
+  transport: http(NodeUrls[Chain.id]),
+  account: settlementAccount,
+})
+
 export const pythConnection = new EvmPriceServiceConnection(PythUrls[Chain.id], {
   priceFeedRequestConfig: { binary: true },
 })
@@ -79,6 +89,7 @@ export enum TaskType {
   'liq',
   'orders',
   'oracle',
+  'settlement',
   'deploy',
   'metrics',
 }

@@ -1131,17 +1131,56 @@
   resolved "https://registry.yarnpkg.com/@datadog/sketches-js/-/sketches-js-2.1.0.tgz#8c7e8028a5fc22ad102fa542b0a446c956830455"
   integrity sha512-smLocSfrt3s53H/XSVP3/1kP42oqvrkjUPtyaFd1F79ux24oE31BKt+q0c6lsa6hOYrFzsIwyc5GXAI5JmfOew==
 
-"@equilibria/perennial-v2@^1.0.0-rc4":
-  version "1.0.0-rc4"
-  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2/-/perennial-v2-1.0.0-rc4.tgz#e78392b2aa5824a194c9e9fa762419a51dd7ab03"
-  integrity sha512-z8P9RpACHR+Jyj1G9WrChAd6+ccjxr+J3sHYMY8q2XkJ0QnQjt74IybFk9lt85m3fIKthmIbPBqKNeKfh59Nzw==
+"@equilibria/emptyset-batcher@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@equilibria/emptyset-batcher/-/emptyset-batcher-0.1.0.tgz#2068d202d38614a337d115d4109f05cf72e48d09"
+  integrity sha512-joALMtS47fdXw9nvSO4gmmcsYvfErXlC92nYDGV2wRGqyUneOZKPVC1s0TctSBK/OeXJ+ielzXVLqB84H5PZKg==
+  dependencies:
+    "@equilibria/root" "0.1.5"
+    "@openzeppelin/contracts" "4.6.0"
+
+"@equilibria/perennial-v2-extensions@1.1.0-rc1":
+  version "1.1.0-rc1"
+  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2-extensions/-/perennial-v2-extensions-1.1.0-rc1.tgz#42e7bf61718636bc0cc7c38fdb5ee419732513e9"
+  integrity sha512-qMduSx13GoU/e2w6+tnwvWcg23eGXwMKxASsEWZbp+zP87T56JsEEmz6bjdNiEd+lfpW5zInGXZd5WPcie7bqw==
+  dependencies:
+    "@equilibria/emptyset-batcher" "^0.1.0"
+    "@equilibria/perennial-v2" "1.1.0-rc1"
+    "@equilibria/perennial-v2-oracle" "1.1.0-rc1"
+    "@equilibria/perennial-v2-payoff" "1.1.0-rc1"
+
+"@equilibria/perennial-v2-oracle@1.1.0-rc1":
+  version "1.1.0-rc1"
+  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2-oracle/-/perennial-v2-oracle-1.1.0-rc1.tgz#1a4100c604ddbe816fa20089d7e76c64c8d76cfc"
+  integrity sha512-02qMyi8CbDPYSbfQaof1PxQoz/KNAJLwbEjf9tQdGxda0QRbyOPsMKGJMRHBNRx/y8ikpqaswmQZQ6G/wxDdfQ==
+  dependencies:
+    "@equilibria/perennial-v2" "1.1.0-rc1"
+
+"@equilibria/perennial-v2-payoff@1.1.0-rc1":
+  version "1.1.0-rc1"
+  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2-payoff/-/perennial-v2-payoff-1.1.0-rc1.tgz#8f2ae1fb851928a0c76d632f9b9c55dd2b935334"
+  integrity sha512-5K/GN7mVqdqkdBxfufmm/XAGLf+wSrsuYS6sxljXduN1DXLr8zogjqnzqDEO3z5DVmT6Vls4+PB/pDvjBKkeOg==
+  dependencies:
+    "@equilibria/perennial-v2" "1.1.0-rc1"
+
+"@equilibria/perennial-v2@1.1.0-rc1":
+  version "1.1.0-rc1"
+  resolved "https://registry.yarnpkg.com/@equilibria/perennial-v2/-/perennial-v2-1.1.0-rc1.tgz#22ada8ba768a0e1f13fa26dba3ac4b3dbcc98c72"
+  integrity sha512-V7mjG7z+dCJBBnoVXa4cMgzRZR3a3eVqGZUlOmeAbIZDyoyzQn/UzXq6d3aUI5HJ9iEaRn0UTM7ai52i60BN8w==
   dependencies:
     "@chainlink/contracts" "0.3.1"
 
-"@equilibria/root@^2.0.0-rc2":
-  version "2.0.0-rc2"
-  resolved "https://registry.yarnpkg.com/@equilibria/root/-/root-2.0.0-rc2.tgz#9012a9bbbe3e26c9b1153e7fbaa8be798513b56b"
-  integrity sha512-+zeqGpvqq8QdgGu/2eXngBHZkKw2QKhb3JBSbDpU0aiCG7OXLWca0FgJFyuY4EwemPzBklYZQg8gXzaD8csKAw==
+"@equilibria/root@0.1.5":
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/@equilibria/root/-/root-0.1.5.tgz#f9fb606fed2d0f3d7426d37d7bc45f176b26f80e"
+  integrity sha512-K++w/DyJktl58dQe4P78K0dzduQe1CKPU+Z52DsISik99FN7OwdMTQZt1APpJfovfZh0focsHMnTiRpLmIti7Q==
+  dependencies:
+    "@openzeppelin/contracts" "4.6.0"
+
+"@equilibria/root@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@equilibria/root/-/root-2.1.0.tgz#019434689dd96bf2fb701fcedc7bacf01a841b52"
+  integrity sha512-SLIHUjzCBVcMKxMFmf6Hw0n9gqfENxzIZ1Ug0DkYpGNuoFfKN0ktrCMeM4Z4lrcou1KPxGlOeHAr1sYp3kVk8g==
   dependencies:
     "@openzeppelin/contracts" "4.6.0"
 
@@ -1371,7 +1410,7 @@
     "@ethersproject/logger" "^5.7.0"
     "@ethersproject/properties" "^5.7.0"
 
-"@ethersproject/address@5.7.0", "@ethersproject/address@>=5.0.0-beta.128", "@ethersproject/address@^5.7.0":
+"@ethersproject/address@5.7.0", "@ethersproject/address@>=5.0.0-beta.128", "@ethersproject/address@^5.0.2", "@ethersproject/address@^5.7.0":
   version "5.7.0"
   resolved "https://registry.yarnpkg.com/@ethersproject/address/-/address-5.7.0.tgz#19b56c4d74a3b0a46bfdbb6cfcc0a153fc697f37"
   integrity sha512-9wYhYt7aghVGo758POM5nqcOMaE168Q6aRLJZwUmiqSrAungkG74gSSeKEIR7ukixesdRZGPgVqme6vmxs1fkA==
@@ -2711,6 +2750,21 @@
     mcl-wasm "^0.7.1"
     rustbn.js "~0.2.0"
 
+"@nomicfoundation/hardhat-verify@^2.0.3":
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-verify/-/hardhat-verify-2.0.3.tgz#173557f8cfa53c8c9da23a326f54d24fe459ae68"
+  integrity sha512-ESbRu9by53wu6VvgwtMtm108RSmuNsVqXtzg061D+/4R7jaWh/Wl/8ve+p6SdDX7vA1Z3L02hDO1Q3BY4luLXQ==
+  dependencies:
+    "@ethersproject/abi" "^5.1.2"
+    "@ethersproject/address" "^5.0.2"
+    cbor "^8.1.0"
+    chalk "^2.4.2"
+    debug "^4.1.1"
+    lodash.clonedeep "^4.5.0"
+    semver "^6.3.0"
+    table "^6.8.0"
+    undici "^5.14.0"
+
 "@nomicfoundation/solidity-analyzer-darwin-arm64@0.1.1":
   version "0.1.1"
   resolved "https://registry.yarnpkg.com/@nomicfoundation/solidity-analyzer-darwin-arm64/-/solidity-analyzer-darwin-arm64-0.1.1.tgz#4c858096b1c17fe58a474fe81b46815f93645c15"
@@ -3064,6 +3118,11 @@
   integrity sha512-V4BG07kuYSUkTCSBHG8G8TNhM+F19jXFWnQtzj+we8DrkpSBCee9Z3Ms8yiGer/dlmhe35/Xdgyo3/0rQKg7YA==
   dependencies:
     "@sinonjs/commons" "^3.0.0"
+
+"@solidity-parser/parser@^0.17.0":
+  version "0.17.0"
+  resolved "https://registry.yarnpkg.com/@solidity-parser/parser/-/parser-0.17.0.tgz#52a2fcc97ff609f72011014e4c5b485ec52243ef"
+  integrity sha512-Nko8R0/kUo391jsEHHxrGM07QFdnPGvlmox4rmH0kNiNAashItAilhy4Mv4pK5gQmW5f4sXAF58fwJbmlkGcVw==
 
 "@spruceid/siwe-parser@^1.1.3":
   version "1.1.3"
@@ -3810,7 +3869,7 @@ ajv@^6.10.0, ajv@^6.12.3, ajv@^6.12.4, ajv@^6.12.5:
     json-schema-traverse "^0.4.1"
     uri-js "^4.2.2"
 
-ajv@^8.11.0:
+ajv@^8.0.1, ajv@^8.11.0:
   version "8.12.0"
   resolved "https://registry.yarnpkg.com/ajv/-/ajv-8.12.0.tgz#d1a0527323e22f53562c567c00991577dfbe19d1"
   integrity sha512-sRu1kpcO9yLtYxBKvqfTeh9KzZEwO3STyX1HT+4CaDzC6HpTGYhIhPIzj9XuKU7KYDwnaeh5hcOwjy1QuJzBPA==
@@ -5370,6 +5429,13 @@ cbor@^5.0.1:
   dependencies:
     bignumber.js "^9.0.1"
     nofilter "^1.0.4"
+
+cbor@^8.1.0:
+  version "8.1.0"
+  resolved "https://registry.yarnpkg.com/cbor/-/cbor-8.1.0.tgz#cfc56437e770b73417a2ecbfc9caf6b771af60d5"
+  integrity sha512-DwGjNW9omn6EwP70aXsn7FQJx5kO12tX0bZkaTjzdVFM6/7nhA4t0EENocKGx6D2Bch9PE2KzCUf5SceBdeijg==
+  dependencies:
+    nofilter "^3.1.0"
 
 chai-as-promised@^7.1.0:
   version "7.1.1"
@@ -10295,6 +10361,11 @@ locate-path@^6.0.0:
   dependencies:
     p-locate "^5.0.0"
 
+lodash.clonedeep@^4.5.0:
+  version "4.5.0"
+  resolved "https://registry.yarnpkg.com/lodash.clonedeep/-/lodash.clonedeep-4.5.0.tgz#e23f3f9c4f8fbdde872529c1071857a086e5ccef"
+  integrity sha512-H5ZhCF25riFd9uB5UCkVKo61m3S/xZk1x4wA6yp/L3RFP6Z/eHH1ymQcGLo7J3GMPfm0V/7m1tryHuGVxpqEBQ==
+
 lodash.debounce@^4.0.8:
   version "4.0.8"
   resolved "https://registry.yarnpkg.com/lodash.debounce/-/lodash.debounce-4.0.8.tgz#82d79bff30a67c4005ffd5e2515300ad9ca4d7af"
@@ -10324,6 +10395,11 @@ lodash.sortby@^4.7.0:
   version "4.7.0"
   resolved "https://registry.yarnpkg.com/lodash.sortby/-/lodash.sortby-4.7.0.tgz#edd14c824e2cc9c1e0b0a1b42bb5210516a42438"
   integrity sha512-HDWXG8isMntAyRF5vZ7xKuEvOhT4AhlRt/3czTSjvGUxjYCBVRQY48ViDHyfYz9VIoBkW4TMGQNapx+l3RUwdA==
+
+lodash.truncate@^4.4.2:
+  version "4.4.2"
+  resolved "https://registry.yarnpkg.com/lodash.truncate/-/lodash.truncate-4.4.2.tgz#5a350da0b1113b837ecfffd5812cbe58d6eae193"
+  integrity sha512-jttmRe7bRse52OsWIMDLaXxWqRAmtIUccAQ3garviCqJjafXOfNMO0yMfNpdD6zbGaTU0P5Nz7e7gAT6cKmJRw==
 
 lodash.uniq@^4.5.0:
   version "4.5.0"
@@ -11131,6 +11207,11 @@ nofilter@^1.0.4:
   resolved "https://registry.yarnpkg.com/nofilter/-/nofilter-1.0.4.tgz#78d6f4b6a613e7ced8b015cec534625f7667006e"
   integrity sha512-N8lidFp+fCz+TD51+haYdbDGrcBWwuHX40F5+z0qkUjMJ5Tp+rdSuAkMJ9N9eoolDlEVTf6u5icM+cNKkKW2mA==
 
+nofilter@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/nofilter/-/nofilter-3.1.0.tgz#c757ba68801d41ff930ba2ec55bab52ca184aa66"
+  integrity sha512-l2NNj07e9afPnhAhvgVrCD/oy2Ai1yfLpuo3EpiO1jFTsB4sFz6oIfAfSZyQzVpkZQ9xS8ZS5g1jCBgq4Hwo0g==
+
 noop-logger@^0.1.1:
   version "0.1.1"
   resolved "https://registry.yarnpkg.com/noop-logger/-/noop-logger-0.1.1.tgz#94a2b1633c4f1317553007d8966fd0e841b6a4c2"
@@ -11746,6 +11827,15 @@ prepend-http@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/prepend-http/-/prepend-http-2.0.0.tgz#e92434bfa5ea8c19f41cdfd401d741a3c819d897"
   integrity sha512-ravE6m9Atw9Z/jjttRUZ+clIXogdghyZAuWJ3qEzjT+jI/dL1ifAqhZeC5VHzQp1MSt1+jxKkFNemj/iO7tVUA==
+
+prettier-plugin-solidity@^1.3.1:
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/prettier-plugin-solidity/-/prettier-plugin-solidity-1.3.1.tgz#59944d3155b249f7f234dee29f433524b9a4abcf"
+  integrity sha512-MN4OP5I2gHAzHZG1wcuJl0FsLS3c4Cc5494bbg+6oQWBPuEamjwDvmGfFMZ6NFzsh3Efd9UUxeT7ImgjNH4ozA==
+  dependencies:
+    "@solidity-parser/parser" "^0.17.0"
+    semver "^7.5.4"
+    solidity-comments-extractor "^0.0.8"
 
 prettier@~2.8:
   version "2.8.8"
@@ -12869,6 +12959,11 @@ solc@^0.8, solc@^0.8.21:
     semver "^5.5.0"
     tmp "0.0.33"
 
+solidity-comments-extractor@^0.0.8:
+  version "0.0.8"
+  resolved "https://registry.yarnpkg.com/solidity-comments-extractor/-/solidity-comments-extractor-0.0.8.tgz#f6e148ab0c49f30c1abcbecb8b8df01ed8e879f8"
+  integrity sha512-htM7Vn6LhHreR+EglVMd2s+sZhcXAirB1Zlyrv5zBuTxieCvjfnRpd7iZk75m/u6NOlEyQ94C6TWbBn2cY7w8g==
+
 solidity-parser-antlr@^0.4.2:
   version "0.4.11"
   resolved "https://registry.yarnpkg.com/solidity-parser-antlr/-/solidity-parser-antlr-0.4.11.tgz#af43e1f13b3b88309a875455f5d6e565b05ee5f1"
@@ -13248,6 +13343,17 @@ swarm-js@^0.1.40:
     setimmediate "^1.0.5"
     tar "^4.0.2"
     xhr-request "^1.0.1"
+
+table@^6.8.0:
+  version "6.8.1"
+  resolved "https://registry.yarnpkg.com/table/-/table-6.8.1.tgz#ea2b71359fe03b017a5fbc296204471158080bdf"
+  integrity sha512-Y4X9zqrCftUhMeH2EptSSERdVKt/nEdijTOacGD/97EKjhQ/Qs8RTlEGABSJNNN8lac9kheH+af7yAkEWlgneA==
+  dependencies:
+    ajv "^8.0.1"
+    lodash.truncate "^4.4.2"
+    slice-ansi "^4.0.0"
+    string-width "^4.2.3"
+    strip-ansi "^6.0.1"
 
 tape@^4.4.0, tape@^4.6.3:
   version "4.16.2"
