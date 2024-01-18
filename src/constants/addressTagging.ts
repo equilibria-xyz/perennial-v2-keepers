@@ -1,6 +1,6 @@
 import { getAddress } from 'viem'
 import { SupportedChainId } from './network.js'
-import { arbitrum, arbitrumGoerli } from 'viem/chains'
+import { arbitrum, arbitrumGoerli, arbitrumSepolia } from 'viem/chains'
 
 export function marketAddressToMarketTag(chainId: SupportedChainId, market_: string) {
   const market = getAddress(market_)
@@ -14,6 +14,14 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
           [getAddress('0x4443Ec03A347394D2CA331638B809A17617497af')]: 'sol',
           [getAddress('0x40a4b331E95D409cC9CEdDcA9eFDf5ff58da4344')]: 'matic',
           [getAddress('0xCF5cc9DC79F5172594E84f9d034D9d74d5F51007')]: 'tia',
+          [getAddress('0xe2bd1E1d2Ae22857508E9d59fb41FDCEEeda8EDD')]: 'msqbtc',
+        }[market] ?? market
+      )
+    }
+    case arbitrumSepolia.id: {
+      return (
+        {
+          [getAddress('0x0142a8bfF8D887Fc4f04469fCA6c66F5e0936Ea7')]: 'eth',
         }[market] ?? market
       )
     }
@@ -29,6 +37,8 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
           [getAddress('0xD9c296A7Bee1c201B9f3531c7AC9c9310ef3b738')]: 'link',
           [getAddress('0x362c6bC2A4EA2033063bf20409A4c5E8C5754056')]: 'bnb',
           [getAddress('0x2402E92f8C58886F716F5554039fA6398d7A1EfB')]: 'xrp',
+          [getAddress('0x3D1D603073b3CEAB5974Db5C54568058a9551cCC')]: 'arb',
+          [getAddress('0x768a5909f0B6997efa56761A89344eA2BD5560fd')]: 'msqbtc',
         }[market] ?? market
       )
     }
@@ -78,15 +88,16 @@ export function oracleProviderAddressToOracleProviderTag(chainId: number, oracle
     case arbitrum.id: {
       return (
         {
-          [getAddress('0x3a57708492c759f2Effb06F5ed1c7765518aF402')]: 'pyth-eth',
-          [getAddress('0x3b1f8BD9371F35FB73c275B15993783B8ee9d085')]: 'pyth-btc',
-          [getAddress('0x905502A4b5af1b09BEb6FDD08E8bFaA9Aa52A0Cf')]: 'pyth-sol',
-          [getAddress('0x78b444A7b0cB3EcA0C6C2D0116B4871e2f5A0DA9')]: 'pyth-matic',
-          [getAddress('0x4199640d7fDb2adC1a8bC37aaB4A6FE5f249950b')]: 'pyth-tia',
-          [getAddress('0xb3F1677B943c1fE383cBDE23346ef0EF87a03DC9')]: 'pyth-rlb',
-          [getAddress('0x346d0cC80c02E4dF3Fd3e56323804671dE271829')]: 'pyth-link',
-          [getAddress('0x79462E58A1E7B9E0373C83B494820216401A9cAb')]: 'pyth-bnb',
-          [getAddress('0x5161158266A16837FDBE864D017a67e124516A2F')]: 'pyth-xrp',
+          [getAddress('0xf9249ec6785221226cb3f66fa049aa1e5b6a4a57')]: 'pyth-eth',
+          [getAddress('0xcd98f0ffbe50e334dd6b84584483617557ddc012')]: 'pyth-btc',
+          [getAddress('0x9276d4c4210062303972fd1dca9042e4f19a3aac')]: 'pyth-sol',
+          [getAddress('0x6a44bcfc3abaa1dd1fa88d369e7be50cbe407e66')]: 'pyth-matic',
+          [getAddress('0x600e9fcf5a9913cb1eb54cfcb3856fe4854878ea')]: 'pyth-tia',
+          [getAddress('0x9545091d003c19aa811d9111ac6451fb9f5da509')]: 'pyth-rlb',
+          [getAddress('0x424d97420f0ecbcc75f3e3f4a52d532bbe2ff53e')]: 'pyth-link',
+          [getAddress('0xfe87515fe199288c2233edbf40eb096d297179ea')]: 'pyth-bnb',
+          [getAddress('0xa872d117867187220d45c142611dea5f6d35c718')]: 'pyth-xrp',
+          [getAddress('0xf7183e7d8ebc7bd07c5855598b446adec78f684f')]: 'pyth-arb',
         }[oracle] ?? oracle
       )
     }

@@ -2,19 +2,83 @@ export const PythFactoryImpl = [
   {
     inputs: [
       {
+        internalType: 'contract AbstractPyth',
+        name: 'pyth_',
+        type: 'address',
+      },
+      {
         internalType: 'address',
         name: 'implementation_',
         type: 'address',
       },
       {
-        internalType: 'contract AggregatorV3Interface',
-        name: 'chainlinkFeed_',
-        type: 'address',
+        internalType: 'uint256',
+        name: 'validFrom_',
+        type: 'uint256',
       },
       {
-        internalType: 'Token18',
-        name: 'dsu_',
-        type: 'address',
+        internalType: 'uint256',
+        name: 'validTo_',
+        type: 'uint256',
+      },
+      {
+        components: [
+          {
+            internalType: 'UFixed18',
+            name: 'multiplierBase',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'bufferBase',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed18',
+            name: 'multiplierCalldata',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'bufferCalldata',
+            type: 'uint256',
+          },
+        ],
+        internalType: 'struct IKept.KeepConfig',
+        name: 'commitKeepConfig_',
+        type: 'tuple',
+      },
+      {
+        components: [
+          {
+            internalType: 'UFixed18',
+            name: 'multiplierBase',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'bufferBase',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed18',
+            name: 'multiplierCalldata',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'bufferCalldata',
+            type: 'uint256',
+          },
+        ],
+        internalType: 'struct IKept.KeepConfig',
+        name: 'settleKeepConfig_',
+        type: 'tuple',
+      },
+      {
+        internalType: 'uint256',
+        name: 'keepCommitIncrementalBufferData_',
+        type: 'uint256',
       },
     ],
     stateMutability: 'nonpayable',
@@ -22,22 +86,12 @@ export const PythFactoryImpl = [
   },
   {
     inputs: [],
+    name: 'DivisionByZero',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'FactoryNotInstanceError',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'PythFactoryAlreadyCreatedError',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'PythFactoryInvalidGranularityError',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'PythFactoryNotInstanceError',
     type: 'error',
   },
   {
@@ -48,17 +102,52 @@ export const PythFactoryImpl = [
         type: 'uint256',
       },
     ],
-    name: 'UInitializableAlreadyInitializedError',
+    name: 'InitializableAlreadyInitializedError',
     type: 'error',
   },
   {
     inputs: [],
-    name: 'UInitializableNotInitializingError',
+    name: 'InitializableNotInitializingError',
     type: 'error',
   },
   {
     inputs: [],
-    name: 'UInitializableZeroVersionError',
+    name: 'InitializableZeroVersionError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'KeeperFactoryAlreadyAssociatedError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'KeeperFactoryAlreadyCreatedError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'KeeperFactoryInvalidGranularityError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'KeeperFactoryInvalidIdError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'KeeperFactoryInvalidSettleError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'KeeperFactoryNotAssociatedError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'KeeperFactoryNotInstanceError',
     type: 'error',
   },
   {
@@ -69,7 +158,7 @@ export const PythFactoryImpl = [
         type: 'address',
       },
     ],
-    name: 'UOwnableNotOwnerError',
+    name: 'OwnableNotOwnerError',
     type: 'error',
   },
   {
@@ -80,7 +169,7 @@ export const PythFactoryImpl = [
         type: 'address',
       },
     ],
-    name: 'UOwnableNotPendingOwnerError',
+    name: 'OwnableNotPendingOwnerError',
     type: 'error',
   },
   {
@@ -91,13 +180,42 @@ export const PythFactoryImpl = [
         type: 'address',
       },
     ],
-    name: 'UPausableNotPauserError',
+    name: 'PausableNotPauserError',
     type: 'error',
   },
   {
     inputs: [],
-    name: 'UPausablePausedError',
+    name: 'PausablePausedError',
     type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'PythFactoryInvalidIdError',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'int256',
+        name: 'value',
+        type: 'int256',
+      },
+    ],
+    name: 'UFixed18UnderflowError',
+    type: 'error',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'contract IFactory',
+        name: 'caller',
+        type: 'address',
+      },
+    ],
+    name: 'CallerAuthorized',
+    type: 'event',
   },
   {
     anonymous: false,
@@ -142,6 +260,68 @@ export const PythFactoryImpl = [
       },
     ],
     name: 'InstanceRegistered',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'sender',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'applicableGas',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'applicableValue',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'UFixed18',
+        name: 'baseFee',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'UFixed18',
+        name: 'calldataFee',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'UFixed18',
+        name: 'keeperFee',
+        type: 'uint256',
+      },
+    ],
+    name: 'KeeperCall',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'id',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'underlyingId',
+        type: 'bytes32',
+      },
+    ],
+    name: 'OracleAssociated',
     type: 'event',
   },
   {
@@ -216,6 +396,32 @@ export const PythFactoryImpl = [
   },
   {
     inputs: [],
+    name: 'ARB_FIXED_OVERHEAD',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'ARB_GAS_MULTIPLIER',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
     name: 'MAX_GRANULARITY',
     outputs: [
       {
@@ -232,6 +438,43 @@ export const PythFactoryImpl = [
     name: 'acceptOwner',
     outputs: [],
     stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'id',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'underlyingId',
+        type: 'bytes32',
+      },
+    ],
+    name: 'associate',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    name: 'associated',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -288,14 +531,65 @@ export const PythFactoryImpl = [
   {
     inputs: [
       {
-        internalType: 'UFixed6',
-        name: 'amount',
+        internalType: 'bytes32[]',
+        name: 'ids',
+        type: 'bytes32[]',
+      },
+      {
+        internalType: 'uint256',
+        name: 'version',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes',
+        name: 'data',
+        type: 'bytes',
+      },
+    ],
+    name: 'commit',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'numRequested',
         type: 'uint256',
       },
     ],
-    name: 'claim',
-    outputs: [],
-    stateMutability: 'nonpayable',
+    name: 'commitKeepConfig',
+    outputs: [
+      {
+        components: [
+          {
+            internalType: 'UFixed18',
+            name: 'multiplierBase',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'bufferBase',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed18',
+            name: 'multiplierCalldata',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'bufferCalldata',
+            type: 'uint256',
+          },
+        ],
+        internalType: 'struct IKept.KeepConfig',
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -309,7 +603,7 @@ export const PythFactoryImpl = [
     name: 'create',
     outputs: [
       {
-        internalType: 'contract IPythOracle',
+        internalType: 'contract IKeeperOracle',
         name: 'newOracle',
         type: 'address',
       },
@@ -332,12 +626,31 @@ export const PythFactoryImpl = [
   },
   {
     inputs: [],
-    name: 'ethTokenChainlinkFeed',
+    name: 'ethTokenOracleFeed',
     outputs: [
       {
         internalType: 'contract AggregatorV3Interface',
         name: '',
         type: 'address',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    name: 'fromUnderlyingId',
+    outputs: [
+      {
+        internalType: 'bytes32',
+        name: '',
+        type: 'bytes32',
       },
     ],
     stateMutability: 'view',
@@ -365,7 +678,7 @@ export const PythFactoryImpl = [
             type: 'uint128',
           },
         ],
-        internalType: 'struct IPythFactory.Granularity',
+        internalType: 'struct IKeeperFactory.Granularity',
         name: '',
         type: 'tuple',
       },
@@ -391,6 +704,16 @@ export const PythFactoryImpl = [
       {
         internalType: 'contract IOracleFactory',
         name: 'oracleFactory_',
+        type: 'address',
+      },
+      {
+        internalType: 'contract AggregatorV3Interface',
+        name: 'chainlinkFeed_',
+        type: 'address',
+      },
+      {
+        internalType: 'Token18',
+        name: 'dsu_',
         type: 'address',
       },
     ],
@@ -524,6 +847,101 @@ export const PythFactoryImpl = [
   },
   {
     inputs: [],
+    name: 'pyth',
+    outputs: [
+      {
+        internalType: 'contract AbstractPyth',
+        name: '',
+        type: 'address',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32[]',
+        name: 'ids',
+        type: 'bytes32[]',
+      },
+      {
+        internalType: 'contract IMarket[]',
+        name: 'markets',
+        type: 'address[]',
+      },
+      {
+        internalType: 'uint256[]',
+        name: 'versions',
+        type: 'uint256[]',
+      },
+      {
+        internalType: 'uint256[]',
+        name: 'maxCounts',
+        type: 'uint256[]',
+      },
+    ],
+    name: 'settle',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'settleKeepConfig',
+    outputs: [
+      {
+        components: [
+          {
+            internalType: 'UFixed18',
+            name: 'multiplierBase',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'bufferBase',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed18',
+            name: 'multiplierCalldata',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'bufferCalldata',
+            type: 'uint256',
+          },
+        ],
+        internalType: 'struct IKept.KeepConfig',
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    name: 'toUnderlyingId',
+    outputs: [
+      {
+        internalType: 'bytes32',
+        name: '',
+        type: 'bytes32',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
     name: 'unpause',
     outputs: [],
     stateMutability: 'nonpayable',
@@ -566,6 +984,32 @@ export const PythFactoryImpl = [
     name: 'updatePendingOwner',
     outputs: [],
     stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'validFrom',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'validTo',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
 ] as const

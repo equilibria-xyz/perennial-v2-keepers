@@ -1,14 +1,14 @@
-import { Hex, getAddress, getContract } from 'viem'
+import { Hex, getAddress } from 'viem'
 import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUtils'
 import { gql } from '../../../types/gql/gql'
 import { GraphDefaultPageSize, queryAll } from '../../utils/graphUtils'
 import { Chain, client, graphClient, orderSigner, pythConnection } from '../../config'
-import { BatchExecuteAbi, PythOracleImpl } from '../../constants/abi'
-import { chainInfos } from '../marketListener/types'
-import { buildCommit, getRecentVaa } from '../../utils/pythUtils'
+import { BatchKeeperAbi } from '../../constants/abi'
+import { buildCommit2, getRecentVaa } from '../../utils/pythUtils'
 import { notEmpty } from '../../utils/arrayUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
+import { BatchKeeperAddresses } from '../../constants/network'
 
 export class OrderListener {
   public static PollingInterval = 4000 // 4s
@@ -26,7 +26,7 @@ export class OrderListener {
 
       const pythPrices = await getRecentVaa({
         pyth: pythConnection,
-        feeds: this.markets.map((m) => ({ providerId: m.feed, minValidTime: m.minValidTime })),
+        feeds: this.markets.map((m) => ({ providerId: m.feed, minValidTime: m.validFrom })),
       })
 
       const executableOrders_ = await Promise.all(
@@ -50,17 +50,10 @@ export class OrderListener {
       for (let i = 0; i < executableOrders.length; i++) {
         const { market, orders, commit } = executableOrders[i]
         const { request } = await client.simulateContract({
-          address: chainInfos[Chain.id].OrderLens,
-          abi: BatchExecuteAbi,
+          address: BatchKeeperAddresses[Chain.id],
+          abi: BatchKeeperAbi,
           functionName: 'tryExecute',
-          args: [
-            market.market, // market
-            orderSigner.account.address, // feeReceiver
-            market.token, // token
-            orders.map((o) => o.user), // accounts
-            orders.map((o) => o.nonce), // nonces
-            commit.args, // commit
-          ],
+          args: [market.market, orders.map((o) => o.account), orders.map((o) => o.nonce), [commit]],
           value: 1n,
           account: orderSigner.account,
         })
@@ -129,32 +122,27 @@ export class OrderListener {
     if (orders.length === 0) return null
 
     // Try execute orders
-    const providerContract = getContract({
-      abi: PythOracleImpl,
-      address: market.oracleProvider,
-      publicClient: client,
-    })
     const accounts = orders.map((o) => getAddress(o.account))
     const nonces = orders.map((o) => BigInt(o.nonce))
-    const commit = buildCommit({
-      oracleProvider: market.oracleProvider,
+    const commit = buildCommit2({
+      oracleProviderFactory: market.providerFactory,
       version,
       value: 1n,
-      index: await providerContract.read.versionListLength(),
+      ids: [market.feed],
       vaa: pythVaa,
       revertOnFailure: false,
     })
 
     const { result } = await client.simulateContract({
-      address: chainInfos[Chain.id].OrderLens,
-      abi: BatchExecuteAbi,
+      address: BatchKeeperAddresses[Chain.id],
+      abi: BatchKeeperAbi,
       functionName: 'tryExecute',
-      args: [market.market, orderSigner.account.address, market.token, accounts, nonces, commit.args],
+      args: [market.market, accounts, nonces, [commit]],
       value: 1n,
       account: orderSigner.account,
     })
 
     // Return executable orders
-    return { orders: result[0].filter((r) => !!r.canExec), commit, market }
+    return { orders: result[0].filter((r) => !!r.result.success), commit, market }
   }
 }

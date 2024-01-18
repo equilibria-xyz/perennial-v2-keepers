@@ -10,13 +10,13 @@ import { Big6Math } from '../../constants/Big6Math.js'
 export class PythOracleListener {
   public static PollingInterval = 4000 // 4s
 
-  protected oracleAddresses: Address[] = []
+  protected oracleAddresses: { oracle: Address; id: Hex }[] = []
 
   constructor(protected chain: SupportedChain, protected client: PublicClient) {}
 
   public async init() {
     this.oracleAddresses = await getOracleAddresses(this.client, PythFactoryAddress[this.chain.id])
-    console.log('Oracle Addresses:', this.oracleAddresses.join(', '))
+    console.log('Oracle Addresses:', this.oracleAddresses.map(({ oracle }) => oracle).join(', '))
   }
 
   public async run(account: PrivateKeyAccount, signer: WalletClient) {
@@ -24,7 +24,15 @@ export class PythOracleListener {
     console.log(`Running Oracle Handler. Block: ${blockNumber}`)
     tracer.dogstatsd.gauge('pythOracle.blockNumber', Number(blockNumber), { chain: this.chain.id })
 
-    const commitments = (await getCommitments(this.chain.id, this.client, pythConnection, this.oracleAddresses))
+    const commitments = (
+      await getCommitments(
+        this.chain.id,
+        this.client,
+        pythConnection,
+        PythFactoryAddress[this.chain.id],
+        this.oracleAddresses,
+      )
+    )
       .map((commitment) => {
         tracer.dogstatsd.gauge('pythOracle.awaitingVersions', commitment.awaitingVersions, {
           oracleProvider: commitment.providerTag,

@@ -95,6 +95,30 @@ export const buildCommit = ({
   }
 }
 
+export const buildCommit2 = ({
+  oracleProviderFactory,
+  version,
+  value,
+  ids,
+  vaa,
+  revertOnFailure,
+}: {
+  oracleProviderFactory: Address
+  version: bigint
+  value: bigint
+  ids: string[]
+  vaa: string
+  revertOnFailure: boolean
+}): { action: number; args: Hex } => {
+  return {
+    action: 6,
+    args: encodeAbiParameters(
+      ['address', 'uint256', 'bytes32[]', 'uint256', 'bytes', 'bool'].map((type) => ({ type })),
+      [oracleProviderFactory, value, ids, version, vaa, revertOnFailure],
+    ),
+  }
+}
+
 export function pythPriceToBig6(price: bigint, expo: number) {
   const normalizedExpo = price ? 6 + expo : 0
   const normalizedPrice =

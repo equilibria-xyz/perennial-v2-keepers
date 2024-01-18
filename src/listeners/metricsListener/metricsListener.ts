@@ -25,7 +25,7 @@ import { marketAddressToMarketTag, vaultAddressToVaultTag } from '../../constant
 import { getMarkets } from '../../utils/marketUtils.js'
 import { getVaults } from '../../utils/vaultUtils.js'
 import { VaultImplAbi } from '../../constants/abi/VaultImpl.abi.js'
-import { MultiInvokerAbi } from '../../constants/abi/MultiInvoker.abi.js'
+import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
 import { OracleFactoryAbi } from '../../constants/abi/OracleFactory.abi.js'
 
 const Balances = ['ETH', 'USDC', 'DSU']
@@ -73,7 +73,7 @@ export class MetricsListener {
 
     client.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
-      abi: MultiInvokerAbi,
+      abi: MultiInvokerImplAbi,
       eventName: 'OrderPlaced',
       strict: true,
       poll: true,
@@ -102,7 +102,7 @@ export class MetricsListener {
 
     client.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
-      abi: MultiInvokerAbi,
+      abi: MultiInvokerImplAbi,
       eventName: 'OrderExecuted',
       strict: true,
       poll: true,
@@ -119,7 +119,7 @@ export class MetricsListener {
 
     client.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
-      abi: MultiInvokerAbi,
+      abi: MultiInvokerImplAbi,
       eventName: 'OrderCancelled',
       strict: true,
       poll: true,
