@@ -12,6 +12,8 @@ type configOverrides = {
 
 function getUrl(networkName: string): string {
   switch (networkName) {
+    case 'arbitrum':
+      return process.env.ARBITRUM_NODE_URL ?? ''
     case 'arbitrumSepolia':
       return process.env.ARBITRUM_SEPOLIA_NODE_URL ?? ''
     default:
@@ -35,6 +37,7 @@ function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserCo
       networks: ['hardhat'],
     },
     networks: {
+      arbitrum: createNetworkConfig('arbitrum'),
       arbitrumSepolia: createNetworkConfig('arbitrumSepolia'),
       hardhat: {
         forking: {
@@ -69,6 +72,7 @@ function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserCo
     },
     etherscan: {
       apiKey: {
+        arbitrumOne: process.env.ETHERSCAN_API_KEY_ARBITRUM || '',
         arbitrumSepolia: process.env.ETHERSCAN_API_KEY_ARBITRUM || '',
         // baseGoerli: getEtherscanApiConfig('baseGoerli').apiKey,
       },
