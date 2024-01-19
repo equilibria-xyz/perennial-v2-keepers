@@ -7,6 +7,7 @@ import {
   graphClient,
   orderAccount,
   liquidatorSigner,
+  settlementAccount,
 } from '../../config.js'
 import {
   DSUAddresses,
@@ -310,6 +311,7 @@ export class MetricsListener {
       { address: oracleAccount.address, role: 'oracleKeeper' },
       { address: liquidatorAccount.address, role: 'liquidatorKeeper' },
       { address: orderAccount.address, role: 'orderKeeper' },
+      { address: settlementAccount.address, role: 'settlementKeeper' },
       { address: MarketFactoryAddress[Chain.id], role: 'marketFactory' },
       { address: OracleFactoryAddress[Chain.id], role: 'oracleFactory' },
       { address: GelatoDedicatedSenderAddresses[Chain.id], role: 'gelatoKeeper' },
@@ -353,6 +355,8 @@ export class MetricsListener {
           chain: Chain.id,
           role,
         })
+
+        // TODO: Collateral balance in each market (for liquidator)
       })
     })
   }
