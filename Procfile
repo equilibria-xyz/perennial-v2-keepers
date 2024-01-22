@@ -1,8 +1,3 @@
-arbitrumGoerliOracle: yarn start 421613 oracle
-arbitrumGoerliLiq: yarn start 421613 liq
-arbitrumGoerliMetrics: yarn start 421613 metrics
-arbitrumGoerliOrders: yarn start 421613 orders
-
 arbitrumSepoliaOracle: yarn start 421614 oracle
 arbitrumSepoliaLiq: yarn start 421614 liq
 arbitrumSepoliaMetrics: yarn start 421614 metrics
@@ -14,3 +9,8 @@ arbitrumLiq: yarn start 42161 liq
 arbitrumMetrics: yarn start 42161 metrics
 arbitrumOrders: yarn start 42161 orders
 arbitrumSettlement: yarn start 42161 settlement
+
+baseOracle: yarn start 8453 oracle
+baseLiq: yarn start 8453 liq
+baseMetrics: yarn start 8453 metrics
+baseOrders: yarn start 8453 orders
