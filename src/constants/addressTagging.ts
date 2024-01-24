@@ -39,6 +39,7 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
           [getAddress('0x2402E92f8C58886F716F5554039fA6398d7A1EfB')]: 'xrp',
           [getAddress('0x3D1D603073b3CEAB5974Db5C54568058a9551cCC')]: 'arb',
           [getAddress('0x768a5909f0B6997efa56761A89344eA2BD5560fd')]: 'msqbtc',
+          [getAddress('0x004E1Abf70e4FF99BC572843B63a63a58FAa08FF')]: 'cmsqeth',
         }[market] ?? market
       )
     }
