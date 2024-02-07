@@ -4,7 +4,7 @@ import { gql } from '../../../types/gql/gql'
 import { GraphDefaultPageSize, queryAll } from '../../utils/graphUtils'
 import { Chain, client, graphClient, orderSigner, pythConnection } from '../../config'
 import { BatchKeeperAbi } from '../../constants/abi'
-import { buildCommit2, getRecentVaa } from '../../utils/pythUtils'
+import { buildCommit, getRecentVaa } from '../../utils/pythUtils'
 import { notEmpty } from '../../utils/arrayUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
@@ -124,7 +124,7 @@ export class OrderListener {
     // Try execute orders
     const accounts = orders.map((o) => getAddress(o.account))
     const nonces = orders.map((o) => BigInt(o.nonce))
-    const commit = buildCommit2({
+    const commit = buildCommit({
       oracleProviderFactory: market.providerFactory,
       version,
       value: 1n,

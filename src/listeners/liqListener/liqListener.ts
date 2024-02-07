@@ -4,7 +4,7 @@ import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
 import { Chain, client, liquidatorAccount, liquidatorSigner, pythConnection } from '../../config'
 import { BatchKeeperAbi, MarketImpl, MultiInvokerImplAbi } from '../../constants/abi'
-import { buildCommit2, getRecentVaa } from '../../utils/pythUtils'
+import { buildCommit, getRecentVaa } from '../../utils/pythUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { BatchKeeperAddresses, MaxSimSizes } from '../../constants/network'
@@ -57,7 +57,7 @@ export class LiqListener {
           pyth: pythConnection,
           feeds: [{ providerId: underlyingId, minValidTime: validFrom }],
         })
-        const commit = buildCommit2({
+        const commit = buildCommit({
           oracleProviderFactory: providerFactory,
           ids: [feed],
           vaa: vaa.vaa,
