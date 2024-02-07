@@ -78,7 +78,7 @@ export const BatchKeeperAddresses: AddressMapping = {
   [arbitrum.id]: getAddress('0xB092493412FCae3432487Efb33204F7B4FeF12ff'),
   [arbitrumSepolia.id]: getAddress('0x61D0370f9db0b99282aE755c986E40C512DE577D'),
   [base.id]: getAddress('0x80633b66788EBAA3325d38D48152Ea6112dEBC07'),
-  [blastSepolia.id]: zeroAddress,
+  [blastSepolia.id]: getAddress('0x69f36142E2C9a50053F49B091Ba30C62d3E4f9ba'),
   [hardhat.id]: zeroAddress,
 }
 

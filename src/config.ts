@@ -32,7 +32,7 @@ const _chain = SupportedChains.find((c) => c.id === Number(_chainId))
 if (!_chain) throw new Error('Invalid chainId argument')
 
 export const Chain = _chain
-export const IsMainnet = !([arbitrumSepolia.id] as SupportedChainId[]).includes(Chain.id)
+export const IsMainnet = !([arbitrumSepolia.id, blastSepolia.id] as SupportedChainId[]).includes(Chain.id)
 
 export const client = createPublicClient({
   chain: Chain,

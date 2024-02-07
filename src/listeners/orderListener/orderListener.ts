@@ -8,7 +8,7 @@ import { buildCommit, getRecentVaa } from '../../utils/pythUtils'
 import { notEmpty } from '../../utils/arrayUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
-import { BatchKeeperAddresses } from '../../constants/network'
+import { BatchKeeperAddresses, UseGraphEvents } from '../../constants/network'
 
 export class OrderListener {
   public static PollingInterval = 4000 // 4s
@@ -16,7 +16,11 @@ export class OrderListener {
   protected markets: MarketDetails[] = []
 
   public async init() {
-    this.markets = await getMarkets(Chain.id, client)
+    this.markets = await getMarkets({
+      chainId: Chain.id,
+      client,
+      graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined,
+    })
   }
 
   public async run() {

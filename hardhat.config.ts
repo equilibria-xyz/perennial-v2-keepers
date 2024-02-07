@@ -18,6 +18,8 @@ function getUrl(networkName: string): string {
       return process.env.ARBITRUM_SEPOLIA_NODE_URL ?? ''
     case 'base':
       return process.env.BASE_NODE_URL ?? ''
+    case 'blastSepolia':
+      return process.env.BLAST_SEPOLIA_NODE_URL ?? ''
     default:
       return ''
   }
@@ -42,6 +44,7 @@ function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserCo
       arbitrum: createNetworkConfig('arbitrum'),
       arbitrumSepolia: createNetworkConfig('arbitrumSepolia'),
       base: createNetworkConfig('base'),
+      blastSepolia: createNetworkConfig('blastSepolia'),
       hardhat: {
         forking: {
           url: process.env.ARBITRUM_GOERLI_NODE_URL || '',
@@ -78,6 +81,7 @@ function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserCo
         arbitrumOne: process.env.ETHERSCAN_API_KEY_ARBITRUM || '',
         arbitrumSepolia: process.env.ETHERSCAN_API_KEY_ARBITRUM || '',
         base: process.env.ETHERSCAN_API_KEY_BASE || '',
+        blastSepolia: process.env.ETHERSCAN_API_KEY_BLAST_SEPOLIA || '',
       },
       customChains: [
         {
@@ -94,6 +98,14 @@ function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserCo
           urls: {
             apiURL: 'https://api.basescan.org/api',
             browserURL: 'https://basescan.org',
+          },
+        },
+        {
+          network: 'blastSepolia',
+          chainId: 168587773,
+          urls: {
+            apiURL: 'https://api.routescan.io/v2/network/testnet/evm/168587773/etherscan',
+            browserURL: 'https://testnet.blastscan.io',
           },
         },
       ],

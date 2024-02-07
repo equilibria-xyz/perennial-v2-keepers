@@ -1,11 +1,11 @@
 // Contains the shared logic between the Gelato keeper and non-Gelato keeper.
 // Must not access process.env or process.argv.
 // Must not use modules that rely on built nodejs modules.
-import { Address, Hex, PublicClient, getAbiItem, getContract } from 'viem'
+import { Address, Hex, PublicClient, getAbiItem, getAddress, getContract } from 'viem'
 import { Buffer } from 'buffer'
 import { PythFactoryImpl } from '../../constants/abi/PythFactoryImpl.abi.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
-import { notEmpty, range, unique } from '../../utils/arrayUtils.js'
+import { notEmpty, range } from '../../utils/arrayUtils.js'
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
 import { Big6Math } from '../../constants/Big6Math.js'
 import { buildCommit, getVaaWithBackupRetry } from '../../utils/pythUtils.js'
@@ -36,25 +36,13 @@ export async function getOracleAddresses({
   // If a Graph Client is passed in, use it to pull events instead of logs
   if (graphClient) {
     const query = gql(`
-      query getOracleAddresses_oracleCreateds {
-        oracleCreateds { OracleFactory_id }
+      query getOracleAddresses_pythFactoryOracleCreateds {
+        pythFactoryOracleCreateds { oracle, PythFactory_id }
       }
     `)
 
-    const { oracleCreateds } = await graphClient.request(query)
-    const oracleIds = unique(oracleCreateds.map((o) => o.OracleFactory_id))
-    return Promise.all(
-      oracleIds.map(async (id) => {
-        const providerAddress = await client.readContract({
-          address: pythFactoryAddress,
-          abi: PythFactoryImpl,
-          functionName: 'oracles',
-          args: [id as Hex],
-        })
-
-        return { id: id as Hex, oracle: providerAddress }
-      }),
-    )
+    const { pythFactoryOracleCreateds } = await graphClient.request(query)
+    return pythFactoryOracleCreateds.map((o) => ({ id: o.PythFactory_id as Hex, oracle: getAddress(o.oracle) }))
   }
 
   const logs = await client.getLogs({
