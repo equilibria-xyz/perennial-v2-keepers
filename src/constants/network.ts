@@ -14,7 +14,7 @@ export const PythFactoryAddress: AddressMapping = {
   [arbitrum.id]: getAddress('0x6b60e7c96B4d11A63891F249eA826f8a73Ef4E6E'),
   [arbitrumSepolia.id]: getAddress('0x92F8d5B8d0ca2fc699c7c540471Ad49724a68007'),
   [base.id]: getAddress('0x9c82732CE868aFA5e9b2649506E7Ab8268A62c3C'),
-  [blastSepolia.id]: getAddress('0x32F3aB7b3c5BBa0738b72FdB83FcE6bb1a1a943c'),
+  [blastSepolia.id]: getAddress('0xA1c897eaf049d7E9bB22E9D75D0d146a92Bee653'),
   [hardhat.id]: getAddress('0x2FFf529AAD20BD1DA5Ab5789b0B02811E3Ee68c5'),
 }
 
@@ -22,7 +22,7 @@ export const MarketFactoryAddress: AddressMapping = {
   [arbitrum.id]: getAddress('0xDaD8A103473dfd47F90168A0E46766ed48e26EC7'),
   [arbitrumSepolia.id]: getAddress('0x32F3aB7b3c5BBa0738b72FdB83FcE6bb1a1a943c'),
   [base.id]: getAddress('0xE04290314A35f5c29D0b0f7dA0C1499a0ecC44F7'),
-  [blastSepolia.id]: getAddress('0xC76be4488789d5fc60636f1c5b2c6e173D3d4942'),
+  [blastSepolia.id]: getAddress('0x299ab1A53b6aca723590290Dd43E748ed101Ac51'),
   [hardhat.id]: getAddress('0x8D8903B294B358BA1B5d91FB838e5dC35370c7D2'),
 }
 
@@ -30,7 +30,7 @@ export const VaultFactoryAddresses: AddressMapping = {
   [arbitrum.id]: getAddress('0xad3565680aEcEe27A39249D8c2D55dAc79BE5Ad0'),
   [arbitrumSepolia.id]: getAddress('0x877682C7a8840D59A63a6227ED2Aeb20C3ae7FeB'),
   [base.id]: getAddress('0x7c4ABBF7CB0C0BcB72917734B068Ed4D1AcdF8C5'),
-  [blastSepolia.id]: getAddress('0xA2adCcC99d5C7c2589462D4Af5d954485a8Dc6ae'),
+  [blastSepolia.id]: getAddress('0x37fe7d9DDf87333be07D325222DAf76a9a53ab28'),
   [hardhat.id]: getAddress('0x97B34BA2FD1ff8Ce18b3bC7b05D1fcb87E95D6fc'),
 }
 
@@ -38,7 +38,7 @@ export const MultiInvokerAddress: AddressMapping = {
   [arbitrum.id]: getAddress('0x431603567EcBb4aa1Ce5a4fdBe5554cAEa658832'),
   [arbitrumSepolia.id]: getAddress('0x1927DE7c9765Ae74050D1d0aa8BB0e93D737F579'),
   [base.id]: getAddress('0xf3E88d5a0036BFDc240A309DBc765C895Dc8b509'),
-  [blastSepolia.id]: getAddress('0x32D8191f797E05E921a4fC95f1C268ECEd5F4bB3'),
+  [blastSepolia.id]: getAddress('0x517072B77A587F2612C70BFb44299997E36B899c'),
   [hardhat.id]: getAddress('0x9F6f72Cf419121090C761D0488f61D2534Da4196'),
 }
 
@@ -46,7 +46,7 @@ export const OracleFactoryAddress: AddressMapping = {
   [arbitrum.id]: getAddress('0x8CDa59615C993f925915D3eb4394BAdB3feEF413'),
   [arbitrumSepolia.id]: getAddress('0x9d2CaE012AAe0aE00f4d8F42CD287a6923612456'),
   [base.id]: getAddress('0xC76be4488789d5fc60636f1c5b2c6e173D3d4942'),
-  [blastSepolia.id]: getAddress('0x83C69F035dB26BAED4E557A757Cc0C06F400DB37'),
+  [blastSepolia.id]: getAddress('0xCe2a0EC283be5AB085F57f4d398E0922BE0F7254'),
   [hardhat.id]: getAddress('0xaf09499A04a9A7c6E1fD5320ebd86E1A817d6D80'),
 }
 
@@ -54,7 +54,7 @@ export const DSUAddresses: AddressMapping = {
   [arbitrum.id]: getAddress('0x52C64b8998eB7C80b6F526E99E29ABdcC86B841b'),
   [arbitrumSepolia.id]: getAddress('0x5FA881826AD000D010977645450292701bc2f56D'),
   [base.id]: getAddress('0x7b4Adf64B0d60fF97D672E473420203D52562A84'),
-  [blastSepolia.id]: getAddress('0x5B495F170BfCba51Db96Ff16Ba8BC4686CFA92b4'),
+  [blastSepolia.id]: getAddress('0x4200000000000000000000000000000000000022'),
   [hardhat.id]: getAddress('0x52C64b8998eB7C80b6F526E99E29ABdcC86B841b'),
 }
 
@@ -78,7 +78,7 @@ export const BatchKeeperAddresses: AddressMapping = {
   [arbitrum.id]: getAddress('0xB092493412FCae3432487Efb33204F7B4FeF12ff'),
   [arbitrumSepolia.id]: getAddress('0x61D0370f9db0b99282aE755c986E40C512DE577D'),
   [base.id]: getAddress('0x80633b66788EBAA3325d38D48152Ea6112dEBC07'),
-  [blastSepolia.id]: getAddress('0x69f36142E2C9a50053F49B091Ba30C62d3E4f9ba'),
+  [blastSepolia.id]: getAddress('0x3aABc1b29FD644c87AC1a7F87dA9Bf7Bd3470925'),
   [hardhat.id]: zeroAddress,
 }
 
