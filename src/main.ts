@@ -20,6 +20,13 @@ const run = async () => {
         },
         IsMainnet ? LiqListener.PollingInterval : 5 * LiqListener.PollingInterval,
       )
+
+      setInterval(
+        () => {
+          liqListener.refreshMarketUsers()
+        },
+        IsMainnet ? LiqListener.UserRefreshInterval : 5 * LiqListener.UserRefreshInterval,
+      )
       break
     }
     case TaskType.orders: {

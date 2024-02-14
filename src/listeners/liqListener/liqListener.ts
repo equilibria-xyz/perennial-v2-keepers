@@ -2,7 +2,7 @@ import { AbiParametersToPrimitiveTypes, ExtractAbiFunction } from 'abitype'
 import { Address, getAddress } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
-import { Chain, client, liquidatorAccount, liquidatorSigner, pythConnection } from '../../config'
+import { Chain, client, liquidatorAccount, liquidatorSigner, pythConnection, wssClient } from '../../config'
 import { BatchKeeperAbi, MarketImpl, MultiInvokerImplAbi } from '../../constants/abi'
 import { buildCommit2, getRecentVaa } from '../../utils/pythUtils'
 import { Big6Math } from '../../constants/Big6Math'
@@ -21,20 +21,16 @@ type Invocation = AbiParametersToPrimitiveTypes<
 
 export class LiqListener {
   public static PollingInterval = 10000 // 10s
+  public static UserRefreshInterval = 300000 // 5m
 
   protected markets: LiqMarketDetails[] = []
 
   public async init() {
     this.markets = (await getMarkets(Chain.id, client)).map((m) => ({ ...m, users: [] }))
     // Fetch users for market
-    const usersRes = await getMarketsUsers(this.markets.map((m) => m.market))
-    this.markets.forEach((m) => {
-      m.users = usersRes.marketAccountPositions
-        .filter((u) => getAddress(u.market) === m.market)
-        .map((u) => getAddress(u.account))
-
-      this.watchUpdates(m)
-    })
+    await this.refreshMarketUsers()
+    // Watch for updates
+    this.markets.forEach((m) => this.watchUpdates(m))
   }
 
   public async run() {
@@ -81,18 +77,24 @@ export class LiqListener {
     }
   }
 
+  public async refreshMarketUsers() {
+    const usersRes = await getMarketsUsers(this.markets.map((m) => m.market))
+    this.markets.forEach((m) => {
+      m.users = usersRes.marketAccountPositions
+        .filter((u) => getAddress(u.market) === m.market)
+        .map((u) => getAddress(u.account))
+    })
+  }
+
   private async watchUpdates(market: LiqMarketDetails) {
     const marketTag = marketAddressToMarketTag(Chain.id, market.market)
     console.log(`watching market ${market.market} (${marketTag})`)
 
-    // TODO: switch back to WSS client when we debug connection issues
-    client.watchContractEvent({
+    wssClient.watchContractEvent({
       address: market.market,
       abi: MarketImpl,
       eventName: 'Updated',
       strict: true,
-      poll: true,
-      pollingInterval: 10 * 1000,
       onLogs: (logs) => {
         const users = logs.map((log) => getAddress(log.args.account))
         market.users = unique([...market.users, ...users])
