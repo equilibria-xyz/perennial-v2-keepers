@@ -8,6 +8,7 @@ import {
   orderAccount,
   liquidatorSigner,
   settlementAccount,
+  wssClient,
 } from '../../config.js'
 import {
   DSUAddresses,
@@ -47,13 +48,11 @@ export class MetricsListener {
   }
 
   public watchEvents() {
-    client.watchContractEvent({
+    wssClient.watchContractEvent({
       address: this.marketAddresses,
       abi: MarketImpl,
       eventName: 'Updated',
       strict: true,
-      poll: true,
-      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           const marketTag = marketAddressToMarketTag(Chain.id, log.address)
@@ -72,13 +71,11 @@ export class MetricsListener {
       },
     })
 
-    client.watchContractEvent({
+    wssClient.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
       abi: MultiInvokerImplAbi,
       eventName: 'OrderPlaced',
       strict: true,
-      poll: true,
-      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           const marketTag = marketAddressToMarketTag(Chain.id, log.args.market)
@@ -101,13 +98,11 @@ export class MetricsListener {
       },
     })
 
-    client.watchContractEvent({
+    wssClient.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
       abi: MultiInvokerImplAbi,
       eventName: 'OrderExecuted',
       strict: true,
-      poll: true,
-      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           tracer.dogstatsd.increment('market.order.executed', 1, {
@@ -118,13 +113,11 @@ export class MetricsListener {
       },
     })
 
-    client.watchContractEvent({
+    wssClient.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
       abi: MultiInvokerImplAbi,
       eventName: 'OrderCancelled',
       strict: true,
-      poll: true,
-      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           tracer.dogstatsd.increment('market.order.cancelled', 1, {
@@ -290,7 +283,7 @@ export class MetricsListener {
 
     this.vaultAddreses.forEach(async (vault) => {
       const vaultTag = vaultAddressToVaultTag(Chain.id, vault)
-      const vaultContract = getContract({ abi: VaultImplAbi, address: vault, publicClient: client })
+      const vaultContract = getContract({ abi: VaultImplAbi, address: vault, client })
       const [totalAssets, totalShares] = await Promise.all([
         vaultContract.read.totalAssets(),
         vaultContract.read.totalShares(),
@@ -373,6 +366,7 @@ export class MetricsListener {
     for (const global of globals) {
       if (global.global.oracleFee > Big6Math.fromFloatString('500')) {
         const hash = await liquidatorSigner.writeContract({
+          chain: Chain,
           address: OracleFactoryAddress[Chain.id],
           abi: OracleFactoryAbi,
           functionName: 'fund',

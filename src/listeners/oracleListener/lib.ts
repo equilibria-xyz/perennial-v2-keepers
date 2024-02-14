@@ -45,12 +45,12 @@ export async function getCommitments(
     const factoryContract = getContract({
       address: factoryAddress,
       abi: PythFactoryImpl,
-      publicClient: client,
+      client,
     })
     const oracleContract = getContract({
       address: oracle,
       abi: KeeperOracleImpl,
-      publicClient: client,
+      client,
     })
 
     const [MinDelay, MaxDelay, GracePeriod, nextVersion, global, underlyingId] = await Promise.all([
