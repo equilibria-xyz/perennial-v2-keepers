@@ -2,7 +2,7 @@ import { AbiParametersToPrimitiveTypes, ExtractAbiFunction } from 'abitype'
 import { Address, getAddress } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
-import { Chain, client, liquidatorAccount, liquidatorSigner, pythConnection, wssClient } from '../../config'
+import { Chain, client, liquidatorAccount, liquidatorSigner, pythConnection } from '../../config'
 import { BatchKeeperAbi, MarketImpl, MultiInvokerImplAbi } from '../../constants/abi'
 import { buildCommit2, getRecentVaa } from '../../utils/pythUtils'
 import { Big6Math } from '../../constants/Big6Math'
@@ -90,11 +90,13 @@ export class LiqListener {
     const marketTag = marketAddressToMarketTag(Chain.id, market.market)
     console.log(`watching market ${market.market} (${marketTag})`)
 
-    wssClient.watchContractEvent({
+    client.watchContractEvent({
       address: market.market,
       abi: MarketImpl,
       eventName: 'Updated',
       strict: true,
+      poll: true,
+      pollingInterval: LiqListener.PollingInterval,
       onLogs: (logs) => {
         const users = logs.map((log) => getAddress(log.args.account))
         market.users = unique([...market.users, ...users])

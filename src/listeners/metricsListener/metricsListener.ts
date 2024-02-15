@@ -8,7 +8,6 @@ import {
   orderAccount,
   liquidatorSigner,
   settlementAccount,
-  wssClient,
 } from '../../config.js'
 import {
   DSUAddresses,
@@ -48,11 +47,13 @@ export class MetricsListener {
   }
 
   public watchEvents() {
-    wssClient.watchContractEvent({
+    client.watchContractEvent({
       address: this.marketAddresses,
       abi: MarketImpl,
       eventName: 'Updated',
       strict: true,
+      poll: true,
+      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           const marketTag = marketAddressToMarketTag(Chain.id, log.address)
@@ -71,11 +72,13 @@ export class MetricsListener {
       },
     })
 
-    wssClient.watchContractEvent({
+    client.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
       abi: MultiInvokerImplAbi,
       eventName: 'OrderPlaced',
       strict: true,
+      poll: true,
+      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           const marketTag = marketAddressToMarketTag(Chain.id, log.args.market)
@@ -98,11 +101,13 @@ export class MetricsListener {
       },
     })
 
-    wssClient.watchContractEvent({
+    client.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
       abi: MultiInvokerImplAbi,
       eventName: 'OrderExecuted',
       strict: true,
+      poll: true,
+      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           tracer.dogstatsd.increment('market.order.executed', 1, {
@@ -113,11 +118,13 @@ export class MetricsListener {
       },
     })
 
-    wssClient.watchContractEvent({
+    client.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
       abi: MultiInvokerImplAbi,
       eventName: 'OrderCancelled',
       strict: true,
+      poll: true,
+      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           tracer.dogstatsd.increment('market.order.cancelled', 1, {

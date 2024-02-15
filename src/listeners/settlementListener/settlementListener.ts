@@ -1,6 +1,6 @@
 import { getContract } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
-import { Chain, client, settlementSigner, wssClient } from '../../config'
+import { Chain, client, settlementSigner } from '../../config'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi'
@@ -18,7 +18,7 @@ export class SettlementListener {
 
   public async listen() {
     this.markets.forEach((market) => {
-      wssClient.watchContractEvent({
+      client.watchContractEvent({
         abi: KeeperOracleImpl,
         address: market.keeperOracle,
         eventName: 'OracleProviderVersionFulfilled',
