@@ -20,7 +20,7 @@ type Invocation = AbiParametersToPrimitiveTypes<
 >[0][0]
 
 export class LiqListener {
-  public static PollingInterval = 10000 // 10s
+  public static PollingInterval = 4000 // 4s
   public static UserRefreshInterval = 300000 // 5m
 
   protected markets: LiqMarketDetails[] = []
