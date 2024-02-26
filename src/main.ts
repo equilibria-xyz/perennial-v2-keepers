@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import './tracer.js'
 import { PythOracleListener } from './listeners/oracleListener/pythOracle.js'
+import { MetaQuantsOracleListener } from './listeners/oracleListener/metaQuantsOracle.js'
 import { Chain, Task, TaskType, oracleAccount, client, oracleSigner, IsMainnet } from './config.js'
 import { MetricsListener } from './listeners/metricsListener/metricsListener.js'
 import deployBatchKeeper from './scripts/DeployBatchKeeper.js'
@@ -50,6 +51,18 @@ const run = async () => {
           pythListener.run(oracleAccount, oracleSigner)
         },
         IsMainnet ? PythOracleListener.PollingInterval : 2 * PythOracleListener.PollingInterval,
+      )
+      break
+    }
+    case TaskType.metaQuantsOracle: {
+      const metaQuantsListener = new MetaQuantsOracleListener(Chain, client)
+      await metaQuantsListener.init()
+
+      setInterval(
+        () => {
+          metaQuantsListener.run(oracleAccount, oracleSigner)
+        },
+        IsMainnet ? MetaQuantsOracleListener.PollingInterval : 2 * MetaQuantsOracleListener.PollingInterval,
       )
       break
     }

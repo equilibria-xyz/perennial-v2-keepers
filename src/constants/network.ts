@@ -16,6 +16,14 @@ export const PythFactoryAddress: AddressMapping = {
   [hardhat.id]: getAddress('0x2FFf529AAD20BD1DA5Ab5789b0B02811E3Ee68c5'),
 }
 
+export const MetaQuantsFactoryAddress: AddressMapping = {
+  // TODO: Fill in `arbitrum.id` with real address.
+  [arbitrum.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
+  [arbitrumGoerli.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
+  [arbitrumSepolia.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
+  [hardhat.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
+}
+
 export const MarketFactoryAddress: AddressMapping = {
   [arbitrum.id]: getAddress('0xDaD8A103473dfd47F90168A0E46766ed48e26EC7'),
   [arbitrumGoerli.id]: getAddress('0x8D8903B294B358BA1B5d91FB838e5dC35370c7D2'),

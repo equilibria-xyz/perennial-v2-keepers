@@ -92,6 +92,7 @@ export enum TaskType {
   'settlement',
   'deploy',
   'metrics',
+  'metaQuantsOracle',
 }
 
 const _task = process.argv[3]
