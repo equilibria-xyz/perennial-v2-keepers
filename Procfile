@@ -14,3 +14,5 @@ baseOracle: yarn start 8453 oracle
 baseLiq: yarn start 8453 liq
 baseMetrics: yarn start 8453 metrics
 baseOrders: yarn start 8453 orders
+
+blastSepoliaOracle: yarn start 168587773 oracle

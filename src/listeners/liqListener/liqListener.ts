@@ -2,12 +2,12 @@ import { AbiParametersToPrimitiveTypes, ExtractAbiFunction } from 'abitype'
 import { Address, getAddress } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
-import { Chain, client, liquidatorAccount, liquidatorSigner, pythConnection } from '../../config'
+import { Chain, client, graphClient, liquidatorAccount, liquidatorSigner, pythConnection } from '../../config'
 import { BatchKeeperAbi, MarketImpl, MultiInvokerImplAbi } from '../../constants/abi'
-import { buildCommit2, getRecentVaa } from '../../utils/pythUtils'
+import { buildCommit, getRecentVaa } from '../../utils/pythUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
-import { BatchKeeperAddresses, MaxSimSizes } from '../../constants/network'
+import { BatchKeeperAddresses, MaxSimSizes, UseGraphEvents } from '../../constants/network'
 import { marketAddressToMarketTag } from '../../constants/addressTagging'
 import { unique } from '../../utils/arrayUtils'
 
@@ -25,7 +25,9 @@ export class LiqListener {
   protected markets: LiqMarketDetails[] = []
 
   public async init() {
-    this.markets = (await getMarkets(Chain.id, client)).map((m) => ({ ...m, users: [] }))
+    this.markets = (
+      await getMarkets({ chainId: Chain.id, client, graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined })
+    ).map((m) => ({ ...m, users: [] }))
     // Fetch users for market
     const usersRes = await getMarketsUsers(this.markets.map((m) => m.market))
     this.markets.forEach((m) => {
@@ -57,7 +59,7 @@ export class LiqListener {
           pyth: pythConnection,
           feeds: [{ providerId: underlyingId, minValidTime: validFrom }],
         })
-        const commit = buildCommit2({
+        const commit = buildCommit({
           oracleProviderFactory: providerFactory,
           ids: [feed],
           vaa: vaa.vaa,

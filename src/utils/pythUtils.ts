@@ -72,30 +72,6 @@ export const getVaaWithBackupRetry = async ({
 }
 
 export const buildCommit = ({
-  oracleProvider,
-  version,
-  value,
-  index,
-  vaa,
-  revertOnFailure,
-}: {
-  oracleProvider: Address
-  version: bigint
-  value: bigint
-  index: bigint
-  vaa: string
-  revertOnFailure: boolean
-}): { action: number; args: Hex } => {
-  return {
-    action: 6,
-    args: encodeAbiParameters(
-      ['address', 'uint256', 'uint256', 'uint256', 'bytes', 'bool'].map((type) => ({ type })),
-      [oracleProvider, value, index, version, vaa, revertOnFailure],
-    ),
-  }
-}
-
-export const buildCommit2 = ({
   oracleProviderFactory,
   version,
   value,

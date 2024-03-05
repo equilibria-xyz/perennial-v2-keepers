@@ -16,6 +16,7 @@ import {
   MultiInvokerAddress,
   OracleFactoryAddress,
   USDCAddresses,
+  UseGraphEvents,
 } from '../../constants/network.js'
 import { gql } from '../../../types/gql/gql.js'
 import tracer from '../../tracer.js'
@@ -40,8 +41,14 @@ export class MetricsListener {
 
   public async init() {
     console.log('Initing Metrics Listener')
-    this.marketAddresses = (await getMarkets(Chain.id, client)).map((m) => m.market)
-    this.vaultAddreses = await getVaults(Chain.id, client)
+    this.marketAddresses = (
+      await getMarkets({ chainId: Chain.id, client, graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined })
+    ).map((m) => m.market)
+    this.vaultAddreses = await getVaults({
+      chainId: Chain.id,
+      client,
+      graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined,
+    })
     console.log('Market Addresses:', this.marketAddresses.join(', '))
     console.log('Vault Addresses:', this.vaultAddreses.join(', '))
   }
