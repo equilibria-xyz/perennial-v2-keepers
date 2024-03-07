@@ -14,3 +14,6 @@ export function remove<TValue>(arr: TValue[], value: TValue): TValue[] {
 export function unique<T>(values: T[]) {
   return Array.from(new Set(values))
 }
+
+export const chunk = <T>(arr: T[], size: number) =>
+  Array.from({ length: Math.ceil(arr.length / size) }, (_: T, i: number) => arr.slice(i * size, i * size + size))

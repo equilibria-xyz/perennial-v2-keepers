@@ -9,7 +9,7 @@ import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { BatchKeeperAddresses, MaxSimSizes } from '../../constants/network'
 import { marketAddressToMarketTag } from '../../constants/addressTagging'
-import { unique } from '../../utils/arrayUtils'
+import { chunk, notEmpty, unique } from '../../utils/arrayUtils'
 
 type LiqMarketDetails = MarketDetails & {
   users: Address[]
@@ -105,18 +105,16 @@ export class LiqListener {
   }
 
   private async batchLiquidationSimulation(market: Address, accounts: Address[], commit: Invocation) {
-    const len = accounts.length
     const maxSimSize = MaxSimSizes[Chain.id]
+    const accountsChunked = chunk(accounts, maxSimSize)
 
-    let liqUsers: Address[] = []
-    for (let i = 0; i < len; i += maxSimSize) {
-      const lensRes = await this.runLiquidationSimulation(market, accounts.slice(i, i + maxSimSize), commit)
-
-      if (!lensRes) continue
-
-      liqUsers = liqUsers.concat(lensRes.filter((res) => res.result.success).map((res) => res.account))
-    }
-    return liqUsers
+    const liquidationSims = await Promise.all(
+      accountsChunked.map((chunk) => this.runLiquidationSimulation(market, chunk, commit)),
+    )
+    return liquidationSims
+      .filter(notEmpty)
+      .map((res) => res.filter((res) => res.result.success).map((res) => res.account))
+      .flat()
   }
 
   private async runLiquidationSimulation(market: Address, accounts: Address[], commit: Invocation) {
