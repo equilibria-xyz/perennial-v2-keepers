@@ -23,11 +23,7 @@ import tracer from '../../tracer.js'
 import { Big6Math, notional } from '../../constants/Big6Math.js'
 import { startOfHour } from 'date-fns'
 import { MarketImpl } from '../../constants/abi/MarketImpl.abi.js'
-import {
-  marketAddressToMarketTag,
-  oracleProviderAddressToOracleProviderTag,
-  vaultAddressToVaultTag,
-} from '../../constants/addressTagging.js'
+import { marketAddressToMarketTag, vaultAddressToVaultTag } from '../../constants/addressTagging.js'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils.js'
 import { getVaults } from '../../utils/vaultUtils.js'
 import { VaultImplAbi } from '../../constants/abi/VaultImpl.abi.js'
@@ -38,7 +34,7 @@ import { getRecentVaa } from '../../utils/pythUtils.js'
 const Balances = ['ETH', 'USDC', 'DSU']
 const ERC20Abi = parseAbi(['function balanceOf(address owner) view returns (uint256)'] as const)
 export class MetricsListener {
-  public static PollingInterval = 60000 // 1m
+  public static PollingInterval = 60 * 1000 // 1m
   public static UpkeepInterval = 60 * 60 * 1000 // 1hr
 
   private markets: MarketDetails[] = []
@@ -372,18 +368,23 @@ export class MetricsListener {
     try {
       const pythPrices = await getRecentVaa({
         pyth: pythConnection,
-        feeds: this.markets.map((m) => ({ providerId: m.feed, minValidTime: m.validFrom })),
+        feeds: this.markets.map((m) => ({ providerId: m.underlyingId, minValidTime: m.validFrom })),
       })
       const now = Math.floor(Date.now() / 1000)
       pythPrices.forEach((price) => {
+        const market = this.markets.find((m) => m.underlyingId === price.feedId)
+        if (!market) return
         tracer.dogstatsd.gauge('pythHermes.delay', now - price.publishTime, {
           chain: Chain.id,
-          provider: oracleProviderAddressToOracleProviderTag(Chain.id, price.feedId),
+          market: marketAddressToMarketTag(Chain.id, market.market),
         })
       })
-    } catch {
+    } catch (e) {
       // Pass
+      console.error('Failed to get Pyth Prices', e)
     }
+
+    console.log('Metrics Updated')
   }
 
   public async onUpkeepInterval() {
