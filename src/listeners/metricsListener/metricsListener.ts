@@ -8,6 +8,7 @@ import {
   orderAccount,
   liquidatorSigner,
   settlementAccount,
+  pythConnection,
 } from '../../config.js'
 import {
   DSUAddresses,
@@ -22,12 +23,17 @@ import tracer from '../../tracer.js'
 import { Big6Math, notional } from '../../constants/Big6Math.js'
 import { startOfHour } from 'date-fns'
 import { MarketImpl } from '../../constants/abi/MarketImpl.abi.js'
-import { marketAddressToMarketTag, vaultAddressToVaultTag } from '../../constants/addressTagging.js'
-import { getMarkets } from '../../utils/marketUtils.js'
+import {
+  marketAddressToMarketTag,
+  oracleProviderAddressToOracleProviderTag,
+  vaultAddressToVaultTag,
+} from '../../constants/addressTagging.js'
+import { MarketDetails, getMarkets } from '../../utils/marketUtils.js'
 import { getVaults } from '../../utils/vaultUtils.js'
 import { VaultImplAbi } from '../../constants/abi/VaultImpl.abi.js'
 import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
 import { OracleFactoryAbi } from '../../constants/abi/OracleFactory.abi.js'
+import { getRecentVaa } from '../../utils/pythUtils.js'
 
 const Balances = ['ETH', 'USDC', 'DSU']
 const ERC20Abi = parseAbi(['function balanceOf(address owner) view returns (uint256)'] as const)
@@ -35,12 +41,15 @@ export class MetricsListener {
   public static PollingInterval = 60000 // 1m
   public static UpkeepInterval = 60 * 60 * 1000 // 1hr
 
+  private markets: MarketDetails[] = []
   private marketAddresses: Address[] = []
   private vaultAddreses: Address[] = []
 
   public async init() {
     console.log('Initing Metrics Listener')
-    this.marketAddresses = (await getMarkets(Chain.id, client)).map((m) => m.market)
+
+    this.markets = await getMarkets(Chain.id, client)
+    this.marketAddresses = this.markets.map((m) => m.market)
     this.vaultAddreses = await getVaults(Chain.id, client)
     console.log('Market Addresses:', this.marketAddresses.join(', '))
     console.log('Vault Addresses:', this.vaultAddreses.join(', '))
@@ -359,6 +368,22 @@ export class MetricsListener {
         // TODO: Collateral balance in each market (for liquidator)
       })
     })
+
+    try {
+      const pythPrices = await getRecentVaa({
+        pyth: pythConnection,
+        feeds: this.markets.map((m) => ({ providerId: m.feed, minValidTime: m.validFrom })),
+      })
+      const now = Math.floor(Date.now() / 1000)
+      pythPrices.forEach((price) => {
+        tracer.dogstatsd.gauge('pythHermes.delay', now - price.publishTime, {
+          chain: Chain.id,
+          provider: oracleProviderAddressToOracleProviderTag(Chain.id, price.feedId),
+        })
+      })
+    } catch {
+      // Pass
+    }
   }
 
   public async onUpkeepInterval() {
