@@ -1,19 +1,17 @@
-import { PublicClient, getAbiItem, getAddress } from 'viem'
+import { PublicClient, getAbiItem } from 'viem'
 import { SupportedChainId, VaultFactoryAddresses } from '../constants/network'
 import { FactoryAbi } from '../constants/abi/Factory.abi'
-import { gql } from '../../types/gql/gql'
 import { GraphQLClient } from 'graphql-request'
 
 export async function getVaults({
   client,
   chainId,
-  graphClient,
 }: {
   client: PublicClient
   chainId: SupportedChainId
   graphClient?: GraphQLClient
 }) {
-  if (graphClient) {
+  /* if (graphClient) {
     const query = gql(`
       query getMarketAddresses_instanceRegistereds($marketFactory: Bytes!) {
         instanceRegistereds(where: { factory: $marketFactory }) { instance }
@@ -25,7 +23,7 @@ export async function getVaults({
     })
 
     return instanceRegistereds.map((o) => getAddress(o.instance))
-  }
+  } */
   const logs = await client.getLogs({
     address: VaultFactoryAddresses[chainId],
     event: getAbiItem({ abi: FactoryAbi, name: 'InstanceRegistered' }),

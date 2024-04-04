@@ -1,7 +1,7 @@
 // Contains the shared logic between the Gelato keeper and non-Gelato keeper.
 // Must not access process.env or process.argv.
 // Must not use modules that rely on built nodejs modules.
-import { Address, Hex, PublicClient, getAbiItem, getAddress, getContract } from 'viem'
+import { Address, Hex, PublicClient, getAbiItem, getContract } from 'viem'
 import { Buffer } from 'buffer'
 import { PythFactoryImpl } from '../../constants/abi/PythFactoryImpl.abi.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
@@ -11,8 +11,6 @@ import { Big6Math } from '../../constants/Big6Math.js'
 import { buildCommit, getVaaWithBackupRetry } from '../../utils/pythUtils.js'
 import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi.js'
 import { GraphQLClient } from 'graphql-request'
-import { graphClient } from '../../config.js'
-import { gql } from '../../../types/gql/gql.js'
 
 export type Commitment = {
   action: number
@@ -34,7 +32,7 @@ export async function getOracleAddresses({
   graphClient?: GraphQLClient
 }) {
   // If a Graph Client is passed in, use it to pull events instead of logs
-  if (graphClient) {
+  /* if (graphClient) {
     const query = gql(`
       query getOracleAddresses_pythFactoryOracleCreateds {
         pythFactoryOracleCreateds { oracle, PythFactory_id }
@@ -43,7 +41,7 @@ export async function getOracleAddresses({
 
     const { pythFactoryOracleCreateds } = await graphClient.request(query)
     return pythFactoryOracleCreateds.map((o) => ({ id: o.PythFactory_id as Hex, oracle: getAddress(o.oracle) }))
-  }
+  } */
 
   const logs = await client.getLogs({
     address: pythFactoryAddress,
