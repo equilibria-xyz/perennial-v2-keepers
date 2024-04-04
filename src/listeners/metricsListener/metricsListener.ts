@@ -8,6 +8,7 @@ import {
   orderAccount,
   liquidatorSigner,
   settlementAccount,
+  pythConnection,
 } from '../../config.js'
 import {
   DSUAddresses,
@@ -24,26 +25,31 @@ import { Big6Math, notional } from '../../constants/Big6Math.js'
 import { startOfHour } from 'date-fns'
 import { MarketImpl } from '../../constants/abi/MarketImpl.abi.js'
 import { marketAddressToMarketTag, vaultAddressToVaultTag } from '../../constants/addressTagging.js'
-import { getMarkets } from '../../utils/marketUtils.js'
+import { MarketDetails, getMarkets } from '../../utils/marketUtils.js'
 import { getVaults } from '../../utils/vaultUtils.js'
 import { VaultImplAbi } from '../../constants/abi/VaultImpl.abi.js'
 import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
 import { OracleFactoryAbi } from '../../constants/abi/OracleFactory.abi.js'
+import { getRecentVaa } from '../../utils/pythUtils.js'
 
 const Balances = ['ETH', 'USDC', 'DSU']
 const ERC20Abi = parseAbi(['function balanceOf(address owner) view returns (uint256)'] as const)
 export class MetricsListener {
-  public static PollingInterval = 60000 // 1m
+  public static PollingInterval = 60 * 1000 // 1m
   public static UpkeepInterval = 60 * 60 * 1000 // 1hr
 
+  private markets: MarketDetails[] = []
   private marketAddresses: Address[] = []
   private vaultAddreses: Address[] = []
 
   public async init() {
     console.log('Initing Metrics Listener')
-    this.marketAddresses = (
-      await getMarkets({ chainId: Chain.id, client, graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined })
-    ).map((m) => m.market)
+    this.markets = await getMarkets({
+      chainId: Chain.id,
+      client,
+      graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined,
+    })
+    this.marketAddresses = this.markets.map((m) => m.market)
     this.vaultAddreses = await getVaults({
       chainId: Chain.id,
       client,
@@ -297,7 +303,7 @@ export class MetricsListener {
 
     this.vaultAddreses.forEach(async (vault) => {
       const vaultTag = vaultAddressToVaultTag(Chain.id, vault)
-      const vaultContract = getContract({ abi: VaultImplAbi, address: vault, publicClient: client })
+      const vaultContract = getContract({ abi: VaultImplAbi, address: vault, client })
       const [totalAssets, totalShares] = await Promise.all([
         vaultContract.read.totalAssets(),
         vaultContract.read.totalShares(),
@@ -366,6 +372,27 @@ export class MetricsListener {
         // TODO: Collateral balance in each market (for liquidator)
       })
     })
+
+    try {
+      const pythPrices = await getRecentVaa({
+        pyth: pythConnection,
+        feeds: this.markets.map((m) => ({ providerId: m.underlyingId, minValidTime: m.validFrom })),
+      })
+      const now = Math.floor(Date.now() / 1000)
+      pythPrices.forEach((price) => {
+        const market = this.markets.find((m) => m.underlyingId === price.feedId)
+        if (!market) return
+        tracer.dogstatsd.gauge('pythHermes.delay', now - price.publishTime, {
+          chain: Chain.id,
+          market: marketAddressToMarketTag(Chain.id, market.market),
+        })
+      })
+    } catch (e) {
+      // Pass
+      console.error('Failed to get Pyth Prices', e)
+    }
+
+    console.log('Metrics Updated')
   }
 
   public async onUpkeepInterval() {
@@ -380,6 +407,7 @@ export class MetricsListener {
     for (const global of globals) {
       if (global.global.oracleFee > Big6Math.fromFloatString('500')) {
         const hash = await liquidatorSigner.writeContract({
+          chain: Chain,
           address: OracleFactoryAddress[Chain.id],
           abi: OracleFactoryAbi,
           functionName: 'fund',

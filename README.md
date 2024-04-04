@@ -1,7 +1,5 @@
 # Perennial V2 Keepers
 
-### Note - The v2 Keeper system will undergo a large change in the coming weeks. The current code will work for v2.0 but will need to be updated after v2.1 is released.
-
 ## Overview
 
 Perennial V2 Keepers are responsible for various tasks in the Perennial V2 protocol. Each of these tasks is

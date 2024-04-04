@@ -61,12 +61,12 @@ export class SettlementListener {
     const keeperOracle = getContract({
       address: market.keeperOracle,
       abi: KeeperOracleImpl,
-      publicClient: client,
+      client,
     })
     const keeperOracleFactory = getContract({
       address: market.providerFactory,
       abi: PythFactoryImpl,
-      publicClient: client,
+      client,
     })
     const callbacks = await keeperOracle.read.localCallbacks([version, market.market])
     if (callbacks.length === 0) {

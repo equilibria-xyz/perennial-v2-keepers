@@ -9,7 +9,7 @@ import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { BatchKeeperAddresses, MaxSimSizes, UseGraphEvents } from '../../constants/network'
 import { marketAddressToMarketTag } from '../../constants/addressTagging'
-import { unique } from '../../utils/arrayUtils'
+import { chunk, notEmpty, unique } from '../../utils/arrayUtils'
 
 type LiqMarketDetails = MarketDetails & {
   users: Address[]
@@ -20,7 +20,8 @@ type Invocation = AbiParametersToPrimitiveTypes<
 >[0][0]
 
 export class LiqListener {
-  public static PollingInterval = 10000 // 10s
+  public static PollingInterval = 4000 // 4s
+  public static UserRefreshInterval = 300000 // 5m
 
   protected markets: LiqMarketDetails[] = []
 
@@ -29,14 +30,9 @@ export class LiqListener {
       await getMarkets({ chainId: Chain.id, client, graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined })
     ).map((m) => ({ ...m, users: [] }))
     // Fetch users for market
-    const usersRes = await getMarketsUsers(this.markets.map((m) => m.market))
-    this.markets.forEach((m) => {
-      m.users = usersRes.marketAccountPositions
-        .filter((u) => getAddress(u.market) === m.market)
-        .map((u) => getAddress(u.account))
-
-      this.watchUpdates(m)
-    })
+    await this.refreshMarketUsers()
+    // Watch for updates
+    this.markets.forEach((m) => this.watchUpdates(m))
   }
 
   public async run() {
@@ -83,18 +79,26 @@ export class LiqListener {
     }
   }
 
+  public async refreshMarketUsers() {
+    const usersRes = await getMarketsUsers(this.markets.map((m) => m.market))
+    this.markets.forEach((m) => {
+      m.users = usersRes.marketAccountPositions
+        .filter((u) => getAddress(u.market) === m.market)
+        .map((u) => getAddress(u.account))
+    })
+  }
+
   private async watchUpdates(market: LiqMarketDetails) {
     const marketTag = marketAddressToMarketTag(Chain.id, market.market)
     console.log(`watching market ${market.market} (${marketTag})`)
 
-    // TODO: switch back to WSS client when we debug connection issues
     client.watchContractEvent({
       address: market.market,
       abi: MarketImpl,
       eventName: 'Updated',
       strict: true,
       poll: true,
-      pollingInterval: 10 * 1000,
+      pollingInterval: LiqListener.PollingInterval,
       onLogs: (logs) => {
         const users = logs.map((log) => getAddress(log.args.account))
         market.users = unique([...market.users, ...users])
@@ -103,18 +107,16 @@ export class LiqListener {
   }
 
   private async batchLiquidationSimulation(market: Address, accounts: Address[], commit: Invocation) {
-    const len = accounts.length
     const maxSimSize = MaxSimSizes[Chain.id]
+    const accountsChunked = chunk(accounts, maxSimSize)
 
-    let liqUsers: Address[] = []
-    for (let i = 0; i < len; i += maxSimSize) {
-      const lensRes = await this.runLiquidationSimulation(market, accounts.slice(i, i + maxSimSize), commit)
-
-      if (!lensRes) continue
-
-      liqUsers = liqUsers.concat(lensRes.filter((res) => res.result.success).map((res) => res.account))
-    }
-    return liqUsers
+    const liquidationSims = await Promise.all(
+      accountsChunked.map((chunk) => this.runLiquidationSimulation(market, chunk, commit)),
+    )
+    return liquidationSims
+      .filter(notEmpty)
+      .map((res) => res.filter((res) => res.result.success).map((res) => res.account))
+      .flat()
   }
 
   private async runLiquidationSimulation(market: Address, accounts: Address[], commit: Invocation) {

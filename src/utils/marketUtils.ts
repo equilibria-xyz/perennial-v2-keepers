@@ -21,7 +21,7 @@ export async function getMarkets({
   const marketAddresses = await getMarketAddresses({ client, chainId, graphClient })
 
   const marketsWithOracle = marketAddresses.map(async (marketAddress) => {
-    const marketContract = getContract({ abi: MarketImpl, address: marketAddress, publicClient: client })
+    const marketContract = getContract({ abi: MarketImpl, address: marketAddress, client })
     // Market -> Oracle
     const [oracle, payoff, token] = await Promise.all([
       marketContract.read.oracle(),
@@ -43,7 +43,7 @@ export async function getMarkets({
     })
 
     // KeeperOracle -> Feed
-    const keeperOracleContract = getContract({ abi: KeeperOracleImpl, address: keeperOracle, publicClient: client })
+    const keeperOracleContract = getContract({ abi: KeeperOracleImpl, address: keeperOracle, client })
     const [timeout, providerFactory] = await Promise.all([
       keeperOracleContract.read.timeout(),
       keeperOracleContract.read.factory(),
@@ -52,7 +52,7 @@ export async function getMarkets({
     const providerFactoryContract = getContract({
       abi: PythFactoryImpl,
       address: providerFactory,
-      publicClient: client,
+      client,
     })
 
     const feed = await getFeedIdForProvider({ client, providerFactory, keeperOracle, graphClient })

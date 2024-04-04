@@ -1,6 +1,5 @@
 import { Hex, getAddress } from 'viem'
 import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUtils'
-import { gql } from '../../../types/gql/gql'
 import { GraphDefaultPageSize, queryAll } from '../../utils/graphUtils'
 import { Chain, client, graphClient, orderSigner, pythConnection } from '../../config'
 import { BatchKeeperAbi } from '../../constants/abi'
@@ -33,17 +32,27 @@ export class OrderListener {
         feeds: this.markets.map((m) => ({ providerId: m.feed, minValidTime: m.validFrom })),
       })
 
+      const marketPrices = await Promise.all(
+        this.markets.map(async (market) => {
+          const pythData = pythPrices.find((p) => p.feedId === market.feed)
+          if (!pythData) return null
+
+          return { market, price: await transformPrice(market.payoff, pythData.price, client) }
+        }),
+      )
+      const ordersForMarkets = await this.getOrdersForMarkets(marketPrices.filter(notEmpty))
+
       const executableOrders_ = await Promise.all(
-        // TODO: batching this query will reduce our graph load
         this.markets.map((market) => {
           const pythData = pythPrices.find((p) => p.feedId === market.feed)
           if (!pythData) return null
 
-          return this.getOrdersForMarket({
+          return this.tryExecuteOrders({
             market,
             pythPrice: pythData.price,
             pythVaa: pythData.vaa,
             version: pythData.version,
+            orders: ordersForMarkets[`market_${market.market}`] || [],
           })
         }),
       )
@@ -84,45 +93,18 @@ export class OrderListener {
     }
   }
 
-  private async getOrdersForMarket({
+  private async tryExecuteOrders({
     market,
-    pythPrice,
     pythVaa,
     version,
+    orders,
   }: {
     market: MarketDetails
     version: bigint
     pythPrice: bigint
     pythVaa: Hex
+    orders: { account: string; nonce: string }[]
   }) {
-    const price = await transformPrice(market.payoff, pythPrice, client)
-
-    // Get matching orders from Graph
-    const query = gql(`
-      query OrderListener_ExecutableOrders($market: Bytes!, $price: BigInt!, $first: Int!, $skip: Int!) {
-        multiInvokerOrderPlaceds(
-          where: {
-            and: [
-              {market: $market, cancelled: false, executed: false},
-              {or: [
-                {order_comparison: 1, order_price_lte: $price},
-                {order_comparison: -1, order_price_gte: $price}
-              ]}
-            ]
-          }, first: $first, skip: $skip
-        ) { account, market, nonce }
-      }
-    `)
-
-    const { multiInvokerOrderPlaceds: orders } = await queryAll((page: number) => {
-      return graphClient.request(query, {
-        market: market.market,
-        price: price.toString(),
-        first: GraphDefaultPageSize,
-        skip: page * GraphDefaultPageSize,
-      })
-    })
-
     if (orders.length === 0) return null
 
     // Try execute orders
@@ -148,5 +130,38 @@ export class OrderListener {
 
     // Return executable orders
     return { orders: result[0].filter((r) => !!r.result.success), commit, market }
+  }
+
+  // Uses a manual graph query to pull orders. This is more efficient as it batches all the markets into a single query
+  private async getOrdersForMarkets(marketPrices: { market: MarketDetails; price: bigint }[]) {
+    const res = await queryAll(async (page: number) => {
+      const subQueries = marketPrices.map(({ market, price }) => {
+        return `
+          market_${market.market}: multiInvokerOrderPlaceds(
+            where: {
+              and: [
+                {market: "${market.market}", cancelled: false, executed: false},
+                {or: [
+                  {order_comparison: 1, order_price_lte: "${price}"},
+                  {order_comparison: -1, order_price_gte: "${price}"}
+                ]}
+              ]
+            }, first: ${GraphDefaultPageSize}, skip: ${page * GraphDefaultPageSize}
+          ) { account, market, nonce }
+      `
+      })
+
+      const query = `
+        query OrderListener_ExecutableOrders {
+          ${subQueries.join('\n')}
+        }
+      `
+
+      return graphClient.request(query) as Promise<{
+        [key: string]: { account: string; market: string; nonce: string }[]
+      }>
+    })
+
+    return res
   }
 }

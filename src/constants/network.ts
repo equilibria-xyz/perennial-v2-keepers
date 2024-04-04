@@ -95,11 +95,11 @@ export const PythUrls: {
 export const MaxSimSizes: {
   [key in SupportedChainId]: number
 } = {
-  [arbitrum.id]: 500,
-  [arbitrumSepolia.id]: 500,
-  [base.id]: 500,
-  [blastSepolia.id]: 500,
-  [hardhat.id]: 500,
+  [arbitrum.id]: 250,
+  [arbitrumSepolia.id]: 250,
+  [base.id]: 250,
+  [blastSepolia.id]: 250,
+  [hardhat.id]: 250,
 }
 
 export const UseGraphEvents: {
