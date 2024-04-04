@@ -1,4 +1,4 @@
-import { Address, Hex, PublicClient, getAbiItem, getAddress, getContract, parseAbi, zeroAddress } from 'viem'
+import { Address, PublicClient, getAbiItem, getContract, parseAbi, zeroAddress } from 'viem'
 import { MarketFactoryAddress, SupportedChainId } from '../constants/network.js'
 import { FactoryAbi } from '../constants/abi/Factory.abi.js'
 import { MarketImpl } from '../constants/abi/MarketImpl.abi.js'
@@ -6,7 +6,6 @@ import { PayoffAbi } from '../constants/abi/Payoff.abi.js'
 import { KeeperOracleImpl } from '../constants/abi/KeeperOracleImpl.abi.js'
 import { PythFactoryImpl } from '../constants/abi/PythFactoryImpl.abi.js'
 import { GraphQLClient } from 'graphql-request'
-import { gql } from '../../types/gql/gql.js'
 
 export type MarketDetails = Awaited<ReturnType<typeof getMarkets>>[number]
 export async function getMarkets({
@@ -96,13 +95,12 @@ export async function transformPrice(payoffAddress: Address, price: bigint, clie
 async function getMarketAddresses({
   client,
   chainId,
-  graphClient,
 }: {
   client: PublicClient
   chainId: SupportedChainId
   graphClient?: GraphQLClient
 }) {
-  if (graphClient) {
+  /* if (graphClient) {
     const query = gql(`
       query getMarketAddresses_instanceRegistereds($marketFactory: Bytes!) {
         instanceRegistereds(where: { factory: $marketFactory }) { instance }
@@ -114,7 +112,7 @@ async function getMarketAddresses({
     })
 
     return instanceRegistereds.map((o) => getAddress(o.instance))
-  }
+  } */
   const logs = await client.getLogs({
     address: MarketFactoryAddress[chainId],
     event: getAbiItem({ abi: FactoryAbi, name: 'InstanceRegistered' }),
@@ -130,14 +128,13 @@ async function getFeedIdForProvider({
   client,
   providerFactory,
   keeperOracle,
-  graphClient,
 }: {
   client: PublicClient
   providerFactory: Address
   keeperOracle: Address
   graphClient?: GraphQLClient
 }) {
-  if (graphClient) {
+  /* if (graphClient) {
     const query = gql(`
       query getFeedIdForProvider_pythFactoryOracleCreateds($oracle: Bytes!) {
         pythFactoryOracleCreateds(where: { oracle: $oracle }) { PythFactory_id }
@@ -149,7 +146,7 @@ async function getFeedIdForProvider({
     })
 
     return pythFactoryOracleCreateds[0]?.PythFactory_id as Hex | undefined
-  }
+  } */
 
   const feedEvents = await client.getLogs({
     address: providerFactory,

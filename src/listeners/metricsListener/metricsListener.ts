@@ -1,4 +1,4 @@
-import { Address, formatEther, formatUnits, getAddress, getContract, parseAbi } from 'viem'
+import { Address, formatEther, formatUnits, getAddress, getContract, maxUint256, parseAbi } from 'viem'
 import {
   Chain,
   oracleAccount,
@@ -11,8 +11,8 @@ import {
   pythConnection,
 } from '../../config.js'
 import {
+  BatchKeeperAddresses,
   DSUAddresses,
-  GelatoDedicatedSenderAddresses,
   MarketFactoryAddress,
   MultiInvokerAddress,
   OracleFactoryAddress,
@@ -299,6 +299,35 @@ export class MetricsListener {
         chain: Chain.id,
         market: marketTag,
       })
+
+      // Get batch keeper balance for the market (liquidations)
+      const [, batchKeeperLocals] = await client.multicall({
+        contracts: [
+          {
+            address: marketAddress,
+            abi: MarketImpl,
+            functionName: 'update',
+            args: [BatchKeeperAddresses[Chain.id], maxUint256, maxUint256, maxUint256, 0n, false],
+          },
+          {
+            address: marketAddress,
+            abi: MarketImpl,
+            functionName: 'locals',
+            args: [BatchKeeperAddresses[Chain.id]],
+          },
+        ],
+      })
+
+      if (batchKeeperLocals.result) {
+        tracer.dogstatsd.gauge(
+          'market.batchKeeper.collateral',
+          Number(formatUnits(batchKeeperLocals.result.collateral, 6)),
+          {
+            chain: Chain.id,
+            market: marketTag,
+          },
+        )
+      }
     })
 
     this.vaultAddreses.forEach(async (vault) => {
@@ -327,7 +356,7 @@ export class MetricsListener {
       { address: settlementAccount.address, role: 'settlementKeeper' },
       { address: MarketFactoryAddress[Chain.id], role: 'marketFactory' },
       { address: OracleFactoryAddress[Chain.id], role: 'oracleFactory' },
-      { address: GelatoDedicatedSenderAddresses[Chain.id], role: 'gelatoKeeper' },
+      { address: BatchKeeperAddresses[Chain.id], role: 'batchKeeper' },
     ]
 
     monitoredAddresses.forEach(({ address, role }) => {
@@ -368,8 +397,6 @@ export class MetricsListener {
           chain: Chain.id,
           role,
         })
-
-        // TODO: Collateral balance in each market (for liquidator)
       })
     })
 
