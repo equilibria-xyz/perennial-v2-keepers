@@ -1,9 +1,9 @@
 import { Address, Hex, PrivateKeyAccount, PublicClient, WalletClient } from 'viem'
 import tracer from '../../tracer.js'
-import { MultiInvokerAddress, PythFactoryAddress, SupportedChain } from '../../constants/network.js'
+import { MultiInvokerAddress, PythFactoryAddress, SupportedChain, UseGraphEvents } from '../../constants/network.js'
 import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
 import { getCommitments, getOracleAddresses } from './lib.js'
-import { pythConnection } from '../../config.js'
+import { graphClient, pythConnection } from '../../config.js'
 import { notEmpty } from '../../utils/arrayUtils.js'
 import { Big6Math } from '../../constants/Big6Math.js'
 
@@ -15,7 +15,11 @@ export class PythOracleListener {
   constructor(protected chain: SupportedChain, protected client: PublicClient) {}
 
   public async init() {
-    this.oracleAddresses = await getOracleAddresses(this.client, PythFactoryAddress[this.chain.id])
+    this.oracleAddresses = await getOracleAddresses({
+      client: this.client,
+      pythFactoryAddress: PythFactoryAddress[this.chain.id],
+      graphClient: UseGraphEvents[this.chain.id] ? graphClient : undefined,
+    })
     console.log('Oracle Addresses:', this.oracleAddresses.map(({ oracle }) => oracle).join(', '))
   }
 

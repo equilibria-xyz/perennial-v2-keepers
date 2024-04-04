@@ -1,10 +1,11 @@
 import { getContract } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
-import { Chain, client, settlementSigner } from '../../config'
+import { Chain, client, graphClient, settlementSigner } from '../../config'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi'
 import { PythFactoryImpl } from '../../constants/abi'
+import { UseGraphEvents } from '../../constants/network'
 
 export class SettlementListener {
   public static PollingInterval = 60000 // 60s. Event listeners should handle most updates, use polling as a backup
@@ -13,7 +14,11 @@ export class SettlementListener {
   protected markets: MarketDetails[] = []
 
   public async init() {
-    this.markets = await getMarkets(Chain.id, client)
+    this.markets = await getMarkets({
+      chainId: Chain.id,
+      client,
+      graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined,
+    })
   }
 
   public async listen() {

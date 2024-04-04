@@ -1,16 +1,18 @@
-import { createPublicClient, createWalletClient, webSocket, http, Hex } from 'viem'
+import { createPublicClient, createWalletClient, webSocket, http, Hex, PublicClient } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { PythUrls, SupportedChainId, SupportedChains } from './constants/network.js'
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
 import { GraphQLClient } from 'graphql-request'
-import { arbitrum, arbitrumGoerli, arbitrumSepolia, hardhat } from 'viem/chains'
+import { arbitrum, arbitrumSepolia, base, hardhat } from 'viem/chains'
+import { blastSepolia } from './constants/customNetworks.js'
 
 export const NodeUrls: {
   [key in SupportedChainId]: string
 } = {
   [arbitrum.id]: process.env.ARBITRUM_NODE_URL || '',
-  [arbitrumGoerli.id]: process.env.ARBITRUM_GOERLI_NODE_URL || '',
   [arbitrumSepolia.id]: process.env.ARBITRUM_SEPOLIA_NODE_URL || '',
+  [base.id]: process.env.BASE_NODE_URL || '',
+  [blastSepolia.id]: process.env.BLAST_SEPOLIA_NODE_URL || '',
   [hardhat.id]: process.env.HARDHAT_NODE_URL || '',
 }
 
@@ -18,8 +20,9 @@ export const GraphUrls: {
   [key in SupportedChainId]: string
 } = {
   [arbitrum.id]: process.env.ARBITRUM_GRAPH_URL || '',
-  [arbitrumGoerli.id]: process.env.ARBITRUM_GOERLI_GRAPH_URL || '',
   [arbitrumSepolia.id]: process.env.ARBITRUM_SEPOLIA_GRAPH_URL || '',
+  [base.id]: process.env.BASE_GRAPH_URL || '',
+  [blastSepolia.id]: process.env.BLAST_SEPOLIA_GRAPH_URL || '',
   [hardhat.id]: process.env.ARBITRUM_GOERLI_GRAPH_URL || '',
 }
 
@@ -29,7 +32,7 @@ const _chain = SupportedChains.find((c) => c.id === Number(_chainId))
 if (!_chain) throw new Error('Invalid chainId argument')
 
 export const Chain = _chain
-export const IsMainnet = !([arbitrumGoerli.id, arbitrumSepolia.id] as SupportedChainId[]).includes(Chain.id)
+export const IsMainnet = !([arbitrumSepolia.id, blastSepolia.id] as SupportedChainId[]).includes(Chain.id)
 
 export const client = createPublicClient({
   chain: Chain,
@@ -37,7 +40,7 @@ export const client = createPublicClient({
   batch: {
     multicall: true,
   },
-})
+}) as PublicClient
 
 export const wssClient = createPublicClient({
   chain: Chain,

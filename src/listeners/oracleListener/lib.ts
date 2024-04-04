@@ -1,15 +1,18 @@
 // Contains the shared logic between the Gelato keeper and non-Gelato keeper.
 // Must not access process.env or process.argv.
 // Must not use modules that rely on built nodejs modules.
-import { Address, Hex, PublicClient, getAbiItem, getContract } from 'viem'
+import { Address, Hex, PublicClient, getAbiItem, getAddress, getContract } from 'viem'
 import { Buffer } from 'buffer'
 import { PythFactoryImpl } from '../../constants/abi/PythFactoryImpl.abi.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
 import { notEmpty, range } from '../../utils/arrayUtils.js'
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
 import { Big6Math } from '../../constants/Big6Math.js'
-import { buildCommit2, getVaaWithBackupRetry } from '../../utils/pythUtils.js'
+import { buildCommit, getVaaWithBackupRetry } from '../../utils/pythUtils.js'
 import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi.js'
+import { GraphQLClient } from 'graphql-request'
+import { graphClient } from '../../config.js'
+import { gql } from '../../../types/gql/gql.js'
 
 export type Commitment = {
   action: number
@@ -22,7 +25,26 @@ export type CommitmentWithMetrics = {
   providerTag: string
 }
 
-export async function getOracleAddresses(client: PublicClient, pythFactoryAddress: Address) {
+export async function getOracleAddresses({
+  client,
+  pythFactoryAddress,
+}: {
+  client: PublicClient
+  pythFactoryAddress: Address
+  graphClient?: GraphQLClient
+}) {
+  // If a Graph Client is passed in, use it to pull events instead of logs
+  if (graphClient) {
+    const query = gql(`
+      query getOracleAddresses_pythFactoryOracleCreateds {
+        pythFactoryOracleCreateds { oracle, PythFactory_id }
+      }
+    `)
+
+    const { pythFactoryOracleCreateds } = await graphClient.request(query)
+    return pythFactoryOracleCreateds.map((o) => ({ id: o.PythFactory_id as Hex, oracle: getAddress(o.oracle) }))
+  }
+
   const logs = await client.getLogs({
     address: pythFactoryAddress,
     event: getAbiItem({ abi: PythFactoryImpl, name: 'OracleCreated' }),
@@ -138,7 +160,7 @@ export async function getCommitments(
       }
 
       commitments.push({
-        commitment: buildCommit2({
+        commitment: buildCommit({
           oracleProviderFactory: factoryAddress,
           version: vaa.value.version,
           value: 1n,

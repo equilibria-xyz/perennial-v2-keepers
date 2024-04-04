@@ -1,23 +1,10 @@
 import { getAddress } from 'viem'
 import { SupportedChainId } from './network.js'
-import { arbitrum, arbitrumGoerli, arbitrumSepolia } from 'viem/chains'
+import { arbitrum, arbitrumSepolia, base } from 'viem/chains'
 
 export function marketAddressToMarketTag(chainId: SupportedChainId, market_: string) {
   const market = getAddress(market_)
   switch (chainId) {
-    case arbitrumGoerli.id: {
-      return (
-        {
-          [getAddress('0xf5Ae549Af3b600086F555aA4e41f3BB8A2EfEf4c')]: 'eth',
-          [getAddress('0x55Dc0A47Eb29D8dbeADECf864c7dD64196eFF2a2')]: 'btc',
-          [getAddress('0x8b8156F3ed0b64031FAC75776ae6AB37867Fd810')]: 'msqth',
-          [getAddress('0x4443Ec03A347394D2CA331638B809A17617497af')]: 'sol',
-          [getAddress('0x40a4b331E95D409cC9CEdDcA9eFDf5ff58da4344')]: 'matic',
-          [getAddress('0xCF5cc9DC79F5172594E84f9d034D9d74d5F51007')]: 'tia',
-          [getAddress('0xe2bd1E1d2Ae22857508E9d59fb41FDCEEeda8EDD')]: 'msqbtc',
-        }[market] ?? market
-      )
-    }
     case arbitrumSepolia.id: {
       return (
         {
@@ -44,6 +31,14 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
         }[market] ?? market
       )
     }
+    case base.id: {
+      return (
+        {
+          [getAddress('0xfeD3725B449c79791e9771E069FC0c75749FE385')]: 'eth',
+          [getAddress('0x9BB798317F002682A33A686598EE87bfB91Be675')]: 'btc',
+        }[market] ?? market
+      )
+    }
   }
 
   return market
@@ -52,14 +47,6 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
 export function vaultAddressToVaultTag(chainId: SupportedChainId, vault_: string) {
   const vault = getAddress(vault_)
   switch (chainId) {
-    case arbitrumGoerli.id: {
-      return (
-        {
-          [getAddress('0xA86947dB4C5b13adb90aCaCb6630553f8EBcea76')]: 'aster',
-          [getAddress('0xF4cf92427E2CFa4410D1009f7B2c3eE3E9367f0d')]: 'begonia',
-        }[vault] ?? vault
-      )
-    }
     case arbitrum.id: {
       return (
         {
@@ -76,17 +63,6 @@ export function vaultAddressToVaultTag(chainId: SupportedChainId, vault_: string
 export function oracleProviderAddressToOracleProviderTag(chainId: number, oracle_: string) {
   const oracle = getAddress(oracle_)
   switch (chainId) {
-    case arbitrumGoerli.id: {
-      return (
-        {
-          [getAddress('0xeE87f2aD15a27CEed7841Bb5d7Be4296De9eb8e2')]: 'pyth-eth',
-          [getAddress('0xABc2F6713Bd694cc7AE05dC142C304DA1d99E25f')]: 'pyth-btc',
-          [getAddress('0x12357113094CBD5E1d2028249EC2cE7b1a4Fa040')]: 'pyth-sol',
-          [getAddress('0x434ecEec497162007c15931A562a4ce8eaF0696E')]: 'pyth-matic',
-          [getAddress('0x8AF0fE93EB7688bbB0335B756877208FaD913B91')]: 'pyth-tia',
-        }[oracle] ?? oracle
-      )
-    }
     case arbitrum.id: {
       return (
         {
@@ -101,6 +77,14 @@ export function oracleProviderAddressToOracleProviderTag(chainId: number, oracle
           [getAddress('0xa872d117867187220d45c142611dea5f6d35c718')]: 'pyth-xrp',
           [getAddress('0xf7183e7d8ebc7bd07c5855598b446adec78f684f')]: 'pyth-arb',
           [getAddress('0xcD185bd1040Ff4B42b9108C740B57655A214Cbd2')]: 'pyth-jup',
+        }[oracle] ?? oracle
+      )
+    }
+    case base.id: {
+      return (
+        {
+          [getAddress('0x171B079ab920AC927220bBdF5505c5a77e42f24F')]: 'pyth-eth',
+          [getAddress('0x1cbaec51D32ae9BB2f607D1368428FE77588bf6C')]: 'pyth-btc',
         }[oracle] ?? oracle
       )
     }
