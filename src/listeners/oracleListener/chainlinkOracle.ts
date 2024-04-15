@@ -4,7 +4,7 @@ import { MultiInvokerAddress, ChainlinkFactoryAddress, SupportedChain } from '..
 import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
 import { getOracleAddresses } from './lib.js'
-import { buildCommit2 } from '../../utils/pythUtils.js'
+import { buildCommit } from '../../utils/pythUtils.js'
 import { notEmpty, range } from '../../utils/arrayUtils.js'
 import { Big6Math } from '../../constants/Big6Math.js'
 import 'dotenv/config'
@@ -31,7 +31,7 @@ export class ChainlinkOracleListener {
   constructor(protected chain: SupportedChain, protected client: PublicClient) {}
 
   public async init() {
-    this.oracleAddresses = await getOracleAddresses(this.client, ChainlinkFactoryAddress[this.chain.id])
+    this.oracleAddresses = await getOracleAddresses({ client: this.client, pythFactoryAddress: ChainlinkFactoryAddress[this.chain.id] })
     console.log('Oracle Addresses:', this.oracleAddresses.map(({ oracle }) => oracle).join(', '))
   }
 
@@ -101,12 +101,12 @@ export class ChainlinkOracleListener {
       const factoryContract = getContract({
         address: ChainlinkFactoryAddress[this.chain.id],
         abi: ChainlinkFactoryImpl,
-        client: this.client,
+        publicClient: this.client,
       })
       const oracleContract = getContract({
         address: oracle,
         abi: KeeperOracleImpl,
-        client: this.client,
+        publicClient: this.client,
       })
 
       const [MinDelay, MaxDelay, GracePeriod, nextVersion, global, underlyingId] = await Promise.all([
@@ -196,7 +196,7 @@ export class ChainlinkOracleListener {
         }
 
         commitments.push({
-          commitment: buildCommit2({
+          commitment: buildCommit({
             oracleProviderFactory: ChainlinkFactoryAddress[this.chain.id],
             version: vaa.value.version,
             value: 1n,

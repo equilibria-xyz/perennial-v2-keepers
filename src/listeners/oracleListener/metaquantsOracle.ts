@@ -4,11 +4,11 @@ import { MultiInvokerAddress, MetaQuantsFactoryAddress, SupportedChain } from '.
 import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
 import { getOracleAddresses } from './lib.js'
-import { buildCommit2 } from '../../utils/pythUtils.js'
+import { buildCommit } from '../../utils/pythUtils.js'
 import { notEmpty, range } from '../../utils/arrayUtils.js'
 import { Big6Math } from '../../constants/Big6Math.js'
 import 'dotenv/config'
-import { MetaQuantsClient } from './metaQuantsClient.js'
+import { MetaQuantsClient } from './metaquantsClient.js'
 import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi.js'
 import { MetaQuantsFactoryImpl } from '../../constants/abi/MetaQuantsFactoryImpl.abi.js'
 
@@ -32,7 +32,7 @@ export class MetaQuantsOracleListener {
   constructor(protected chain: SupportedChain, protected client: PublicClient) {}
 
   public async init() {
-    this.oracleAddresses = await getOracleAddresses(this.client, MetaQuantsFactoryAddress[this.chain.id])
+    this.oracleAddresses = await getOracleAddresses({ client: this.client, pythFactoryAddress: MetaQuantsFactoryAddress[this.chain.id] })
     console.log('Oracle Addresses:', this.oracleAddresses.map(({ oracle }) => oracle).join(', '))
   }
 
@@ -102,12 +102,12 @@ export class MetaQuantsOracleListener {
       const factoryContract = getContract({
         address: MetaQuantsFactoryAddress[this.chain.id],
         abi: MetaQuantsFactoryImpl,
-        client: this.client,
+        publicClient: this.client,
       })
       const oracleContract = getContract({
         address: oracle,
         abi: KeeperOracleImpl,
-        client: this.client,
+        publicClient: this.client,
       })
 
       const [MinDelay, MaxDelay, GracePeriod, nextVersion, global, underlyingId] = await Promise.all([
@@ -219,7 +219,7 @@ export class MetaQuantsOracleListener {
         }
 
         commitments.push({
-          commitment: buildCommit2({
+          commitment: buildCommit({
             oracleProviderFactory: MetaQuantsFactoryAddress[this.chain.id],
             version: vaa.value.version,
             value: 1n,

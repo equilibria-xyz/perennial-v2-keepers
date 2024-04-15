@@ -19,18 +19,20 @@ export const PythFactoryAddress: AddressMapping = {
 }
 
 export const ChainlinkFactoryAddress: AddressMapping = {
-  // TODO: Fill in `arbitrum.id` with real address.
+  // TODO: Fill in `arbitrum/base/blastSepolia.id` with real address.
   [arbitrum.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
-  [arbitrumGoerli.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
   [arbitrumSepolia.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
+  [base.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
+  [blastSepolia.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
   [hardhat.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
 }
 
 export const MetaQuantsFactoryAddress: AddressMapping = {
-  // TODO: Fill in `arbitrum.id` with real address.
+  // TODO: Fill in `arbitrum/base/blastSepolia.id` with real address.
   [arbitrum.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
-  [arbitrumGoerli.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
   [arbitrumSepolia.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
+  [base.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
+  [blastSepolia.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
   [hardhat.id]: getAddress('0x551460955614d8f7D7951B1C50AEc162cD6b60c0'),
 }
 

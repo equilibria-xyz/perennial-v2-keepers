@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import './tracer.js'
 import { PythOracleListener } from './listeners/oracleListener/pythOracle.js'
-import { MetaQuantsOracleListener } from './listeners/oracleListener/metaQuantsOracle.js'
+import { MetaQuantsOracleListener } from './listeners/oracleListener/metaquantsOracle.js'
 import { Chain, Task, TaskType, oracleAccount, client, oracleSigner, IsMainnet } from './config.js'
 import { MetricsListener } from './listeners/metricsListener/metricsListener.js'
 import deployBatchKeeper from './scripts/DeployBatchKeeper.js'
