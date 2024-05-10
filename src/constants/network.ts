@@ -76,7 +76,7 @@ export const GelatoDedicatedSenderAddresses: AddressMapping = {
 
 export const BatchKeeperAddresses: AddressMapping = {
   [arbitrum.id]: getAddress('0xB092493412FCae3432487Efb33204F7B4FeF12ff'),
-  [arbitrumSepolia.id]: getAddress('0x61D0370f9db0b99282aE755c986E40C512DE577D'),
+  [arbitrumSepolia.id]: getAddress('0xe1639908682917e2e16fe8cf762d45c3da5cb193'),
   [base.id]: getAddress('0x80633b66788EBAA3325d38D48152Ea6112dEBC07'),
   [blastSepolia.id]: getAddress('0x3aABc1b29FD644c87AC1a7F87dA9Bf7Bd3470925'),
   [hardhat.id]: zeroAddress,
