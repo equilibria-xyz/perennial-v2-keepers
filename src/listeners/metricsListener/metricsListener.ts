@@ -243,8 +243,7 @@ export class MetricsListener {
         client.readContract({
           address: marketAddress,
           abi: MarketImpl,
-          functionName: 'pendingPosition',
-          args: [global.currentId],
+          functionName: 'position',
         }),
       ])
 

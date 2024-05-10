@@ -72,7 +72,8 @@ contract BatchKeeper is Ownable {
 
             try market.update(accounts[i], CLOSE_POSITION, CLOSE_POSITION, CLOSE_POSITION, Fixed6Lib.ZERO, true) {
                 results[i].result.success = true;
-                results[i].reward = market.locals(accounts[i]).protectionAmount;
+                // TODO: Add reward calculation
+                // results[i].reward = market.locals(accounts[i]).protectionAmount;
             } catch (bytes memory reason) {
                 results[i].result.reason = reason;
             }

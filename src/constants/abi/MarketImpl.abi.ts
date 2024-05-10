@@ -1,12 +1,7 @@
 export const MarketImpl = [
   {
     inputs: [],
-    name: 'CurveMath6OutOfBoundsError',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'DivisionByZero',
+    name: 'Adiabatic6ZeroScaleError',
     type: 'error',
   },
   {
@@ -18,11 +13,6 @@ export const MarketImpl = [
       },
     ],
     name: 'Fixed6OverflowError',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'GlobalStorageInvalidError',
     type: 'error',
   },
   {
@@ -140,6 +130,11 @@ export const MarketImpl = [
     type: 'error',
   },
   {
+    inputs: [],
+    name: 'MarketInvalidReferrerError',
+    type: 'error',
+  },
+  {
     inputs: [
       {
         internalType: 'uint256',
@@ -192,12 +187,17 @@ export const MarketImpl = [
   },
   {
     inputs: [],
+    name: 'MarketSettleOnlyError',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'MarketStalePriceError',
     type: 'error',
   },
   {
     inputs: [],
-    name: 'PositionStorageInvalidError',
+    name: 'OrderStorageInvalidError',
     type: 'error',
   },
   {
@@ -232,11 +232,6 @@ export const MarketImpl = [
     type: 'error',
   },
   {
-    inputs: [],
-    name: 'VersionStorageInvalidError',
-    type: 'error',
-  },
-  {
     anonymous: false,
     inputs: [
       {
@@ -246,54 +241,119 @@ export const MarketImpl = [
         type: 'address',
       },
       {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'fromOracleVersion',
-        type: 'uint256',
-      },
-      {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'toOracleVersion',
-        type: 'uint256',
-      },
-      {
         indexed: false,
         internalType: 'uint256',
-        name: 'fromPosition',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'toPosition',
+        name: 'orderId',
         type: 'uint256',
       },
       {
         components: [
           {
-            internalType: 'Fixed6',
-            name: 'collateralAmount',
-            type: 'int256',
+            internalType: 'uint256',
+            name: 'timestamp',
+            type: 'uint256',
           },
           {
-            internalType: 'UFixed6',
-            name: 'rewardAmount',
+            internalType: 'uint256',
+            name: 'orders',
             type: 'uint256',
           },
           {
             internalType: 'Fixed6',
-            name: 'positionFee',
+            name: 'collateral',
             type: 'int256',
           },
           {
             internalType: 'UFixed6',
-            name: 'keeper',
+            name: 'makerPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'protection',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerReferral',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'takerReferral',
             type: 'uint256',
           },
         ],
         indexed: false,
-        internalType: 'struct LocalAccumulationResult',
+        internalType: 'struct Order',
+        name: 'order',
+        type: 'tuple',
+      },
+      {
+        components: [
+          {
+            internalType: 'Fixed6',
+            name: 'collateral',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'linearFee',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'proportionalFee',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'adiabaticFee',
+            type: 'int256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'settlementFee',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'liquidationFee',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'subtractiveFee',
+            type: 'uint256',
+          },
+        ],
+        indexed: false,
+        internalType: 'struct CheckpointAccumulationResult',
         name: 'accumulationResult',
         type: 'tuple',
       },
@@ -338,6 +398,25 @@ export const MarketImpl = [
       },
       {
         indexed: false,
+        internalType: 'Fixed6',
+        name: 'amount',
+        type: 'int256',
+      },
+    ],
+    name: 'ExposureClaimed',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+      {
+        indexed: false,
         internalType: 'UFixed6',
         name: 'amount',
         type: 'uint256',
@@ -363,67 +442,84 @@ export const MarketImpl = [
     anonymous: false,
     inputs: [
       {
+        indexed: false,
+        internalType: 'contract IOracleProvider',
+        name: 'newOracle',
+        type: 'address',
+      },
+    ],
+    name: 'OracleUpdated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
         indexed: true,
         internalType: 'address',
         name: 'account',
         type: 'address',
       },
       {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'version',
-        type: 'uint256',
-      },
-      {
         components: [
           {
-            internalType: 'Fixed6',
-            name: 'maker',
-            type: 'int256',
+            internalType: 'uint256',
+            name: 'timestamp',
+            type: 'uint256',
           },
           {
-            internalType: 'Fixed6',
-            name: 'long',
-            type: 'int256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'short',
-            type: 'int256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'net',
-            type: 'int256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'skew',
+            internalType: 'uint256',
+            name: 'orders',
             type: 'uint256',
           },
           {
             internalType: 'Fixed6',
-            name: 'impact',
-            type: 'int256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'utilization',
-            type: 'int256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'efficiency',
-            type: 'int256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'fee',
+            name: 'collateral',
             type: 'int256',
           },
           {
             internalType: 'UFixed6',
-            name: 'keeper',
+            name: 'makerPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'protection',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerReferral',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'takerReferral',
             type: 'uint256',
           },
         ],
@@ -431,12 +527,6 @@ export const MarketImpl = [
         internalType: 'struct Order',
         name: 'order',
         type: 'tuple',
-      },
-      {
-        indexed: false,
-        internalType: 'Fixed6',
-        name: 'collateral',
-        type: 'int256',
       },
     ],
     name: 'OrderCreated',
@@ -484,21 +574,6 @@ export const MarketImpl = [
           },
           {
             internalType: 'UFixed6',
-            name: 'makerRewardRate',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'longRewardRate',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'shortRewardRate',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
             name: 'settlementFee',
             type: 'uint256',
           },
@@ -517,6 +592,11 @@ export const MarketImpl = [
             name: 'closed',
             type: 'bool',
           },
+          {
+            internalType: 'bool',
+            name: 'settle',
+            type: 'bool',
+          },
         ],
         indexed: false,
         internalType: 'struct MarketParameter',
@@ -531,40 +611,120 @@ export const MarketImpl = [
     anonymous: false,
     inputs: [
       {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'fromOracleVersion',
-        type: 'uint256',
-      },
-      {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'toOracleVersion',
-        type: 'uint256',
-      },
-      {
         indexed: false,
         internalType: 'uint256',
-        name: 'fromPosition',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'toPosition',
+        name: 'orderId',
         type: 'uint256',
       },
       {
         components: [
           {
+            internalType: 'uint256',
+            name: 'timestamp',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'orders',
+            type: 'uint256',
+          },
+          {
             internalType: 'Fixed6',
-            name: 'positionFeeMaker',
+            name: 'collateral',
             type: 'int256',
           },
           {
             internalType: 'UFixed6',
-            name: 'positionFeeFee',
+            name: 'makerPos',
             type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'protection',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerReferral',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'takerReferral',
+            type: 'uint256',
+          },
+        ],
+        indexed: false,
+        internalType: 'struct Order',
+        name: 'order',
+        type: 'tuple',
+      },
+      {
+        components: [
+          {
+            internalType: 'UFixed6',
+            name: 'positionFee',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'positionFeeMaker',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'positionFeeProtocol',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'positionFeeSubtractive',
+            type: 'uint256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'positionFeeExposure',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'positionFeeExposureMaker',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'positionFeeExposureProtocol',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'positionFeeImpact',
+            type: 'int256',
           },
           {
             internalType: 'Fixed6',
@@ -623,17 +783,12 @@ export const MarketImpl = [
           },
           {
             internalType: 'UFixed6',
-            name: 'rewardMaker',
+            name: 'settlementFee',
             type: 'uint256',
           },
           {
             internalType: 'UFixed6',
-            name: 'rewardLong',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'rewardShort',
+            name: 'liquidationFee',
             type: 'uint256',
           },
         ],
@@ -644,25 +799,6 @@ export const MarketImpl = [
       },
     ],
     name: 'PositionProcessed',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'account',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'UFixed6',
-        name: 'amount',
-        type: 'uint256',
-      },
-    ],
-    name: 'RewardClaimed',
     type: 'event',
   },
   {
@@ -681,29 +817,58 @@ export const MarketImpl = [
             type: 'uint256',
           },
           {
-            internalType: 'UFixed6',
+            components: [
+              {
+                internalType: 'UFixed6',
+                name: 'linearFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'proportionalFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'adiabaticFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'scale',
+                type: 'uint256',
+              },
+            ],
+            internalType: 'struct LinearAdiabatic6',
             name: 'takerFee',
-            type: 'uint256',
+            type: 'tuple',
           },
           {
-            internalType: 'UFixed6',
-            name: 'takerSkewFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'takerImpactFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
+            components: [
+              {
+                internalType: 'UFixed6',
+                name: 'linearFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'proportionalFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'adiabaticFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'scale',
+                type: 'uint256',
+              },
+            ],
+            internalType: 'struct InverseAdiabatic6',
             name: 'makerFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'makerImpactFee',
-            type: 'uint256',
+            type: 'tuple',
           },
           {
             internalType: 'UFixed6',
@@ -718,16 +883,6 @@ export const MarketImpl = [
           {
             internalType: 'UFixed6',
             name: 'liquidationFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'minLiquidationFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'maxLiquidationFee',
             type: 'uint256',
           },
           {
@@ -765,9 +920,14 @@ export const MarketImpl = [
                 type: 'uint256',
               },
               {
-                internalType: 'UFixed6',
+                internalType: 'Fixed6',
+                name: 'min',
+                type: 'int256',
+              },
+              {
+                internalType: 'Fixed6',
                 name: 'max',
-                type: 'uint256',
+                type: 'int256',
               },
             ],
             internalType: 'struct PController6',
@@ -782,11 +942,6 @@ export const MarketImpl = [
           {
             internalType: 'UFixed6',
             name: 'minMaintenance',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'skewScale',
             type: 'uint256',
           },
           {
@@ -860,9 +1015,68 @@ export const MarketImpl = [
         name: 'protect',
         type: 'bool',
       },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'referrer',
+        type: 'address',
+      },
     ],
     name: 'Updated',
     type: 'event',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: 'version',
+        type: 'uint256',
+      },
+    ],
+    name: 'checkpoints',
+    outputs: [
+      {
+        components: [
+          {
+            internalType: 'Fixed6',
+            name: 'tradeFee',
+            type: 'int256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'settlementFee',
+            type: 'uint256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'transfer',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'collateral',
+            type: 'int256',
+          },
+        ],
+        internalType: 'struct Checkpoint',
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'claimExposure',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
     inputs: [],
@@ -921,6 +1135,16 @@ export const MarketImpl = [
             type: 'uint256',
           },
           {
+            internalType: 'Fixed6',
+            name: 'latestPrice',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'exposure',
+            type: 'int256',
+          },
+          {
             components: [
               {
                 internalType: 'Fixed6',
@@ -936,11 +1160,6 @@ export const MarketImpl = [
             internalType: 'struct PAccumulator6',
             name: 'pAccumulator',
             type: 'tuple',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'latestPrice',
-            type: 'int256',
           },
         ],
         internalType: 'struct Global',
@@ -965,11 +1184,6 @@ export const MarketImpl = [
             name: 'oracle',
             type: 'address',
           },
-          {
-            internalType: 'contract IPayoffProvider',
-            name: 'payoff',
-            type: 'address',
-          },
         ],
         internalType: 'struct IMarket.MarketDefinition',
         name: 'definition_',
@@ -979,6 +1193,30 @@ export const MarketImpl = [
     name: 'initialize',
     outputs: [],
     stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    name: 'liquidators',
+    outputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -1010,22 +1248,7 @@ export const MarketImpl = [
           },
           {
             internalType: 'UFixed6',
-            name: 'reward',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'protection',
-            type: 'uint256',
-          },
-          {
-            internalType: 'address',
-            name: 'protectionInitiator',
-            type: 'address',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'protectionAmount',
+            name: 'claimable',
             type: 'uint256',
           },
         ],
@@ -1093,21 +1316,6 @@ export const MarketImpl = [
           },
           {
             internalType: 'UFixed6',
-            name: 'makerRewardRate',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'longRewardRate',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'shortRewardRate',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
             name: 'settlementFee',
             type: 'uint256',
           },
@@ -1126,6 +1334,11 @@ export const MarketImpl = [
             name: 'closed',
             type: 'bool',
           },
+          {
+            internalType: 'bool',
+            name: 'settle',
+            type: 'bool',
+          },
         ],
         internalType: 'struct MarketParameter',
         name: '',
@@ -1140,9 +1353,84 @@ export const MarketImpl = [
     name: 'payoff',
     outputs: [
       {
-        internalType: 'contract IPayoffProvider',
+        internalType: 'address',
         name: '',
         type: 'address',
+      },
+    ],
+    stateMutability: 'pure',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'pending',
+    outputs: [
+      {
+        components: [
+          {
+            internalType: 'uint256',
+            name: 'timestamp',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'orders',
+            type: 'uint256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'collateral',
+            type: 'int256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'protection',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerReferral',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'takerReferral',
+            type: 'uint256',
+          },
+        ],
+        internalType: 'struct Order',
+        name: '',
+        type: 'tuple',
       },
     ],
     stateMutability: 'view',
@@ -1156,7 +1444,7 @@ export const MarketImpl = [
         type: 'uint256',
       },
     ],
-    name: 'pendingPosition',
+    name: 'pendingOrder',
     outputs: [
       {
         components: [
@@ -1166,28 +1454,8 @@ export const MarketImpl = [
             type: 'uint256',
           },
           {
-            internalType: 'UFixed6',
-            name: 'maker',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'long',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'short',
-            type: 'uint256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'fee',
-            type: 'int256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'keeper',
+            internalType: 'uint256',
+            name: 'orders',
             type: 'uint256',
           },
           {
@@ -1196,34 +1464,52 @@ export const MarketImpl = [
             type: 'int256',
           },
           {
-            internalType: 'Fixed6',
-            name: 'delta',
-            type: 'int256',
+            internalType: 'UFixed6',
+            name: 'makerPos',
+            type: 'uint256',
           },
           {
-            components: [
-              {
-                internalType: 'Fixed6',
-                name: 'maker',
-                type: 'int256',
-              },
-              {
-                internalType: 'Fixed6',
-                name: 'long',
-                type: 'int256',
-              },
-              {
-                internalType: 'Fixed6',
-                name: 'short',
-                type: 'int256',
-              },
-            ],
-            internalType: 'struct Invalidation',
-            name: 'invalidation',
-            type: 'tuple',
+            internalType: 'UFixed6',
+            name: 'makerNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'protection',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerReferral',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'takerReferral',
+            type: 'uint256',
           },
         ],
-        internalType: 'struct Position',
+        internalType: 'struct Order',
         name: '',
         type: 'tuple',
       },
@@ -1244,7 +1530,7 @@ export const MarketImpl = [
         type: 'uint256',
       },
     ],
-    name: 'pendingPositions',
+    name: 'pendingOrders',
     outputs: [
       {
         components: [
@@ -1254,28 +1540,8 @@ export const MarketImpl = [
             type: 'uint256',
           },
           {
-            internalType: 'UFixed6',
-            name: 'maker',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'long',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'short',
-            type: 'uint256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'fee',
-            type: 'int256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'keeper',
+            internalType: 'uint256',
+            name: 'orders',
             type: 'uint256',
           },
           {
@@ -1284,34 +1550,133 @@ export const MarketImpl = [
             type: 'int256',
           },
           {
+            internalType: 'UFixed6',
+            name: 'makerPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'protection',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerReferral',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'takerReferral',
+            type: 'uint256',
+          },
+        ],
+        internalType: 'struct Order',
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+    ],
+    name: 'pendings',
+    outputs: [
+      {
+        components: [
+          {
+            internalType: 'uint256',
+            name: 'timestamp',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'orders',
+            type: 'uint256',
+          },
+          {
             internalType: 'Fixed6',
-            name: 'delta',
+            name: 'collateral',
             type: 'int256',
           },
           {
-            components: [
-              {
-                internalType: 'Fixed6',
-                name: 'maker',
-                type: 'int256',
-              },
-              {
-                internalType: 'Fixed6',
-                name: 'long',
-                type: 'int256',
-              },
-              {
-                internalType: 'Fixed6',
-                name: 'short',
-                type: 'int256',
-              },
-            ],
-            internalType: 'struct Invalidation',
-            name: 'invalidation',
-            type: 'tuple',
+            internalType: 'UFixed6',
+            name: 'makerPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'longNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortPos',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'shortNeg',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'protection',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'makerReferral',
+            type: 'uint256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'takerReferral',
+            type: 'uint256',
           },
         ],
-        internalType: 'struct Position',
+        internalType: 'struct Order',
         name: '',
         type: 'tuple',
       },
@@ -1344,48 +1709,6 @@ export const MarketImpl = [
             internalType: 'UFixed6',
             name: 'short',
             type: 'uint256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'fee',
-            type: 'int256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'keeper',
-            type: 'uint256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'collateral',
-            type: 'int256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'delta',
-            type: 'int256',
-          },
-          {
-            components: [
-              {
-                internalType: 'Fixed6',
-                name: 'maker',
-                type: 'int256',
-              },
-              {
-                internalType: 'Fixed6',
-                name: 'long',
-                type: 'int256',
-              },
-              {
-                internalType: 'Fixed6',
-                name: 'short',
-                type: 'int256',
-              },
-            ],
-            internalType: 'struct Invalidation',
-            name: 'invalidation',
-            type: 'tuple',
           },
         ],
         internalType: 'struct Position',
@@ -1428,52 +1751,34 @@ export const MarketImpl = [
             name: 'short',
             type: 'uint256',
           },
-          {
-            internalType: 'Fixed6',
-            name: 'fee',
-            type: 'int256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'keeper',
-            type: 'uint256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'collateral',
-            type: 'int256',
-          },
-          {
-            internalType: 'Fixed6',
-            name: 'delta',
-            type: 'int256',
-          },
-          {
-            components: [
-              {
-                internalType: 'Fixed6',
-                name: 'maker',
-                type: 'int256',
-              },
-              {
-                internalType: 'Fixed6',
-                name: 'long',
-                type: 'int256',
-              },
-              {
-                internalType: 'Fixed6',
-                name: 'short',
-                type: 'int256',
-              },
-            ],
-            internalType: 'struct Invalidation',
-            name: 'invalidation',
-            type: 'tuple',
-          },
         ],
         internalType: 'struct Position',
         name: '',
         type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    name: 'referrers',
+    outputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
       },
     ],
     stateMutability: 'view',
@@ -1496,29 +1801,58 @@ export const MarketImpl = [
             type: 'uint256',
           },
           {
-            internalType: 'UFixed6',
+            components: [
+              {
+                internalType: 'UFixed6',
+                name: 'linearFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'proportionalFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'adiabaticFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'scale',
+                type: 'uint256',
+              },
+            ],
+            internalType: 'struct LinearAdiabatic6',
             name: 'takerFee',
-            type: 'uint256',
+            type: 'tuple',
           },
           {
-            internalType: 'UFixed6',
-            name: 'takerSkewFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'takerImpactFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
+            components: [
+              {
+                internalType: 'UFixed6',
+                name: 'linearFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'proportionalFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'adiabaticFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'scale',
+                type: 'uint256',
+              },
+            ],
+            internalType: 'struct InverseAdiabatic6',
             name: 'makerFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'makerImpactFee',
-            type: 'uint256',
+            type: 'tuple',
           },
           {
             internalType: 'UFixed6',
@@ -1533,16 +1867,6 @@ export const MarketImpl = [
           {
             internalType: 'UFixed6',
             name: 'liquidationFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'minLiquidationFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'maxLiquidationFee',
             type: 'uint256',
           },
           {
@@ -1580,9 +1904,14 @@ export const MarketImpl = [
                 type: 'uint256',
               },
               {
-                internalType: 'UFixed6',
+                internalType: 'Fixed6',
+                name: 'min',
+                type: 'int256',
+              },
+              {
+                internalType: 'Fixed6',
                 name: 'max',
-                type: 'uint256',
+                type: 'int256',
               },
             ],
             internalType: 'struct PController6',
@@ -1597,11 +1926,6 @@ export const MarketImpl = [
           {
             internalType: 'UFixed6',
             name: 'minMaintenance',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'skewScale',
             type: 'uint256',
           },
           {
@@ -1621,6 +1945,19 @@ export const MarketImpl = [
       },
     ],
     stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+    ],
+    name: 'settle',
+    outputs: [],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
   {
@@ -1678,6 +2015,62 @@ export const MarketImpl = [
     inputs: [
       {
         internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+      {
+        internalType: 'UFixed6',
+        name: 'newMaker',
+        type: 'uint256',
+      },
+      {
+        internalType: 'UFixed6',
+        name: 'newLong',
+        type: 'uint256',
+      },
+      {
+        internalType: 'UFixed6',
+        name: 'newShort',
+        type: 'uint256',
+      },
+      {
+        internalType: 'Fixed6',
+        name: 'collateral',
+        type: 'int256',
+      },
+      {
+        internalType: 'bool',
+        name: 'protect',
+        type: 'bool',
+      },
+      {
+        internalType: 'address',
+        name: 'referrer',
+        type: 'address',
+      },
+    ],
+    name: 'update',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'contract IOracleProvider',
+        name: 'newOracle',
+        type: 'address',
+      },
+    ],
+    name: 'updateOracle',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
         name: 'newBeneficiary',
         type: 'address',
       },
@@ -1725,21 +2118,6 @@ export const MarketImpl = [
           },
           {
             internalType: 'UFixed6',
-            name: 'makerRewardRate',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'longRewardRate',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'shortRewardRate',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
             name: 'settlementFee',
             type: 'uint256',
           },
@@ -1756,6 +2134,11 @@ export const MarketImpl = [
           {
             internalType: 'bool',
             name: 'closed',
+            type: 'bool',
+          },
+          {
+            internalType: 'bool',
+            name: 'settle',
             type: 'bool',
           },
         ],
@@ -1784,29 +2167,58 @@ export const MarketImpl = [
             type: 'uint256',
           },
           {
-            internalType: 'UFixed6',
+            components: [
+              {
+                internalType: 'UFixed6',
+                name: 'linearFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'proportionalFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'adiabaticFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'scale',
+                type: 'uint256',
+              },
+            ],
+            internalType: 'struct LinearAdiabatic6',
             name: 'takerFee',
-            type: 'uint256',
+            type: 'tuple',
           },
           {
-            internalType: 'UFixed6',
-            name: 'takerSkewFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'takerImpactFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
+            components: [
+              {
+                internalType: 'UFixed6',
+                name: 'linearFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'proportionalFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'adiabaticFee',
+                type: 'uint256',
+              },
+              {
+                internalType: 'UFixed6',
+                name: 'scale',
+                type: 'uint256',
+              },
+            ],
+            internalType: 'struct InverseAdiabatic6',
             name: 'makerFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'makerImpactFee',
-            type: 'uint256',
+            type: 'tuple',
           },
           {
             internalType: 'UFixed6',
@@ -1821,16 +2233,6 @@ export const MarketImpl = [
           {
             internalType: 'UFixed6',
             name: 'liquidationFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'minLiquidationFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'maxLiquidationFee',
             type: 'uint256',
           },
           {
@@ -1868,9 +2270,14 @@ export const MarketImpl = [
                 type: 'uint256',
               },
               {
-                internalType: 'UFixed6',
+                internalType: 'Fixed6',
+                name: 'min',
+                type: 'int256',
+              },
+              {
+                internalType: 'Fixed6',
                 name: 'max',
-                type: 'uint256',
+                type: 'int256',
               },
             ],
             internalType: 'struct PController6',
@@ -1885,11 +2292,6 @@ export const MarketImpl = [
           {
             internalType: 'UFixed6',
             name: 'minMaintenance',
-            type: 'uint256',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'skewScale',
             type: 'uint256',
           },
           {
@@ -1969,37 +2371,121 @@ export const MarketImpl = [
           {
             components: [
               {
-                internalType: 'UFixed6',
+                internalType: 'Fixed6',
                 name: '_value',
-                type: 'uint256',
+                type: 'int256',
               },
             ],
-            internalType: 'struct UAccumulator6',
-            name: 'makerReward',
+            internalType: 'struct Accumulator6',
+            name: 'makerLinearFee',
             type: 'tuple',
           },
           {
             components: [
               {
-                internalType: 'UFixed6',
+                internalType: 'Fixed6',
                 name: '_value',
-                type: 'uint256',
+                type: 'int256',
               },
             ],
-            internalType: 'struct UAccumulator6',
-            name: 'longReward',
+            internalType: 'struct Accumulator6',
+            name: 'makerProportionalFee',
             type: 'tuple',
           },
           {
             components: [
               {
-                internalType: 'UFixed6',
+                internalType: 'Fixed6',
                 name: '_value',
-                type: 'uint256',
+                type: 'int256',
               },
             ],
-            internalType: 'struct UAccumulator6',
-            name: 'shortReward',
+            internalType: 'struct Accumulator6',
+            name: 'takerLinearFee',
+            type: 'tuple',
+          },
+          {
+            components: [
+              {
+                internalType: 'Fixed6',
+                name: '_value',
+                type: 'int256',
+              },
+            ],
+            internalType: 'struct Accumulator6',
+            name: 'takerProportionalFee',
+            type: 'tuple',
+          },
+          {
+            components: [
+              {
+                internalType: 'Fixed6',
+                name: '_value',
+                type: 'int256',
+              },
+            ],
+            internalType: 'struct Accumulator6',
+            name: 'makerPosFee',
+            type: 'tuple',
+          },
+          {
+            components: [
+              {
+                internalType: 'Fixed6',
+                name: '_value',
+                type: 'int256',
+              },
+            ],
+            internalType: 'struct Accumulator6',
+            name: 'makerNegFee',
+            type: 'tuple',
+          },
+          {
+            components: [
+              {
+                internalType: 'Fixed6',
+                name: '_value',
+                type: 'int256',
+              },
+            ],
+            internalType: 'struct Accumulator6',
+            name: 'takerPosFee',
+            type: 'tuple',
+          },
+          {
+            components: [
+              {
+                internalType: 'Fixed6',
+                name: '_value',
+                type: 'int256',
+              },
+            ],
+            internalType: 'struct Accumulator6',
+            name: 'takerNegFee',
+            type: 'tuple',
+          },
+          {
+            components: [
+              {
+                internalType: 'Fixed6',
+                name: '_value',
+                type: 'int256',
+              },
+            ],
+            internalType: 'struct Accumulator6',
+            name: 'settlementFee',
+            type: 'tuple',
+          },
+          {
+            components: [
+              {
+                internalType: 'Fixed6',
+                name: '_value',
+                type: 'int256',
+              },
+            ],
+            internalType: 'struct Accumulator6',
+            name: 'liquidationFee',
             type: 'tuple',
           },
         ],

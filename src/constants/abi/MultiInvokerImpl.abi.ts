@@ -433,32 +433,6 @@ export const MultiInvokerImplAbi = [
   },
   {
     inputs: [],
-    name: 'ARB_FIXED_OVERHEAD',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'ARB_GAS_MULTIPLIER',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
     name: 'DSU',
     outputs: [
       {

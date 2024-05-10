@@ -12,7 +12,7 @@ type AddressMapping = { [chain in SupportedChainId]: Address }
 
 export const PythFactoryAddress: AddressMapping = {
   [arbitrum.id]: getAddress('0x6b60e7c96B4d11A63891F249eA826f8a73Ef4E6E'),
-  [arbitrumSepolia.id]: getAddress('0x92F8d5B8d0ca2fc699c7c540471Ad49724a68007'),
+  [arbitrumSepolia.id]: getAddress('0xC3bE5FcBfDD38f5c6eb5d8cDdE712eb1d54A1Aa1'),
   [base.id]: getAddress('0x9c82732CE868aFA5e9b2649506E7Ab8268A62c3C'),
   [blastSepolia.id]: getAddress('0xA1c897eaf049d7E9bB22E9D75D0d146a92Bee653'),
   [hardhat.id]: getAddress('0x2FFf529AAD20BD1DA5Ab5789b0B02811E3Ee68c5'),
