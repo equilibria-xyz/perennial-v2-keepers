@@ -34,7 +34,7 @@
   "scripts": {
     "compile": "OPTIMIZER_ENABLED=true hardhat compile",
     "start": "node build/src/main.js",
-    "clean": "rimraf coverage build tmp",
+    "clean": "rimraf coverage build tmp artifacts cache",
     "prebuild": "yarn run lint",
     "build": "yarn build:release",
     "build:watch": "yarn gen:lens-artifact && yarn gen:gql-typings && tsc -w -p tsconfig.json",
