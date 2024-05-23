@@ -95,11 +95,6 @@ export const MultiInvokerImplAbi = [
   },
   {
     inputs: [],
-    name: 'MultiInvokerBadSenderError',
-    type: 'error',
-  },
-  {
-    inputs: [],
     name: 'MultiInvokerCantExecuteError',
     type: 'error',
   },
@@ -121,6 +116,11 @@ export const MultiInvokerImplAbi = [
   {
     inputs: [],
     name: 'MultiInvokerOrderMustBeSingleSidedError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'MultiInvokerUnauthorizedError',
     type: 'error',
   },
   {
@@ -290,6 +290,31 @@ export const MultiInvokerImplAbi = [
       },
       {
         indexed: true,
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'newEnabled',
+        type: 'bool',
+      },
+    ],
+    name: 'OperatorUpdated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+      {
+        indexed: true,
         internalType: 'contract IMarket',
         name: 'market',
         type: 'address',
@@ -433,6 +458,32 @@ export const MultiInvokerImplAbi = [
   },
   {
     inputs: [],
+    name: 'ARB_FIXED_OVERHEAD',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'ARB_GAS_MULTIPLIER',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
     name: 'DSU',
     outputs: [
       {
@@ -551,6 +602,36 @@ export const MultiInvokerImplAbi = [
     type: 'function',
   },
   {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+      {
+        components: [
+          {
+            internalType: 'enum IMultiInvoker.PerennialAction',
+            name: 'action',
+            type: 'uint8',
+          },
+          {
+            internalType: 'bytes',
+            name: 'args',
+            type: 'bytes',
+          },
+        ],
+        internalType: 'struct IMultiInvoker.Invocation[]',
+        name: 'invocations',
+        type: 'tuple[]',
+      },
+    ],
+    name: 'invoke',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+  {
     inputs: [],
     name: 'keepBufferBase',
     outputs: [
@@ -610,6 +691,30 @@ export const MultiInvokerImplAbi = [
         internalType: 'contract IFactory',
         name: '',
         type: 'address',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+    ],
+    name: 'operators',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
       },
     ],
     stateMutability: 'view',
@@ -726,6 +831,24 @@ export const MultiInvokerImplAbi = [
       },
     ],
     stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'operator',
+        type: 'address',
+      },
+      {
+        internalType: 'bool',
+        name: 'newEnabled',
+        type: 'bool',
+      },
+    ],
+    name: 'updateOperator',
+    outputs: [],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
   {

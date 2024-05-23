@@ -2,7 +2,7 @@ export const PayoffAbi = [
   {
     inputs: [
       {
-        internalType: 'Fixed6',
+        internalType: 'Fixed18',
         name: 'price',
         type: 'int256',
       },
@@ -10,8 +10,8 @@ export const PayoffAbi = [
     name: 'payoff',
     outputs: [
       {
-        internalType: 'Fixed6',
-        name: '',
+        internalType: 'Fixed18',
+        name: 'payoff',
         type: 'int256',
       },
     ],
