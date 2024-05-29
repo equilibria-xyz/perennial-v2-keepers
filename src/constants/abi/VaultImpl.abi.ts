@@ -20,6 +20,11 @@ export const VaultImplAbi = [
     type: 'error',
   },
   {
+    inputs: [],
+    name: 'DivisionByZero',
+    type: 'error',
+  },
+  {
     inputs: [
       {
         internalType: 'uint256',
@@ -85,11 +90,6 @@ export const VaultImplAbi = [
   },
   {
     inputs: [],
-    name: 'MappingStorageInvalidError',
-    type: 'error',
-  },
-  {
-    inputs: [],
     name: 'RegistrationStorageInvalidError',
     type: 'error',
   },
@@ -100,12 +100,22 @@ export const VaultImplAbi = [
   },
   {
     inputs: [],
-    name: 'StrategyLibInsufficientMarginError',
+    name: 'StrategyLibInsufficientAssetsError',
     type: 'error',
   },
   {
     inputs: [],
-    name: 'StrategyLibInsufficientMarginError',
+    name: 'StrategyLibInsufficientAssetsError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'StrategyLibInsufficientCollateralError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'StrategyLibInsufficientCollateralError',
     type: 'error',
   },
   {
@@ -117,6 +127,16 @@ export const VaultImplAbi = [
       },
     ],
     name: 'UFixed6UnderflowError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'VaultAggregateWeightError',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'VaultCurrentOutOfSyncError',
     type: 'error',
   },
   {
@@ -222,7 +242,7 @@ export const VaultImplAbi = [
       },
       {
         indexed: false,
-        internalType: 'uint256',
+        internalType: 'UFixed6',
         name: 'newWeight',
         type: 'uint256',
       },
@@ -304,514 +324,23 @@ export const VaultImplAbi = [
       {
         components: [
           {
-            components: [
-              {
-                components: [
-                  {
-                    components: [
-                      {
-                        internalType: 'UFixed6',
-                        name: 'fundingFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'interestFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'positionFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'oracleFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'riskFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'uint256',
-                        name: 'maxPendingGlobal',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'uint256',
-                        name: 'maxPendingLocal',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'makerRewardRate',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'longRewardRate',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'shortRewardRate',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'settlementFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'bool',
-                        name: 'takerCloseAlways',
-                        type: 'bool',
-                      },
-                      {
-                        internalType: 'bool',
-                        name: 'makerCloseAlways',
-                        type: 'bool',
-                      },
-                      {
-                        internalType: 'bool',
-                        name: 'closed',
-                        type: 'bool',
-                      },
-                    ],
-                    internalType: 'struct MarketParameter',
-                    name: 'marketParameter',
-                    type: 'tuple',
-                  },
-                  {
-                    components: [
-                      {
-                        internalType: 'UFixed6',
-                        name: 'margin',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'maintenance',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'takerFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'takerSkewFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'takerImpactFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'makerFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'makerImpactFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'makerLimit',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'efficiencyLimit',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'liquidationFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'minLiquidationFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'maxLiquidationFee',
-                        type: 'uint256',
-                      },
-                      {
-                        components: [
-                          {
-                            internalType: 'UFixed6',
-                            name: 'minRate',
-                            type: 'uint256',
-                          },
-                          {
-                            internalType: 'UFixed6',
-                            name: 'maxRate',
-                            type: 'uint256',
-                          },
-                          {
-                            internalType: 'UFixed6',
-                            name: 'targetRate',
-                            type: 'uint256',
-                          },
-                          {
-                            internalType: 'UFixed6',
-                            name: 'targetUtilization',
-                            type: 'uint256',
-                          },
-                        ],
-                        internalType: 'struct UJumpRateUtilizationCurve6',
-                        name: 'utilizationCurve',
-                        type: 'tuple',
-                      },
-                      {
-                        components: [
-                          {
-                            internalType: 'UFixed6',
-                            name: 'k',
-                            type: 'uint256',
-                          },
-                          {
-                            internalType: 'UFixed6',
-                            name: 'max',
-                            type: 'uint256',
-                          },
-                        ],
-                        internalType: 'struct PController6',
-                        name: 'pController',
-                        type: 'tuple',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'minMargin',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'minMaintenance',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'skewScale',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'uint256',
-                        name: 'staleAfter',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'bool',
-                        name: 'makerReceiveOnly',
-                        type: 'bool',
-                      },
-                    ],
-                    internalType: 'struct RiskParameter',
-                    name: 'riskParameter',
-                    type: 'tuple',
-                  },
-                  {
-                    components: [
-                      {
-                        internalType: 'uint256',
-                        name: 'currentId',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'uint256',
-                        name: 'latestId',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'collateral',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'reward',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'uint256',
-                        name: 'protection',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'address',
-                        name: 'protectionInitiator',
-                        type: 'address',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'protectionAmount',
-                        type: 'uint256',
-                      },
-                    ],
-                    internalType: 'struct Local',
-                    name: 'local',
-                    type: 'tuple',
-                  },
-                  {
-                    components: [
-                      {
-                        internalType: 'uint256',
-                        name: 'timestamp',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'maker',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'long',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'short',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'fee',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'keeper',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'collateral',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'delta',
-                        type: 'int256',
-                      },
-                      {
-                        components: [
-                          {
-                            internalType: 'Fixed6',
-                            name: 'maker',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'long',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'short',
-                            type: 'int256',
-                          },
-                        ],
-                        internalType: 'struct Invalidation',
-                        name: 'invalidation',
-                        type: 'tuple',
-                      },
-                    ],
-                    internalType: 'struct Position',
-                    name: 'currentAccountPosition',
-                    type: 'tuple',
-                  },
-                  {
-                    components: [
-                      {
-                        internalType: 'uint256',
-                        name: 'timestamp',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'maker',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'long',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'short',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'fee',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'keeper',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'collateral',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'delta',
-                        type: 'int256',
-                      },
-                      {
-                        components: [
-                          {
-                            internalType: 'Fixed6',
-                            name: 'maker',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'long',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'short',
-                            type: 'int256',
-                          },
-                        ],
-                        internalType: 'struct Invalidation',
-                        name: 'invalidation',
-                        type: 'tuple',
-                      },
-                    ],
-                    internalType: 'struct Position',
-                    name: 'latestAccountPosition',
-                    type: 'tuple',
-                  },
-                  {
-                    components: [
-                      {
-                        internalType: 'uint256',
-                        name: 'timestamp',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'maker',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'long',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'short',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'fee',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'keeper',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'collateral',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'delta',
-                        type: 'int256',
-                      },
-                      {
-                        components: [
-                          {
-                            internalType: 'Fixed6',
-                            name: 'maker',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'long',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'short',
-                            type: 'int256',
-                          },
-                        ],
-                        internalType: 'struct Invalidation',
-                        name: 'invalidation',
-                        type: 'tuple',
-                      },
-                    ],
-                    internalType: 'struct Position',
-                    name: 'currentPosition',
-                    type: 'tuple',
-                  },
-                  {
-                    internalType: 'Fixed6',
-                    name: 'latestPrice',
-                    type: 'int256',
-                  },
-                  {
-                    internalType: 'UFixed6',
-                    name: 'margin',
-                    type: 'uint256',
-                  },
-                  {
-                    internalType: 'UFixed6',
-                    name: 'closable',
-                    type: 'uint256',
-                  },
-                  {
-                    internalType: 'UFixed6',
-                    name: 'pendingFee',
-                    type: 'uint256',
-                  },
-                ],
-                internalType: 'struct MarketStrategyContext[]',
-                name: 'marketContexts',
-                type: 'tuple[]',
-              },
-            ],
-            internalType: 'struct Strategy',
-            name: 'strategy',
-            type: 'tuple',
-          },
-          {
             internalType: 'UFixed6',
             name: 'settlementFee',
             type: 'uint256',
           },
           {
             internalType: 'uint256',
-            name: 'totalWeight',
+            name: 'currentId',
             type: 'uint256',
           },
           {
             internalType: 'uint256',
-            name: 'currentId',
+            name: 'currentTimestamp',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'latestTimestamp',
             type: 'uint256',
           },
           {
@@ -822,7 +351,7 @@ export const VaultImplAbi = [
                 type: 'address',
               },
               {
-                internalType: 'uint256',
+                internalType: 'UFixed6',
                 name: 'weight',
                 type: 'uint256',
               },
@@ -842,28 +371,9 @@ export const VaultImplAbi = [
             type: 'int256[]',
           },
           {
-            components: [
-              {
-                internalType: 'uint256[]',
-                name: '_ids',
-                type: 'uint256[]',
-              },
-            ],
-            internalType: 'struct Mapping',
-            name: 'currentIds',
-            type: 'tuple',
-          },
-          {
-            components: [
-              {
-                internalType: 'uint256[]',
-                name: '_ids',
-                type: 'uint256[]',
-              },
-            ],
-            internalType: 'struct Mapping',
-            name: 'latestIds',
-            type: 'tuple',
+            internalType: 'Fixed6',
+            name: 'totalCollateral',
+            type: 'int256',
           },
           {
             components: [
@@ -900,18 +410,28 @@ export const VaultImplAbi = [
                 type: 'int256',
               },
               {
-                internalType: 'UFixed6',
-                name: 'fee',
-                type: 'uint256',
+                internalType: 'Fixed6',
+                name: 'tradeFee',
+                type: 'int256',
               },
               {
                 internalType: 'UFixed6',
-                name: 'keeper',
+                name: 'settlementFee',
                 type: 'uint256',
               },
               {
                 internalType: 'uint256',
-                name: 'count',
+                name: 'deposits',
+                type: 'uint256',
+              },
+              {
+                internalType: 'uint256',
+                name: 'redemptions',
+                type: 'uint256',
+              },
+              {
+                internalType: 'uint256',
+                name: 'timestamp',
                 type: 'uint256',
               },
             ],
@@ -942,771 +462,28 @@ export const VaultImplAbi = [
                 type: 'int256',
               },
               {
-                internalType: 'UFixed6',
-                name: 'fee',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'keeper',
-                type: 'uint256',
-              },
-              {
-                internalType: 'uint256',
-                name: 'count',
-                type: 'uint256',
-              },
-            ],
-            internalType: 'struct Checkpoint',
-            name: 'latestCheckpoint',
-            type: 'tuple',
-          },
-          {
-            components: [
-              {
-                internalType: 'uint256',
-                name: 'current',
-                type: 'uint256',
-              },
-              {
-                internalType: 'uint256',
-                name: 'latest',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'shares',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'assets',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'deposit',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'redemption',
-                type: 'uint256',
-              },
-            ],
-            internalType: 'struct Account',
-            name: 'global',
-            type: 'tuple',
-          },
-          {
-            components: [
-              {
-                internalType: 'uint256',
-                name: 'current',
-                type: 'uint256',
-              },
-              {
-                internalType: 'uint256',
-                name: 'latest',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'shares',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'assets',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'deposit',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'redemption',
-                type: 'uint256',
-              },
-            ],
-            internalType: 'struct Account',
-            name: 'local',
-            type: 'tuple',
-          },
-        ],
-        internalType: 'struct IVault.Context',
-        name: 'context',
-        type: 'tuple',
-      },
-    ],
-    name: '_collateral',
-    outputs: [
-      {
-        internalType: 'Fixed6',
-        name: 'value',
-        type: 'int256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        components: [
-          {
-            components: [
-              {
-                components: [
-                  {
-                    components: [
-                      {
-                        internalType: 'UFixed6',
-                        name: 'fundingFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'interestFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'positionFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'oracleFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'riskFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'uint256',
-                        name: 'maxPendingGlobal',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'uint256',
-                        name: 'maxPendingLocal',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'makerRewardRate',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'longRewardRate',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'shortRewardRate',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'settlementFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'bool',
-                        name: 'takerCloseAlways',
-                        type: 'bool',
-                      },
-                      {
-                        internalType: 'bool',
-                        name: 'makerCloseAlways',
-                        type: 'bool',
-                      },
-                      {
-                        internalType: 'bool',
-                        name: 'closed',
-                        type: 'bool',
-                      },
-                    ],
-                    internalType: 'struct MarketParameter',
-                    name: 'marketParameter',
-                    type: 'tuple',
-                  },
-                  {
-                    components: [
-                      {
-                        internalType: 'UFixed6',
-                        name: 'margin',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'maintenance',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'takerFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'takerSkewFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'takerImpactFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'makerFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'makerImpactFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'makerLimit',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'efficiencyLimit',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'liquidationFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'minLiquidationFee',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'maxLiquidationFee',
-                        type: 'uint256',
-                      },
-                      {
-                        components: [
-                          {
-                            internalType: 'UFixed6',
-                            name: 'minRate',
-                            type: 'uint256',
-                          },
-                          {
-                            internalType: 'UFixed6',
-                            name: 'maxRate',
-                            type: 'uint256',
-                          },
-                          {
-                            internalType: 'UFixed6',
-                            name: 'targetRate',
-                            type: 'uint256',
-                          },
-                          {
-                            internalType: 'UFixed6',
-                            name: 'targetUtilization',
-                            type: 'uint256',
-                          },
-                        ],
-                        internalType: 'struct UJumpRateUtilizationCurve6',
-                        name: 'utilizationCurve',
-                        type: 'tuple',
-                      },
-                      {
-                        components: [
-                          {
-                            internalType: 'UFixed6',
-                            name: 'k',
-                            type: 'uint256',
-                          },
-                          {
-                            internalType: 'UFixed6',
-                            name: 'max',
-                            type: 'uint256',
-                          },
-                        ],
-                        internalType: 'struct PController6',
-                        name: 'pController',
-                        type: 'tuple',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'minMargin',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'minMaintenance',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'skewScale',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'uint256',
-                        name: 'staleAfter',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'bool',
-                        name: 'makerReceiveOnly',
-                        type: 'bool',
-                      },
-                    ],
-                    internalType: 'struct RiskParameter',
-                    name: 'riskParameter',
-                    type: 'tuple',
-                  },
-                  {
-                    components: [
-                      {
-                        internalType: 'uint256',
-                        name: 'currentId',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'uint256',
-                        name: 'latestId',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'collateral',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'reward',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'uint256',
-                        name: 'protection',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'address',
-                        name: 'protectionInitiator',
-                        type: 'address',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'protectionAmount',
-                        type: 'uint256',
-                      },
-                    ],
-                    internalType: 'struct Local',
-                    name: 'local',
-                    type: 'tuple',
-                  },
-                  {
-                    components: [
-                      {
-                        internalType: 'uint256',
-                        name: 'timestamp',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'maker',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'long',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'short',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'fee',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'keeper',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'collateral',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'delta',
-                        type: 'int256',
-                      },
-                      {
-                        components: [
-                          {
-                            internalType: 'Fixed6',
-                            name: 'maker',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'long',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'short',
-                            type: 'int256',
-                          },
-                        ],
-                        internalType: 'struct Invalidation',
-                        name: 'invalidation',
-                        type: 'tuple',
-                      },
-                    ],
-                    internalType: 'struct Position',
-                    name: 'currentAccountPosition',
-                    type: 'tuple',
-                  },
-                  {
-                    components: [
-                      {
-                        internalType: 'uint256',
-                        name: 'timestamp',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'maker',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'long',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'short',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'fee',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'keeper',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'collateral',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'delta',
-                        type: 'int256',
-                      },
-                      {
-                        components: [
-                          {
-                            internalType: 'Fixed6',
-                            name: 'maker',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'long',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'short',
-                            type: 'int256',
-                          },
-                        ],
-                        internalType: 'struct Invalidation',
-                        name: 'invalidation',
-                        type: 'tuple',
-                      },
-                    ],
-                    internalType: 'struct Position',
-                    name: 'latestAccountPosition',
-                    type: 'tuple',
-                  },
-                  {
-                    components: [
-                      {
-                        internalType: 'uint256',
-                        name: 'timestamp',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'maker',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'long',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'short',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'fee',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'UFixed6',
-                        name: 'keeper',
-                        type: 'uint256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'collateral',
-                        type: 'int256',
-                      },
-                      {
-                        internalType: 'Fixed6',
-                        name: 'delta',
-                        type: 'int256',
-                      },
-                      {
-                        components: [
-                          {
-                            internalType: 'Fixed6',
-                            name: 'maker',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'long',
-                            type: 'int256',
-                          },
-                          {
-                            internalType: 'Fixed6',
-                            name: 'short',
-                            type: 'int256',
-                          },
-                        ],
-                        internalType: 'struct Invalidation',
-                        name: 'invalidation',
-                        type: 'tuple',
-                      },
-                    ],
-                    internalType: 'struct Position',
-                    name: 'currentPosition',
-                    type: 'tuple',
-                  },
-                  {
-                    internalType: 'Fixed6',
-                    name: 'latestPrice',
-                    type: 'int256',
-                  },
-                  {
-                    internalType: 'UFixed6',
-                    name: 'margin',
-                    type: 'uint256',
-                  },
-                  {
-                    internalType: 'UFixed6',
-                    name: 'closable',
-                    type: 'uint256',
-                  },
-                  {
-                    internalType: 'UFixed6',
-                    name: 'pendingFee',
-                    type: 'uint256',
-                  },
-                ],
-                internalType: 'struct MarketStrategyContext[]',
-                name: 'marketContexts',
-                type: 'tuple[]',
-              },
-            ],
-            internalType: 'struct Strategy',
-            name: 'strategy',
-            type: 'tuple',
-          },
-          {
-            internalType: 'UFixed6',
-            name: 'settlementFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'totalWeight',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'currentId',
-            type: 'uint256',
-          },
-          {
-            components: [
-              {
-                internalType: 'contract IMarket',
-                name: 'market',
-                type: 'address',
-              },
-              {
-                internalType: 'uint256',
-                name: 'weight',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'leverage',
-                type: 'uint256',
-              },
-            ],
-            internalType: 'struct Registration[]',
-            name: 'registrations',
-            type: 'tuple[]',
-          },
-          {
-            internalType: 'Fixed6[]',
-            name: 'collaterals',
-            type: 'int256[]',
-          },
-          {
-            components: [
-              {
-                internalType: 'uint256[]',
-                name: '_ids',
-                type: 'uint256[]',
-              },
-            ],
-            internalType: 'struct Mapping',
-            name: 'currentIds',
-            type: 'tuple',
-          },
-          {
-            components: [
-              {
-                internalType: 'uint256[]',
-                name: '_ids',
-                type: 'uint256[]',
-              },
-            ],
-            internalType: 'struct Mapping',
-            name: 'latestIds',
-            type: 'tuple',
-          },
-          {
-            components: [
-              {
-                internalType: 'UFixed6',
-                name: 'cap',
-                type: 'uint256',
-              },
-            ],
-            internalType: 'struct VaultParameter',
-            name: 'parameter',
-            type: 'tuple',
-          },
-          {
-            components: [
-              {
-                internalType: 'UFixed6',
-                name: 'deposit',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'redemption',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'shares',
-                type: 'uint256',
-              },
-              {
                 internalType: 'Fixed6',
-                name: 'assets',
+                name: 'tradeFee',
                 type: 'int256',
               },
               {
                 internalType: 'UFixed6',
-                name: 'fee',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'keeper',
+                name: 'settlementFee',
                 type: 'uint256',
               },
               {
                 internalType: 'uint256',
-                name: 'count',
-                type: 'uint256',
-              },
-            ],
-            internalType: 'struct Checkpoint',
-            name: 'currentCheckpoint',
-            type: 'tuple',
-          },
-          {
-            components: [
-              {
-                internalType: 'UFixed6',
-                name: 'deposit',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'redemption',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'shares',
-                type: 'uint256',
-              },
-              {
-                internalType: 'Fixed6',
-                name: 'assets',
-                type: 'int256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'fee',
-                type: 'uint256',
-              },
-              {
-                internalType: 'UFixed6',
-                name: 'keeper',
+                name: 'deposits',
                 type: 'uint256',
               },
               {
                 internalType: 'uint256',
-                name: 'count',
+                name: 'redemptions',
+                type: 'uint256',
+              },
+              {
+                internalType: 'uint256',
+                name: 'timestamp',
                 type: 'uint256',
               },
             ],
@@ -1795,26 +572,38 @@ export const VaultImplAbi = [
       },
       {
         internalType: 'uint256',
-        name: 'id',
+        name: 'timestamp',
         type: 'uint256',
       },
     ],
-    name: '_collateralAtId',
+    name: '_checkpointAtId',
     outputs: [
       {
-        internalType: 'Fixed6',
-        name: 'value',
-        type: 'int256',
-      },
-      {
-        internalType: 'UFixed6',
-        name: 'fee',
-        type: 'uint256',
-      },
-      {
-        internalType: 'UFixed6',
-        name: 'keeper',
-        type: 'uint256',
+        components: [
+          {
+            internalType: 'Fixed6',
+            name: 'tradeFee',
+            type: 'int256',
+          },
+          {
+            internalType: 'UFixed6',
+            name: 'settlementFee',
+            type: 'uint256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'transfer',
+            type: 'int256',
+          },
+          {
+            internalType: 'Fixed6',
+            name: 'collateral',
+            type: 'int256',
+          },
+        ],
+        internalType: 'struct Checkpoint',
+        name: 'checkpoint',
+        type: 'tuple',
       },
     ],
     stateMutability: 'view',
@@ -1917,18 +706,28 @@ export const VaultImplAbi = [
             type: 'int256',
           },
           {
-            internalType: 'UFixed6',
-            name: 'fee',
-            type: 'uint256',
+            internalType: 'Fixed6',
+            name: 'tradeFee',
+            type: 'int256',
           },
           {
             internalType: 'UFixed6',
-            name: 'keeper',
+            name: 'settlementFee',
             type: 'uint256',
           },
           {
             internalType: 'uint256',
-            name: 'count',
+            name: 'deposits',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'redemptions',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'timestamp',
             type: 'uint256',
           },
         ],
@@ -2020,32 +819,6 @@ export const VaultImplAbi = [
     type: 'function',
   },
   {
-    inputs: [
-      {
-        internalType: 'uint256',
-        name: 'id',
-        type: 'uint256',
-      },
-    ],
-    name: 'mappings',
-    outputs: [
-      {
-        components: [
-          {
-            internalType: 'uint256[]',
-            name: '_ids',
-            type: 'uint256[]',
-          },
-        ],
-        internalType: 'struct Mapping',
-        name: '',
-        type: 'tuple',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
     inputs: [],
     name: 'name',
     outputs: [
@@ -2081,6 +854,19 @@ export const VaultImplAbi = [
   {
     inputs: [
       {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+    ],
+    name: 'rebalance',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         internalType: 'contract IMarket',
         name: 'market',
         type: 'address',
@@ -2109,7 +895,7 @@ export const VaultImplAbi = [
             type: 'address',
           },
           {
-            internalType: 'uint256',
+            internalType: 'UFixed6',
             name: 'weight',
             type: 'uint256',
           },
@@ -2215,17 +1001,12 @@ export const VaultImplAbi = [
         type: 'uint256',
       },
       {
-        internalType: 'uint256',
-        name: 'newWeight',
-        type: 'uint256',
-      },
-      {
         internalType: 'UFixed6',
         name: 'newLeverage',
         type: 'uint256',
       },
     ],
-    name: 'updateMarket',
+    name: 'updateLeverage',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -2246,6 +1027,19 @@ export const VaultImplAbi = [
       },
     ],
     name: 'updateParameter',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'UFixed6[]',
+        name: 'newWeights',
+        type: 'uint256[]',
+      },
+    ],
+    name: 'updateWeights',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',

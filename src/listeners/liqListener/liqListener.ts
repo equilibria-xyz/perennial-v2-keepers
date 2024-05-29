@@ -1,9 +1,8 @@
-import { AbiParametersToPrimitiveTypes, ExtractAbiFunction } from 'abitype'
-import { Address, getAddress } from 'viem'
+import { Address, Hex, getAddress } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
 import { Chain, client, graphClient, liquidatorAccount, liquidatorSigner, pythConnection } from '../../config'
-import { BatchKeeperAbi, MarketImpl, MultiInvokerImplAbi } from '../../constants/abi'
+import { BatchKeeperAbi, MarketImpl } from '../../constants/abi'
 import { buildCommit, getRecentVaa } from '../../utils/pythUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
@@ -15,9 +14,10 @@ type LiqMarketDetails = MarketDetails & {
   users: Address[]
 }
 
-type Invocation = AbiParametersToPrimitiveTypes<
-  ExtractAbiFunction<typeof MultiInvokerImplAbi, 'invoke'>['inputs']
->[0][0]
+type Invocation = {
+  action: number
+  args: Hex
+}
 
 export class LiqListener {
   public static PollingInterval = 4000 // 4s

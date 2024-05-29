@@ -34,7 +34,7 @@
   "scripts": {
     "compile": "OPTIMIZER_ENABLED=true hardhat compile",
     "start": "node build/src/main.js",
-    "clean": "rimraf coverage build tmp",
+    "clean": "rimraf coverage build tmp artifacts cache",
     "prebuild": "yarn run lint",
     "build": "yarn build:release",
     "build:watch": "yarn gen:lens-artifact && yarn gen:gql-typings && tsc -w -p tsconfig.json",
@@ -49,10 +49,10 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@equilibria/perennial-v2": "1.1.0-rc1",
-    "@equilibria/perennial-v2-extensions": "1.1.0-rc1",
-    "@equilibria/perennial-v2-oracle": "1.1.0-rc1",
-    "@equilibria/root": "^2.1.0",
+    "@equilibria/perennial-v2": "1.2.0-rc3",
+    "@equilibria/perennial-v2-extensions": "1.2.0-rc0",
+    "@equilibria/perennial-v2-oracle": "1.2.0-rc0",
+    "@equilibria/root": "2.2.0",
     "@gelatonetwork/automate-sdk": "2.17.1-beta",
     "@gelatonetwork/web3-functions-sdk": "^2.1.4",
     "@pythnetwork/pyth-evm-js": "^1.20.1",

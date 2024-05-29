@@ -11,8 +11,8 @@ export type SupportedChainId = (typeof SupportedChainIds)[number]
 type AddressMapping = { [chain in SupportedChainId]: Address }
 
 export const PythFactoryAddress: AddressMapping = {
-  [arbitrum.id]: getAddress('0x6b60e7c96B4d11A63891F249eA826f8a73Ef4E6E'),
-  [arbitrumSepolia.id]: getAddress('0x92F8d5B8d0ca2fc699c7c540471Ad49724a68007'),
+  [arbitrum.id]: getAddress('0x663B38A93FdC2164D45F35051B0F905211d1C9E4'),
+  [arbitrumSepolia.id]: getAddress('0xC3bE5FcBfDD38f5c6eb5d8cDdE712eb1d54A1Aa1'),
   [base.id]: getAddress('0x9c82732CE868aFA5e9b2649506E7Ab8268A62c3C'),
   [blastSepolia.id]: getAddress('0xA1c897eaf049d7E9bB22E9D75D0d146a92Bee653'),
   [hardhat.id]: getAddress('0x2FFf529AAD20BD1DA5Ab5789b0B02811E3Ee68c5'),
@@ -75,8 +75,8 @@ export const GelatoDedicatedSenderAddresses: AddressMapping = {
 }
 
 export const BatchKeeperAddresses: AddressMapping = {
-  [arbitrum.id]: getAddress('0xB092493412FCae3432487Efb33204F7B4FeF12ff'),
-  [arbitrumSepolia.id]: getAddress('0x61D0370f9db0b99282aE755c986E40C512DE577D'),
+  [arbitrum.id]: getAddress('0x8b4e6f5E1b2Be9c4A9fd4DeE216fDBbDD67b05B6'),
+  [arbitrumSepolia.id]: getAddress('0xdECeC72B6beDe55ED2865A38346BF96Fcc3b4a8F'),
   [base.id]: getAddress('0x80633b66788EBAA3325d38D48152Ea6112dEBC07'),
   [blastSepolia.id]: getAddress('0x3aABc1b29FD644c87AC1a7F87dA9Bf7Bd3470925'),
   [hardhat.id]: zeroAddress,
