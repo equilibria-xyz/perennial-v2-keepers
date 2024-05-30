@@ -37,7 +37,7 @@ export class OrderListener {
           const pythData = pythPrices.find((p) => p.feedId === market.feed)
           if (!pythData) return null
 
-          return { market, price: await transformPrice(market.payoff, pythData.price, client) }
+          return { market, price: await transformPrice(market.payoff, market.payoffDecimals, pythData.price, client) }
         }),
       )
       const ordersForMarkets = await this.getOrdersForMarkets(marketPrices.filter(notEmpty))

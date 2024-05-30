@@ -4,7 +4,7 @@ import { Chain, client, graphClient, settlementSigner } from '../../config'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi'
-import { PythFactoryImpl } from '../../constants/abi'
+import { KeeperFactoryImpl } from '../../constants/abi'
 import { UseGraphEvents } from '../../constants/network'
 
 export class SettlementListener {
@@ -65,7 +65,7 @@ export class SettlementListener {
     })
     const keeperOracleFactory = getContract({
       address: market.providerFactory,
-      abi: PythFactoryImpl,
+      abi: KeeperFactoryImpl,
       client,
     })
     const callbacks = await keeperOracle.read.localCallbacks([version, market.market])

@@ -3,7 +3,7 @@
 // Must not use modules that rely on built nodejs modules.
 import { Address, Hex, PublicClient, getAbiItem, getContract } from 'viem'
 import { Buffer } from 'buffer'
-import { PythFactoryImpl } from '../../constants/abi/PythFactoryImpl.abi.js'
+import { KeeperFactoryImpl } from '../../constants/abi/KeeperFactoryImpl.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
 import { notEmpty, range } from '../../utils/arrayUtils.js'
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
@@ -45,7 +45,7 @@ export async function getOracleAddresses({
 
   const logs = await client.getLogs({
     address: pythFactoryAddress,
-    event: getAbiItem({ abi: PythFactoryImpl, name: 'OracleCreated' }),
+    event: getAbiItem({ abi: KeeperFactoryImpl, name: 'OracleCreated' }),
     strict: true,
     fromBlock: 0n,
     toBlock: 'latest',
@@ -64,7 +64,7 @@ export async function getCommitments(
     const providerTag = oracleProviderAddressToOracleProviderTag(chainId, oracle)
     const factoryContract = getContract({
       address: factoryAddress,
-      abi: PythFactoryImpl,
+      abi: KeeperFactoryImpl,
       client,
     })
     const oracleContract = getContract({

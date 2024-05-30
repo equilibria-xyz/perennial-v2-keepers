@@ -66,13 +66,14 @@ contract BatchKeeper is Ownable {
     ) external payable returnEther returns (LiquidationResult[] memory results) {
         invoker.invoke{value: msg.value}(commitment);
 
+        UFixed6 liquidationFee = market.riskParameter().liquidationFee;
         results = new LiquidationResult[](accounts.length);
         for (uint256 i; i < accounts.length; i++) {
             results[i].account = accounts[i];
 
             try market.update(accounts[i], CLOSE_POSITION, CLOSE_POSITION, CLOSE_POSITION, Fixed6Lib.ZERO, true) {
                 results[i].result.success = true;
-                results[i].reward = market.locals(accounts[i]).protectionAmount;
+                results[i].reward = liquidationFee;
             } catch (bytes memory reason) {
                 results[i].result.reason = reason;
             }
@@ -118,8 +119,10 @@ contract BatchKeeper is Ownable {
     /// @notice Withdraws all collateral from the specified markets
     /// @param markets An array of markets to withdraw collateral from
     function withdraw(IMarket[] memory markets) external onlyOwner {
-        for (uint256 i = 0; i < markets.length; ++i)
+        for (uint256 i = 0; i < markets.length; ++i) {
             markets[i].update(address(this), UFixed6Lib.ZERO, UFixed6Lib.ZERO, UFixed6Lib.ZERO, WITHDRAW_ALL, false);
+            markets[i].claimFee();
+        }
     }
 
     /// @notice Claims the full balance of `token`

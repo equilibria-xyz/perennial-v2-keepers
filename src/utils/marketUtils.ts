@@ -2,10 +2,10 @@ import { Address, PublicClient, getAbiItem, getContract, parseAbi, zeroAddress }
 import { MarketFactoryAddress, SupportedChainId } from '../constants/network.js'
 import { FactoryAbi } from '../constants/abi/Factory.abi.js'
 import { MarketImpl } from '../constants/abi/MarketImpl.abi.js'
-import { PayoffAbi } from '../constants/abi/Payoff.abi.js'
 import { KeeperOracleImpl } from '../constants/abi/KeeperOracleImpl.abi.js'
-import { PythFactoryImpl } from '../constants/abi/PythFactoryImpl.abi.js'
+import { KeeperFactoryImpl } from '../constants/abi/KeeperFactoryImpl.js'
 import { GraphQLClient } from 'graphql-request'
+import { PayoffAbi } from '../constants/abi/Payoff.abi.js'
 
 export type MarketDetails = Awaited<ReturnType<typeof getMarkets>>[number]
 export async function getMarkets({
@@ -22,11 +22,7 @@ export async function getMarkets({
   const marketsWithOracle = marketAddresses.map(async (marketAddress) => {
     const marketContract = getContract({ abi: MarketImpl, address: marketAddress, client })
     // Market -> Oracle
-    const [oracle, payoff, token] = await Promise.all([
-      marketContract.read.oracle(),
-      marketContract.read.payoff(),
-      marketContract.read.token(),
-    ])
+    const [oracle, token] = await Promise.all([marketContract.read.oracle(), marketContract.read.token()])
 
     // Oracle -> KeeperOracle
     const [current] = await client.readContract({
@@ -49,7 +45,7 @@ export async function getMarkets({
     ])
 
     const providerFactoryContract = getContract({
-      abi: PythFactoryImpl,
+      abi: KeeperFactoryImpl,
       address: providerFactory,
       client,
     })
@@ -57,10 +53,11 @@ export async function getMarkets({
     const feed = await getFeedIdForProvider({ client, providerFactory, keeperOracle, graphClient })
     if (!feed) throw new Error(`No feed found for ${keeperOracle}`)
 
-    const [validFrom, validTo, underlyingId] = await Promise.all([
+    const [validFrom, validTo, underlyingId, underlyingPayoff] = await Promise.all([
       providerFactoryContract.read.validFrom(),
       providerFactoryContract.read.validTo(),
       providerFactoryContract.read.toUnderlyingId([feed]),
+      providerFactoryContract.read.toUnderlyingPayoff([feed]),
     ])
 
     return {
@@ -68,7 +65,8 @@ export async function getMarkets({
       oracle,
       keeperOracle,
       providerFactory,
-      payoff,
+      payoff: underlyingPayoff.provider,
+      payoffDecimals: BigInt(underlyingPayoff.decimals),
       feed,
       underlyingId,
       token,
@@ -81,15 +79,25 @@ export async function getMarkets({
   return Promise.all(marketsWithOracle)
 }
 
-export async function transformPrice(payoffAddress: Address, price: bigint, client: PublicClient) {
-  if (payoffAddress === zeroAddress) return price
+export async function transformPrice(
+  payoffAddress: Address,
+  payoffDecimals: bigint,
+  price: bigint,
+  client: PublicClient,
+) {
+  let transformedPrice = price
 
-  return client.readContract({
-    address: payoffAddress,
-    abi: PayoffAbi,
-    functionName: 'payoff',
-    args: [price],
-  })
+  if (payoffAddress !== zeroAddress) {
+    transformedPrice = await client.readContract({
+      address: payoffAddress,
+      abi: PayoffAbi,
+      functionName: 'payoff',
+      args: [price],
+    })
+  }
+
+  const base = 10n ** (payoffDecimals < 0 ? -payoffDecimals : payoffDecimals)
+  return payoffDecimals < 0 ? transformedPrice / base : payoffDecimals * base
 }
 
 async function getMarketAddresses({
@@ -150,7 +158,7 @@ async function getFeedIdForProvider({
 
   const feedEvents = await client.getLogs({
     address: providerFactory,
-    event: getAbiItem({ abi: PythFactoryImpl, name: 'OracleCreated' }),
+    event: getAbiItem({ abi: KeeperFactoryImpl, name: 'OracleCreated' }),
     args: { oracle: keeperOracle },
     fromBlock: 0n,
     toBlock: 'latest',
