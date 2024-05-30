@@ -66,17 +66,19 @@ export function oracleProviderAddressToOracleProviderTag(chainId: number, oracle
     case arbitrum.id: {
       return (
         {
-          [getAddress('0xf9249ec6785221226cb3f66fa049aa1e5b6a4a57')]: 'pyth-eth',
-          [getAddress('0xcd98f0ffbe50e334dd6b84584483617557ddc012')]: 'pyth-btc',
-          [getAddress('0x9276d4c4210062303972fd1dca9042e4f19a3aac')]: 'pyth-sol',
-          [getAddress('0x6a44bcfc3abaa1dd1fa88d369e7be50cbe407e66')]: 'pyth-matic',
-          [getAddress('0x600e9fcf5a9913cb1eb54cfcb3856fe4854878ea')]: 'pyth-tia',
-          [getAddress('0x9545091d003c19aa811d9111ac6451fb9f5da509')]: 'pyth-rlb',
-          [getAddress('0x424d97420f0ecbcc75f3e3f4a52d532bbe2ff53e')]: 'pyth-link',
-          [getAddress('0xfe87515fe199288c2233edbf40eb096d297179ea')]: 'pyth-bnb',
-          [getAddress('0xa872d117867187220d45c142611dea5f6d35c718')]: 'pyth-xrp',
-          [getAddress('0xf7183e7d8ebc7bd07c5855598b446adec78f684f')]: 'pyth-arb',
-          [getAddress('0xcD185bd1040Ff4B42b9108C740B57655A214Cbd2')]: 'pyth-jup',
+          [getAddress('0xee5D7658B636fE92E777B36559C1E100bd3Ebbbf')]: 'pyth-eth',
+          [getAddress('0x0Fc70a86C977278c24bCCfD0004aE4ae48d1C8f1')]: 'pyth-btc',
+          [getAddress('0xDD27Ce539E7198AC6cDa24d0263798a36cD0334C')]: 'pyth-sol',
+          [getAddress('0x178086e6f954b753C7Fb2709221bb165e1d66927')]: 'pyth-matic',
+          [getAddress('0xa38a8c5Db433ede48bA795F66EE8d2B1Df5F9a42')]: 'pyth-tia',
+          [getAddress('0x25477b6ED94964B1e69de06436b7Fd1829330511')]: 'pyth-rlb',
+          [getAddress('0xb4247ed94428097c9808bCBd6a5b04A35AC0Ae48')]: 'pyth-link',
+          [getAddress('0xbA01bfA95101f3c444a5eEb2bb44a402408A18D9')]: 'pyth-bnb',
+          [getAddress('0x18A55Fd3F0296daff15B78963B05FBC46E4fe0a2')]: 'pyth-xrp',
+          [getAddress('0x6a6998AdCc31Ea620F1341AFA36756DB2821261A')]: 'pyth-arb',
+          [getAddress('0xa1f637d803165bd3Aa1648fc22d6F68Ad9AC7BA0')]: 'pyth-jup',
+          [getAddress('0x9DAE1a67fe5A76BfBa91cf3FDd7069970e0BdF93')]: 'pyth-cmsqeth',
+          [getAddress('0x24EE68fc1f65b5A5cE3928b74C2b5264B13A90B0')]: 'pyth-msqbtc',
         }[oracle] ?? oracle
       )
     }
