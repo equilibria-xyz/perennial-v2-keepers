@@ -29,12 +29,12 @@ export class OrderListener {
 
       const pythPrices = await getRecentVaa({
         pyth: pythConnection,
-        feeds: this.markets.map((m) => ({ providerId: m.feed, minValidTime: m.validFrom })),
+        feeds: this.markets.map((m) => ({ providerId: m.underlyingId, minValidTime: m.validFrom })),
       })
 
       const marketPrices = await Promise.all(
         this.markets.map(async (market) => {
-          const pythData = pythPrices.find((p) => p.feedId === market.feed)
+          const pythData = pythPrices.find((p) => p.feedId === market.underlyingId)
           if (!pythData) return null
 
           return { market, price: await transformPrice(market.payoff, market.payoffDecimals, pythData.price, client) }
@@ -44,7 +44,7 @@ export class OrderListener {
 
       const executableOrders_ = await Promise.all(
         this.markets.map((market) => {
-          const pythData = pythPrices.find((p) => p.feedId === market.feed)
+          const pythData = pythPrices.find((p) => p.feedId === market.underlyingId)
           if (!pythData) return null
 
           return this.tryExecuteOrders({
