@@ -85,19 +85,21 @@ export async function transformPrice(
   price: bigint,
   client: PublicClient,
 ) {
-  let transformedPrice = price
+  const base18Base = BigInt(1e18)
+  let transformedPrice = price * BigInt(1e12)
 
   if (payoffAddress !== zeroAddress) {
     transformedPrice = await client.readContract({
       address: payoffAddress,
       abi: PayoffAbi,
       functionName: 'payoff',
-      args: [price],
+      args: [transformedPrice],
     })
   }
 
-  const base = 10n ** (payoffDecimals < 0 ? -payoffDecimals : payoffDecimals)
-  return payoffDecimals < 0 ? transformedPrice / base : payoffDecimals * base
+  const base = base18Base * 10n ** (payoffDecimals < 0 ? -payoffDecimals : payoffDecimals)
+  const price18 = payoffDecimals < 0 ? (transformedPrice * base18Base) / base : (transformedPrice * base) / base18Base
+  return price18 / BigInt(1e12)
 }
 
 async function getMarketAddresses({
