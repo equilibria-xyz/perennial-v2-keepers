@@ -59,7 +59,7 @@ export const DSUAddresses: AddressMapping = {
 }
 
 export const USDCAddresses: AddressMapping = {
-  [arbitrum.id]: getAddress('0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8'),
+  [arbitrum.id]: getAddress('0xaf88d065e77c8cC2239327C5EDb3A432268e5831'),
   [arbitrumSepolia.id]: getAddress('0x16b38364bA6f55B6E150cC7f52D22E89643f3535'),
   [base.id]: getAddress('0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'),
   [blastSepolia.id]: getAddress('0x4200000000000000000000000000000000000022'),
