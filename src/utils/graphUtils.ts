@@ -1,6 +1,6 @@
 import { Address } from 'viem'
 import { gql } from '../../types/gql/gql'
-import { graphClient } from '../config'
+import { GraphClient } from '../config'
 
 export const GraphDefaultPageSize = 1000
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,7 +49,7 @@ export async function getMarketsUsers(markets: Address[]) {
   }`)
 
   return queryAll(async (page: number) => {
-    return graphClient.request(query, {
+    return GraphClient.request(query, {
       markets,
       first: GraphDefaultPageSize,
       skip: page * GraphDefaultPageSize,

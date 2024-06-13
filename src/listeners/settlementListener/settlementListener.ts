@@ -1,6 +1,6 @@
 import { getContract } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
-import { Chain, client, graphClient, settlementSigner } from '../../config'
+import { Chain, Client, GraphClient, settlementSigner } from '../../config'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi'
@@ -16,14 +16,14 @@ export class SettlementListener {
   public async init() {
     this.markets = await getMarkets({
       chainId: Chain.id,
-      client,
-      graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined,
+      client: Client,
+      graphClient: UseGraphEvents[Chain.id] ? GraphClient : undefined,
     })
   }
 
   public async listen() {
     this.markets.forEach((market) => {
-      client.watchContractEvent({
+      Client.watchContractEvent({
         abi: KeeperOracleImpl,
         address: market.keeperOracle,
         eventName: 'OracleProviderVersionFulfilled',
@@ -44,7 +44,7 @@ export class SettlementListener {
     const latestMarketVersions = await Promise.all(
       this.markets.map(async (market) => ({
         market,
-        version: await client.readContract({
+        version: await Client.readContract({
           address: market.keeperOracle,
           abi: KeeperOracleImpl,
           functionName: 'latest',
@@ -61,12 +61,12 @@ export class SettlementListener {
     const keeperOracle = getContract({
       address: market.keeperOracle,
       abi: KeeperOracleImpl,
-      client,
+      client: Client,
     })
     const keeperOracleFactory = getContract({
       address: market.providerFactory,
       abi: KeeperFactoryImpl,
-      client,
+      client: Client,
     })
     const callbacks = await keeperOracle.read.localCallbacks([version, market.market])
     if (callbacks.length === 0) {
@@ -81,7 +81,7 @@ export class SettlementListener {
           { account: settlementSigner.account },
         )
 
-        const gasEstimate = await client.estimateContractGas(request)
+        const gasEstimate = await Client.estimateContractGas(request)
         // Multiply by 6 for safety, min gas of 5M
         const gas = Big6Math.max(5000000n, gasEstimate * 6n)
         const hash = await settlementSigner.writeContract({ ...request, gas })
@@ -90,7 +90,7 @@ export class SettlementListener {
           chain: Chain.id,
         })
         console.log(`Settlement TX Sent. Hash: ${hash}`)
-        const receipt = await client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
+        const receipt = await Client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
         if (receipt.status === 'success')
           tracer.dogstatsd.increment('settlementListener.transaction.success', 1, {
             chain: Chain.id,

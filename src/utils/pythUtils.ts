@@ -76,21 +76,21 @@ export const buildCommit = ({
   version,
   value,
   ids,
-  vaa,
+  data,
   revertOnFailure,
 }: {
   oracleProviderFactory: Address
   version: bigint
   value: bigint
   ids: string[]
-  vaa: string
+  data: string
   revertOnFailure: boolean
 }): { action: number; args: Hex } => {
   return {
     action: 6,
     args: encodeAbiParameters(
       ['address', 'uint256', 'bytes32[]', 'uint256', 'bytes', 'bool'].map((type) => ({ type })),
-      [oracleProviderFactory, value, ids, version, vaa, revertOnFailure],
+      [oracleProviderFactory, value, ids, version, data, revertOnFailure],
     ),
   }
 }
