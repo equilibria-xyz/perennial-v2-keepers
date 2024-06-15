@@ -1,4 +1,4 @@
-import { Address, Hex, PublicClient, getAbiItem } from 'viem'
+import { Address, Hex, PublicClient, getAbiItem, parseAbi } from 'viem'
 import { KeeperFactoryImpl } from '../../constants/abi/KeeperFactoryImpl.abi.js'
 import { GraphQLClient } from 'graphql-request'
 
@@ -42,3 +42,8 @@ export async function getOracleAddresses({
   })
   return logs.map((l) => ({ id: l.args.id, oracle: l.args.oracle }))
 }
+
+export const ChainlinkFactoryReaders = parseAbi([
+  'function feeManager() view returns (address)',
+  'function feeTokenAddress() view returns (address)',
+])

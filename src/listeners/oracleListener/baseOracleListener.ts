@@ -22,7 +22,7 @@ export abstract class BaseOracleListener {
     timestamp: bigint
     underlyingId: Hex
   }): Promise<{ data: Hex; publishTime: bigint }>
-  abstract getUpdateValue(): Promise<bigint>
+  abstract getUpdateMsgValue(updateData: Hex): Promise<bigint>
 
   public async init() {
     this.oracleAddresses = await getOracleAddresses({
@@ -158,7 +158,7 @@ export abstract class BaseOracleListener {
           if (now - version > GracePeriod)
             return {
               version: versionsToCommit[i].version,
-              data: '',
+              data: '' as Hex,
               publishTime: 0n,
               index: versionsToCommit[i].index,
               prevVersion: 0n,
@@ -187,7 +187,7 @@ export abstract class BaseOracleListener {
           commitment: buildCommit({
             oracleProviderFactory: this.keeperFactoryAddress(),
             version: updatedData.value.version,
-            value: await this.getUpdateValue(),
+            value: await this.getUpdateMsgValue(updatedData.value.data),
             ids: [id],
             data: updatedData.value.data,
             revertOnFailure: true,

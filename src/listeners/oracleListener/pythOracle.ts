@@ -23,7 +23,7 @@ export class PythOracleListener extends BaseOracleListener {
     return { data: this.updateDataToHex(vaa), publishTime: BigInt(publishTime_) }
   }
 
-  async getUpdateValue() {
+  async getUpdateMsgValue() {
     return 1n
   }
 
