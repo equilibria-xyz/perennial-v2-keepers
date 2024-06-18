@@ -1,15 +1,25 @@
-import { Address, Hex, getContract } from 'viem'
+import { Address, Hex, getAbiItem, getContract } from 'viem'
 import tracer from '../../tracer.js'
-import { MultiInvokerAddress, UseGraphEvents } from '../../constants/network.js'
+import { MultiInvokerAddress } from '../../constants/network.js'
 import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
-import { CommitmentWithMetrics, getOracleAddresses } from './lib.js'
-import { Chain, Client, GraphClient, oracleAccount, oracleSigner } from '../../config.js'
+import { Chain, Client, oracleAccount, oracleSigner } from '../../config.js'
 import { notEmpty, range } from '../../utils/arrayUtils.js'
 import { Big6Math } from '../../constants/Big6Math.js'
 import { KeeperFactoryImpl } from '../../constants/abi/KeeperFactoryImpl.abi.js'
 import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
-import { buildCommit } from '../../utils/pythUtils.js'
+import { buildCommit } from '../../utils/oracleUtils.js'
+
+type Commitment = {
+  action: number
+  args: Hex
+}
+
+type CommitmentWithMetrics = {
+  commitment: Commitment | null
+  awaitingVersions: number
+  providerTag: string
+}
 
 export abstract class BaseOracleListener {
   public static PollingInterval = 4000 // 4s
@@ -25,11 +35,7 @@ export abstract class BaseOracleListener {
   abstract getUpdateMsgValue(updateData: Hex): Promise<bigint>
 
   public async init() {
-    this.oracleAddresses = await getOracleAddresses({
-      client: Client,
-      keeperFactoryAddress: this.keeperFactoryAddress(),
-      graphClient: UseGraphEvents[Chain.id] ? GraphClient : undefined,
-    })
+    this.oracleAddresses = await this.getOracleAddresses()
     console.log('Oracle Addresses:', this.oracleAddresses.map(({ oracle }) => oracle).join(', '))
   }
 
@@ -78,11 +84,11 @@ export abstract class BaseOracleListener {
         })
     } catch (error) {
       if (error.response) {
-        console.error(`PythOracle Got error: ${error.response.status}, ${error.response.data}`)
+        console.error(`${this.statsPrefix()} Got error: ${error.response.status}, ${error.response.data}`)
       } else if (error.request) {
-        console.error(`PythOracle got error: ${error.request}`)
+        console.error(`${this.statsPrefix()} got error: ${error.request}`)
       } else {
-        console.error(`Pyth Oracle got error: Error ${error.message}`)
+        console.error(`${this.statsPrefix()} got error: ${error.message}`)
       }
     }
   }
@@ -211,5 +217,16 @@ export abstract class BaseOracleListener {
 
     const commitments_ = await Promise.all(commitmentPromises)
     return commitments_.flat()
+  }
+
+  public async getOracleAddresses() {
+    const logs = await Client.getLogs({
+      address: this.keeperFactoryAddress(),
+      event: getAbiItem({ abi: KeeperFactoryImpl, name: 'OracleCreated' }),
+      strict: true,
+      fromBlock: 0n,
+      toBlock: 'latest',
+    })
+    return logs.map((l) => ({ id: l.args.id, oracle: l.args.oracle }))
   }
 }

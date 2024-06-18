@@ -3,11 +3,12 @@ import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUti
 import { GraphDefaultPageSize, queryAll } from '../../utils/graphUtils'
 import { Chain, Client, GraphClient, orderSigner, pythConnection } from '../../config'
 import { BatchKeeperAbi } from '../../constants/abi'
-import { buildCommit, getRecentVaa } from '../../utils/pythUtils'
+import { buildCommit } from '../../utils/oracleUtils'
 import { notEmpty } from '../../utils/arrayUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { BatchKeeperAddresses, UseGraphEvents } from '../../constants/network'
+import { getRecentVaa } from '../../utils/pythUtils'
 
 export class OrderListener {
   public static PollingInterval = 4000 // 4s
