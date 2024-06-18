@@ -45,40 +45,12 @@ export class LiqListener {
       const blockNumber = await Client.getBlockNumber()
       console.log(`Running Liq Handler. Block: ${blockNumber}`)
 
-      for (let i = 0; i < this.markets.length; i++) {
-        const { market, users, underlyingId, validFrom, providerFactory, feed } = this.markets[i]
-        const marketTag = marketAddressToMarketTag(Chain.id, market)
-
-        const now = Date.now()
-        console.log(`${marketTag}: Checking if any of ${users.length} users can be liquidated.`)
-        tracer.dogstatsd.gauge('market.users', users.length, {
-          chain: Chain.id,
-          market: marketAddressToMarketTag(Chain.id, market),
-        })
-
-        const [vaa] = await getRecentVaa({
-          pyth: pythConnection,
-          feeds: [{ providerId: underlyingId, minValidTime: validFrom }],
-        })
-        const commit = buildCommit({
-          oracleProviderFactory: providerFactory,
-          ids: [feed],
-          data: vaa.vaa,
-          version: vaa.version,
-          value: 1n,
-          revertOnFailure: false,
-        })
-
-        const liqUsers = await this.batchLiquidationSimulation(market, users, commit)
-
-        console.log(`${marketTag}: Liquidation sim took ${Date.now() - now}ms`)
-        tracer.dogstatsd.distribution('liquidator.simulation.time', Date.now() - now, {
-          chain: Chain.id,
-          market: marketAddressToMarketTag(Chain.id, market),
-        })
-
-        await this.executeLiquidations(market, liqUsers, commit)
-      }
+      const results = await Promise.allSettled(this.markets.map((market) => this.checkMarket(market)))
+      results.forEach((r) => {
+        if (r.status === 'rejected') {
+          console.error(`Liq Keeper got error: Error ${r.reason}`)
+        }
+      })
     } catch (e) {
       console.error(`Liq Keeper got error: Error ${e.message}`)
     }
@@ -109,6 +81,40 @@ export class LiqListener {
         market.users = unique([...market.users, ...users])
       },
     })
+  }
+
+  private async checkMarket({ market, users, underlyingId, validFrom, providerFactory, feed }: LiqMarketDetails) {
+    const marketTag = marketAddressToMarketTag(Chain.id, market)
+
+    const now = Date.now()
+    console.log(`${marketTag}: Checking if any of ${users.length} users can be liquidated.`)
+    tracer.dogstatsd.gauge('market.users', users.length, {
+      chain: Chain.id,
+      market: marketAddressToMarketTag(Chain.id, market),
+    })
+
+    const [vaa] = await getRecentVaa({
+      pyth: pythConnection,
+      feeds: [{ providerId: underlyingId, minValidTime: validFrom }],
+    })
+    const commit = buildCommit({
+      oracleProviderFactory: providerFactory,
+      ids: [feed],
+      data: vaa.vaa,
+      version: vaa.version,
+      value: 1n,
+      revertOnFailure: false,
+    })
+
+    const liqUsers = await this.batchLiquidationSimulation(market, users, commit)
+
+    console.log(`${marketTag}: Liquidation sim took ${Date.now() - now}ms`)
+    tracer.dogstatsd.distribution('liquidator.simulation.time', Date.now() - now, {
+      chain: Chain.id,
+      market: marketAddressToMarketTag(Chain.id, market),
+    })
+
+    await this.executeLiquidations(market, liqUsers, commit)
   }
 
   private async batchLiquidationSimulation(market: Address, accounts: Address[], commit: Invocation) {
