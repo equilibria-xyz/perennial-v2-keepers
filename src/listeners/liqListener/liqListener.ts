@@ -1,7 +1,7 @@
 import { Address, Hex, getAddress } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
-import { Chain, client, graphClient, liquidatorAccount, liquidatorSigner, pythConnection } from '../../config'
+import { Chain, Client, GraphClient, liquidatorAccount, liquidatorSigner, pythConnection } from '../../config'
 import { BatchKeeperAbi, MarketImpl } from '../../constants/abi'
 import { buildCommit, getRecentVaa } from '../../utils/pythUtils'
 import { Big6Math } from '../../constants/Big6Math'
@@ -27,7 +27,11 @@ export class LiqListener {
 
   public async init() {
     this.markets = (
-      await getMarkets({ chainId: Chain.id, client, graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined })
+      await getMarkets({
+        chainId: Chain.id,
+        client: Client,
+        graphClient: UseGraphEvents[Chain.id] ? GraphClient : undefined,
+      })
     ).map((m) => ({ ...m, users: [] }))
     // Fetch users for market
     await this.refreshMarketUsers()
@@ -37,7 +41,7 @@ export class LiqListener {
 
   public async run() {
     try {
-      const blockNumber = await client.getBlockNumber()
+      const blockNumber = await Client.getBlockNumber()
       console.log(`Running Liq Handler. Block: ${blockNumber}`)
 
       for (let i = 0; i < this.markets.length; i++) {
@@ -58,7 +62,7 @@ export class LiqListener {
         const commit = buildCommit({
           oracleProviderFactory: providerFactory,
           ids: [feed],
-          vaa: vaa.vaa,
+          data: vaa.vaa,
           version: vaa.version,
           value: 1n,
           revertOnFailure: false,
@@ -92,7 +96,7 @@ export class LiqListener {
     const marketTag = marketAddressToMarketTag(Chain.id, market.market)
     console.log(`watching market ${market.market} (${marketTag})`)
 
-    client.watchContractEvent({
+    Client.watchContractEvent({
       address: market.market,
       abi: MarketImpl,
       eventName: 'Updated',
@@ -121,7 +125,7 @@ export class LiqListener {
 
   private async runLiquidationSimulation(market: Address, accounts: Address[], commit: Invocation) {
     try {
-      const { result } = await client.simulateContract({
+      const { result } = await Client.simulateContract({
         address: BatchKeeperAddresses[Chain.id],
         abi: BatchKeeperAbi,
         functionName: 'tryLiquidate',
@@ -177,7 +181,7 @@ export class LiqListener {
   }
 
   private async sendLiquidations(market: Address, users: Address[], commit: Invocation) {
-    const { request, result } = await client.simulateContract({
+    const { request, result } = await Client.simulateContract({
       address: BatchKeeperAddresses[Chain.id],
       abi: BatchKeeperAbi,
       functionName: 'tryLiquidate',
@@ -186,11 +190,11 @@ export class LiqListener {
       account: liquidatorAccount,
     })
 
-    const gasEstimate = await client.estimateContractGas(request)
+    const gasEstimate = await Client.estimateContractGas(request)
     // Multiply by 6 for safety, min gas of 5M
     const gas = Big6Math.max(5000000n, gasEstimate * 6n)
     const hash = await liquidatorSigner.writeContract({ ...request, gas })
-    const receipt = await client.waitForTransactionReceipt({ hash })
+    const receipt = await Client.waitForTransactionReceipt({ hash })
     return { result, hash, receipt }
   }
 }

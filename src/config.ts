@@ -23,6 +23,12 @@ export const GraphUrls: {
   [hardhat.id]: process.env.ARBITRUM_GOERLI_GRAPH_URL || '',
 }
 
+export const ChainlinkConfig = {
+  baseUrl: process.env.CHAINLINK_BASE_URL || '',
+  clientId: process.env.CHAINLINK_ID || '',
+  userSecret: process.env.CHAINLINK_SECRET || '',
+}
+
 const _chainId = process.argv[2]
 if (!_chainId) throw new Error('Missing chainId argument')
 const _chain = SupportedChains.find((c) => c.id === Number(_chainId))
@@ -31,7 +37,7 @@ if (!_chain) throw new Error('Invalid chainId argument')
 export const Chain = _chain
 export const IsMainnet = !([arbitrumSepolia.id] as SupportedChainId[]).includes(Chain.id)
 
-export const client = createPublicClient({
+export const Client = createPublicClient({
   chain: Chain,
   transport: http(NodeUrls[Chain.id]),
   batch: {
@@ -39,12 +45,12 @@ export const client = createPublicClient({
   },
 }) as PublicClient
 
-export const wssClient = createPublicClient({
+export const WssClient = createPublicClient({
   chain: Chain,
   transport: webSocket(NodeUrls[Chain.id].replace('http', 'ws')),
 })
 
-export const graphClient = new GraphQLClient(GraphUrls[Chain.id])
+export const GraphClient = new GraphQLClient(GraphUrls[Chain.id])
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 export const oracleAccount = privateKeyToAccount(process.env.ORACLE_PRIVATE_KEY! as Hex)
@@ -89,6 +95,7 @@ export enum TaskType {
   'liq',
   'orders',
   'oracle',
+  'clOracle',
   'settlement',
   'deploy',
   'metrics',
@@ -98,6 +105,3 @@ const _task = process.argv[3]
 if (!_task) throw new Error('Missing task argument')
 if (!(_task in TaskType)) throw new Error('task undefined')
 export const Task = TaskType[_task as keyof typeof TaskType]
-
-const _maxMaintenance = process.argv[4]
-export const MaxMaintenancePct = _maxMaintenance

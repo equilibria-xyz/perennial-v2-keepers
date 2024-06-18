@@ -1,7 +1,7 @@
 import { Hex, getAddress } from 'viem'
 import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUtils'
 import { GraphDefaultPageSize, queryAll } from '../../utils/graphUtils'
-import { Chain, client, graphClient, orderSigner, pythConnection } from '../../config'
+import { Chain, Client, GraphClient, orderSigner, pythConnection } from '../../config'
 import { BatchKeeperAbi } from '../../constants/abi'
 import { buildCommit, getRecentVaa } from '../../utils/pythUtils'
 import { notEmpty } from '../../utils/arrayUtils'
@@ -17,14 +17,14 @@ export class OrderListener {
   public async init() {
     this.markets = await getMarkets({
       chainId: Chain.id,
-      client,
-      graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined,
+      client: Client,
+      graphClient: UseGraphEvents[Chain.id] ? GraphClient : undefined,
     })
   }
 
   public async run() {
     try {
-      const blockNumber = await client.getBlockNumber()
+      const blockNumber = await Client.getBlockNumber()
       console.log(`Running Order Handler. Block: ${blockNumber}`)
 
       const pythPrices = await getRecentVaa({
@@ -37,7 +37,7 @@ export class OrderListener {
           const pythData = pythPrices.find((p) => p.feedId === market.underlyingId)
           if (!pythData) return null
 
-          return { market, price: await transformPrice(market.payoff, market.payoffDecimals, pythData.price, client) }
+          return { market, price: await transformPrice(market.payoff, market.payoffDecimals, pythData.price, Client) }
         }),
       )
       const ordersForMarkets = await this.getOrdersForMarkets(marketPrices.filter(notEmpty))
@@ -62,7 +62,7 @@ export class OrderListener {
 
       for (let i = 0; i < executableOrders.length; i++) {
         const { market, orders, commit } = executableOrders[i]
-        const { request } = await client.simulateContract({
+        const { request } = await Client.simulateContract({
           address: BatchKeeperAddresses[Chain.id],
           abi: BatchKeeperAbi,
           functionName: 'tryExecute',
@@ -70,7 +70,7 @@ export class OrderListener {
           value: 1n,
           account: orderSigner.account,
         })
-        const gasEstimate = await client.estimateContractGas(request)
+        const gasEstimate = await Client.estimateContractGas(request)
         const gas = Big6Math.max(5000000n, gasEstimate * 6n)
         const hash = await orderSigner.writeContract({ ...request, gas })
 
@@ -78,7 +78,7 @@ export class OrderListener {
           chain: Chain.id,
         })
         console.log(`Orders execute published. Number: ${orders.length}. Hash: ${hash}`)
-        const receipt = await client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
+        const receipt = await Client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
         if (receipt.status === 'success')
           tracer.dogstatsd.increment('orderKeeper.transaction.success', 1, {
             chain: Chain.id,
@@ -115,11 +115,11 @@ export class OrderListener {
       version,
       value: 1n,
       ids: [market.feed],
-      vaa: pythVaa,
+      data: pythVaa,
       revertOnFailure: false,
     })
 
-    const { result } = await client.simulateContract({
+    const { result } = await Client.simulateContract({
       address: BatchKeeperAddresses[Chain.id],
       abi: BatchKeeperAbi,
       functionName: 'tryExecute',
@@ -157,7 +157,7 @@ export class OrderListener {
         }
       `
 
-      return graphClient.request(query) as Promise<{
+      return GraphClient.request(query) as Promise<{
         [key: string]: { account: string; market: string; nonce: string }[]
       }>
     })
