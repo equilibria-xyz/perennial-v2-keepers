@@ -3,7 +3,7 @@ import { MarketFactoryAddress, SupportedChainId } from '../constants/network.js'
 import { FactoryAbi } from '../constants/abi/Factory.abi.js'
 import { MarketImpl } from '../constants/abi/MarketImpl.abi.js'
 import { KeeperOracleImpl } from '../constants/abi/KeeperOracleImpl.abi.js'
-import { KeeperFactoryImpl } from '../constants/abi/KeeperFactoryImpl.js'
+import { KeeperFactoryImpl } from '../constants/abi/KeeperFactoryImpl.abi.js'
 import { GraphQLClient } from 'graphql-request'
 import { PayoffAbi } from '../constants/abi/Payoff.abi.js'
 

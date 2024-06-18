@@ -3,8 +3,8 @@ import {
   Chain,
   oracleAccount,
   liquidatorAccount,
-  client,
-  graphClient,
+  Client,
+  GraphClient,
   orderAccount,
   liquidatorSigner,
   settlementAccount,
@@ -46,21 +46,21 @@ export class MetricsListener {
     console.log('Initing Metrics Listener')
     this.markets = await getMarkets({
       chainId: Chain.id,
-      client,
-      graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined,
+      client: Client,
+      graphClient: UseGraphEvents[Chain.id] ? GraphClient : undefined,
     })
     this.marketAddresses = this.markets.map((m) => m.market)
     this.vaultAddreses = await getVaults({
       chainId: Chain.id,
-      client,
-      graphClient: UseGraphEvents[Chain.id] ? graphClient : undefined,
+      client: Client,
+      graphClient: UseGraphEvents[Chain.id] ? GraphClient : undefined,
     })
     console.log('Market Addresses:', this.marketAddresses.join(', '))
     console.log('Vault Addresses:', this.vaultAddreses.join(', '))
   }
 
   public watchEvents() {
-    client.watchContractEvent({
+    Client.watchContractEvent({
       address: this.marketAddresses,
       abi: MarketImpl,
       eventName: 'Updated',
@@ -85,7 +85,7 @@ export class MetricsListener {
       },
     })
 
-    client.watchContractEvent({
+    Client.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
       abi: MultiInvokerImplAbi,
       eventName: 'OrderPlaced',
@@ -114,7 +114,7 @@ export class MetricsListener {
       },
     })
 
-    client.watchContractEvent({
+    Client.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
       abi: MultiInvokerImplAbi,
       eventName: 'OrderExecuted',
@@ -131,7 +131,7 @@ export class MetricsListener {
       },
     })
 
-    client.watchContractEvent({
+    Client.watchContractEvent({
       address: MultiInvokerAddress[Chain.id],
       abi: MultiInvokerImplAbi,
       eventName: 'OrderCancelled',
@@ -179,7 +179,7 @@ export class MetricsListener {
       }
     `)
 
-    const { all, hourly } = await graphClient.request(volumeQuery, {
+    const { all, hourly } = await GraphClient.request(volumeQuery, {
       markets: this.marketAddresses,
       hour: Math.floor(hour.getTime() / 1000).toString(),
     })
@@ -227,12 +227,12 @@ export class MetricsListener {
     this.marketAddresses.forEach(async (marketAddress) => {
       const marketTag = marketAddressToMarketTag(Chain.id, marketAddress)
       const [global, tvl] = await Promise.all([
-        client.readContract({
+        Client.readContract({
           address: marketAddress,
           abi: MarketImpl,
           functionName: 'global',
         }),
-        client.readContract({
+        Client.readContract({
           address: DSUAddresses[Chain.id],
           abi: ERC20Abi,
           functionName: 'balanceOf',
@@ -240,7 +240,7 @@ export class MetricsListener {
         }),
       ])
       const [position] = await Promise.all([
-        client.readContract({
+        Client.readContract({
           address: marketAddress,
           abi: MarketImpl,
           functionName: 'position',
@@ -300,7 +300,7 @@ export class MetricsListener {
       })
 
       // Get batch keeper balance for the market (liquidations)
-      const [, batchKeeperLocals] = await client.multicall({
+      const [, batchKeeperLocals] = await Client.multicall({
         contracts: [
           {
             address: marketAddress,
@@ -331,7 +331,7 @@ export class MetricsListener {
 
     this.vaultAddreses.forEach(async (vault) => {
       const vaultTag = vaultAddressToVaultTag(Chain.id, vault)
-      const vaultContract = getContract({ abi: VaultImplAbi, address: vault, client })
+      const vaultContract = getContract({ abi: VaultImplAbi, address: vault, client: Client })
       const [totalAssets, totalShares] = await Promise.all([
         vaultContract.read.totalAssets(),
         vaultContract.read.totalShares(),
@@ -363,12 +363,12 @@ export class MetricsListener {
         let balance = 0
         switch (balanceType) {
           case 'ETH':
-            balance = Number(formatEther(await client.getBalance({ address })))
+            balance = Number(formatEther(await Client.getBalance({ address })))
             break
           case 'USDC':
             balance = Number(
               formatUnits(
-                await client.readContract({
+                await Client.readContract({
                   address: USDCAddresses[Chain.id],
                   abi: ERC20Abi,
                   functionName: 'balanceOf',
@@ -381,7 +381,7 @@ export class MetricsListener {
           case 'DSU':
             balance = Number(
               formatEther(
-                await client.readContract({
+                await Client.readContract({
                   address: DSUAddresses[Chain.id],
                   abi: ERC20Abi,
                   functionName: 'balanceOf',
@@ -426,7 +426,7 @@ export class MetricsListener {
     const globals = await Promise.all(
       this.marketAddresses.map(async (m) => ({
         marketAddress: m,
-        global: await client.readContract({ address: m, abi: MarketImpl, functionName: 'global' }),
+        global: await Client.readContract({ address: m, abi: MarketImpl, functionName: 'global' }),
       })),
     )
 
@@ -440,7 +440,7 @@ export class MetricsListener {
           args: [global.marketAddress],
         })
 
-        await client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
+        await Client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
       }
     }
 

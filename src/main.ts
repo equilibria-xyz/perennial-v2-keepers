@@ -1,12 +1,13 @@
 import 'dotenv/config'
 import './tracer.js'
 import { PythOracleListener } from './listeners/oracleListener/pythOracle.js'
-import { Chain, Task, TaskType, oracleAccount, client, oracleSigner, IsMainnet } from './config.js'
+import { Task, TaskType, IsMainnet } from './config.js'
 import { MetricsListener } from './listeners/metricsListener/metricsListener.js'
 import deployBatchKeeper from './scripts/DeployBatchKeeper.js'
 import { OrderListener } from './listeners/orderListener/orderListener.js'
 import { LiqListener } from './listeners/liqListener/liqListener.js'
 import { SettlementListener } from './listeners/settlementListener/settlementListener.js'
+import { ChainlinkOracleListener } from './listeners/oracleListener/chainlinkOracle.js'
 
 const run = async () => {
   switch (Task) {
@@ -42,14 +43,26 @@ const run = async () => {
       break
     }
     case TaskType.oracle: {
-      const pythListener = new PythOracleListener(Chain, client)
+      const pythListener = new PythOracleListener()
       await pythListener.init()
 
       setInterval(
         () => {
-          pythListener.run(oracleAccount, oracleSigner)
+          pythListener.run()
         },
         IsMainnet ? PythOracleListener.PollingInterval : 2 * PythOracleListener.PollingInterval,
+      )
+      break
+    }
+    case TaskType.clOracle: {
+      const chainlinkOracleListener = new ChainlinkOracleListener()
+      await chainlinkOracleListener.init()
+
+      setInterval(
+        () => {
+          chainlinkOracleListener.run()
+        },
+        IsMainnet ? ChainlinkOracleListener.PollingInterval : 2 * ChainlinkOracleListener.PollingInterval,
       )
       break
     }
