@@ -1,10 +1,14 @@
-import { Address, Hex, decodeAbiParameters } from 'viem'
+import { Address, Hex, decodeAbiParameters, parseAbi } from 'viem'
 import { Chain, Client } from '../../config.js'
 import { BaseOracleListener } from './baseOracleListener.js'
 import { ChainlinkFactoryAddress } from '../../constants/network.js'
 import { fetchReportSingleFeed } from '../../utils/chainlinkUtils.js'
-import { ChainlinkFactoryReaders } from './lib.js'
 import { ChainlinkFeeManagerAbi } from '../../constants/abi/ChainlinkFeeManager.abi.js'
+
+const ChainlinkFactoryReaders = parseAbi([
+  'function feeManager() view returns (address)',
+  'function feeTokenAddress() view returns (address)',
+])
 
 export class ChainlinkOracleListener extends BaseOracleListener {
   private chainlinkFeeManagerAddress: Address
