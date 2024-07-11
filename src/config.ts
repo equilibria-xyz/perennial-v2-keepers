@@ -1,9 +1,10 @@
 import { createPublicClient, createWalletClient, webSocket, http, Hex, PublicClient } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { PythUrls, SupportedChainId, SupportedChains } from './constants/network.js'
+import { SupportedChainId, SupportedChains } from './constants/network.js'
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
 import { GraphQLClient } from 'graphql-request'
 import { arbitrum, arbitrumSepolia, base, hardhat } from 'viem/chains'
+import { notEmpty } from './utils/arrayUtils.js'
 
 export const NodeUrls: {
   [key in SupportedChainId]: string
@@ -84,12 +85,18 @@ export const settlementSigner = createWalletClient({
   account: settlementAccount,
 })
 
-export const pythConnection = new EvmPriceServiceConnection(PythUrls[Chain.id], {
-  priceFeedRequestConfig: { binary: true },
-})
-export const pythBackupConnection = new EvmPriceServiceConnection('https://hermes.pyth.network/', {
-  priceFeedRequestConfig: { binary: true },
-})
+export const PythConnections = [
+  process.env.PYTH_HERMES_URL,
+  process.env.PYTH_HERMES_FALLBACK_URL,
+  'https://hermes.pyth.network/',
+]
+  .filter(notEmpty)
+  .map(
+    (url) =>
+      new EvmPriceServiceConnection(url, {
+        priceFeedRequestConfig: { binary: true },
+      }),
+  )
 
 export enum TaskType {
   'liq',

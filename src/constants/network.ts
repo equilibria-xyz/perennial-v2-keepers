@@ -79,15 +79,6 @@ export const BatchKeeperAddresses: AddressMapping = {
   [hardhat.id]: zeroAddress,
 }
 
-export const PythUrls: {
-  [key in SupportedChainId]: string
-} = {
-  [arbitrum.id]: process.env.PYTH_HERMES_URL ?? 'https://hermes.pyth.network/',
-  [arbitrumSepolia.id]: 'https://hermes.pyth.network/',
-  [base.id]: process.env.PYTH_HERMES_URL ?? 'https://hermes.pyth.network/',
-  [hardhat.id]: 'https://hermes-beta.pyth.network/',
-}
-
 export const MaxSimSizes: {
   [key in SupportedChainId]: number
 } = {
