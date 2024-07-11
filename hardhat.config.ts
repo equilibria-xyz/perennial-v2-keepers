@@ -1,7 +1,6 @@
 import { HardhatUserConfig } from 'hardhat/config'
 import 'hardhat-dependency-compiler'
 import '@nomicfoundation/hardhat-verify'
-import '@gelatonetwork/web3-functions-sdk/hardhat-plugin'
 import 'dotenv/config'
 import { NetworkUserConfig } from 'hardhat/types'
 
@@ -33,11 +32,6 @@ function createNetworkConfig(network: string): NetworkUserConfig {
 
 function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserConfig {
   return {
-    w3f: {
-      rootDir: './src/gelato',
-      debug: false,
-      networks: ['hardhat'],
-    },
     networks: {
       arbitrum: createNetworkConfig('arbitrum'),
       arbitrumSepolia: createNetworkConfig('arbitrumSepolia'),

@@ -65,13 +65,6 @@ export const USDCAddresses: AddressMapping = {
   [hardhat.id]: getAddress('0x52C64b8998eB7C80b6F526E99E29ABdcC86B841b'),
 }
 
-export const GelatoDedicatedSenderAddresses: AddressMapping = {
-  [arbitrum.id]: getAddress('0xa6481EB7912f088a0941544b9a15ba696547Da20'),
-  [arbitrumSepolia.id]: zeroAddress,
-  [base.id]: zeroAddress,
-  [hardhat.id]: getAddress('0x016fCB340fE8A4d57bf57E1f10314551ADEBc6E8'),
-}
-
 export const BatchKeeperAddresses: AddressMapping = {
   [arbitrum.id]: getAddress('0x8b4e6f5E1b2Be9c4A9fd4DeE216fDBbDD67b05B6'),
   [arbitrumSepolia.id]: getAddress('0xdECeC72B6beDe55ED2865A38346BF96Fcc3b4a8F'),
