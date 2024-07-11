@@ -8,7 +8,6 @@ import {
   orderAccount,
   liquidatorSigner,
   settlementAccount,
-  pythConnection,
 } from '../../config.js'
 import {
   BatchKeeperAddresses,
@@ -401,7 +400,6 @@ export class MetricsListener {
 
     try {
       const pythPrices = await getRecentVaa({
-        pyth: pythConnection,
         feeds: this.markets.map((m) => ({ providerId: m.underlyingId, minValidTime: m.validFrom })),
       })
       const now = Math.floor(Date.now() / 1000)

@@ -1,15 +1,13 @@
-import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
 import { Hex } from 'viem'
-import { IsMainnet, pythBackupConnection } from '../config'
+import { PythConnections } from '../config'
 
 export const getRecentVaa = async ({
-  pyth,
+  pythClientIndex = 0,
   feeds,
-  useBackup = true,
 }: {
-  pyth: EvmPriceServiceConnection
+  pythClientIndex?: number
   feeds: { providerId: string; minValidTime: bigint }[]
-  useBackup?: boolean
+  fallbackIndex?: number
 }): Promise<
   {
     price: bigint
@@ -19,6 +17,8 @@ export const getRecentVaa = async ({
     version: bigint
   }[]
 > => {
+  const pyth = PythConnections.at(pythClientIndex)
+  if (!pyth) throw new Error(`No Pyth Client Found for Index: ${pythClientIndex}`)
   try {
     const priceFeeds = await pyth.getLatestPriceFeeds(feeds.map(({ providerId }) => providerId))
     if (!priceFeeds) throw new Error('No price feeds found')
@@ -41,31 +41,37 @@ export const getRecentVaa = async ({
       }
     })
   } catch (e) {
-    if (IsMainnet && useBackup) {
+    const nextClientIndex = pythClientIndex + 1
+    if (PythConnections.at(nextClientIndex)) {
       console.warn('[Pyth] Using backup connection')
-      return getRecentVaa({ pyth: pythBackupConnection, feeds, useBackup: false })
+      return getRecentVaa({
+        feeds,
+        pythClientIndex: nextClientIndex,
+      })
     }
     throw e
   }
 }
 
 export const getVaaWithBackupRetry = async ({
-  pyth,
   priceFeedId,
   vaaQueryTime,
-  useBackup = true,
+  pythClientIndex = 0,
 }: {
-  pyth: EvmPriceServiceConnection
   priceFeedId: Hex
   vaaQueryTime: number
-  useBackup?: boolean
+  pythClientIndex?: number
 }): Promise<[string, number]> => {
+  const pyth = PythConnections.at(pythClientIndex)
+  if (!pyth) throw new Error(`No Pyth Client Found for Index: ${pythClientIndex}`)
+
   try {
     return pyth.getVaa(priceFeedId, vaaQueryTime)
   } catch (e) {
-    if (IsMainnet && useBackup) {
+    const nextClientIndex = pythClientIndex + 1
+    if (PythConnections.at(nextClientIndex)) {
       console.warn('[Pyth] Using backup connection')
-      return getVaaWithBackupRetry({ pyth: pythBackupConnection, priceFeedId, vaaQueryTime, useBackup: false })
+      return getVaaWithBackupRetry({ pythClientIndex: nextClientIndex, priceFeedId, vaaQueryTime })
     }
     throw e
   }

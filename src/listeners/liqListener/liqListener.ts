@@ -1,7 +1,7 @@
 import { Address, Hex, getAddress } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
-import { Chain, Client, GraphClient, liquidatorAccount, liquidatorSigner, pythConnection } from '../../config'
+import { Chain, Client, GraphClient, liquidatorAccount, liquidatorSigner } from '../../config'
 import { BatchKeeperAbi, MarketImpl } from '../../constants/abi'
 import { buildCommit } from '../../utils/oracleUtils'
 import { getRecentVaa } from '../../utils/pythUtils'
@@ -94,7 +94,6 @@ export class LiqListener {
     })
 
     const [vaa] = await getRecentVaa({
-      pyth: pythConnection,
       feeds: [{ providerId: underlyingId, minValidTime: validFrom }],
     })
     const commit = buildCommit({

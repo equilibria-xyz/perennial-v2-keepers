@@ -1,7 +1,7 @@
 import { Hex, getAddress } from 'viem'
 import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUtils'
 import { GraphDefaultPageSize, queryAll } from '../../utils/graphUtils'
-import { Chain, Client, GraphClient, orderSigner, pythConnection } from '../../config'
+import { Chain, Client, GraphClient, orderSigner } from '../../config'
 import { BatchKeeperAbi } from '../../constants/abi'
 import { buildCommit } from '../../utils/oracleUtils'
 import { notEmpty } from '../../utils/arrayUtils'
@@ -29,7 +29,6 @@ export class OrderListener {
       console.log(`Running Order Handler. Block: ${blockNumber}`)
 
       const pythPrices = await getRecentVaa({
-        pyth: pythConnection,
         feeds: this.markets.map((m) => ({ providerId: m.underlyingId, minValidTime: m.validFrom })),
       })
 

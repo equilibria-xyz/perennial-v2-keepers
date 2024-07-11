@@ -1,5 +1,5 @@
 import { Hex } from 'viem'
-import { Chain, pythConnection } from '../../config.js'
+import { Chain } from '../../config.js'
 import { getVaaWithBackupRetry } from '../../utils/pythUtils.js'
 import { BaseOracleListener } from './baseOracleListener.js'
 import { PythFactoryAddress } from '../../constants/network.js'
@@ -15,7 +15,6 @@ export class PythOracleListener extends BaseOracleListener {
 
   async getUpdateDataAtTimestamp({ underlyingId, timestamp }: { timestamp: bigint; underlyingId: `0x${string}` }) {
     const [vaa, publishTime_] = await getVaaWithBackupRetry({
-      pyth: pythConnection,
       priceFeedId: underlyingId,
       vaaQueryTime: Number(timestamp),
     })
