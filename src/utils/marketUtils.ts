@@ -4,20 +4,11 @@ import { FactoryAbi } from '../constants/abi/Factory.abi.js'
 import { MarketImpl } from '../constants/abi/MarketImpl.abi.js'
 import { KeeperOracleImpl } from '../constants/abi/KeeperOracleImpl.abi.js'
 import { KeeperFactoryImpl } from '../constants/abi/KeeperFactoryImpl.abi.js'
-import { GraphQLClient } from 'graphql-request'
 import { PayoffAbi } from '../constants/abi/Payoff.abi.js'
 
 export type MarketDetails = Awaited<ReturnType<typeof getMarkets>>[number]
-export async function getMarkets({
-  client,
-  chainId,
-  graphClient,
-}: {
-  client: PublicClient
-  chainId: SupportedChainId
-  graphClient?: GraphQLClient
-}) {
-  const marketAddresses = await getMarketAddresses({ client, chainId, graphClient })
+export async function getMarkets({ client, chainId }: { client: PublicClient; chainId: SupportedChainId }) {
+  const marketAddresses = await getMarketAddresses({ client, chainId })
 
   const marketsWithOracle = marketAddresses.map(async (marketAddress) => {
     const marketContract = getContract({ abi: MarketImpl, address: marketAddress, client })
@@ -50,7 +41,7 @@ export async function getMarkets({
       client,
     })
 
-    const feed = await getFeedIdForProvider({ client, providerFactory, keeperOracle, graphClient })
+    const feed = await getFeedIdForProvider({ client, providerFactory, keeperOracle })
     if (!feed) throw new Error(`No feed found for ${keeperOracle}`)
 
     const [validFrom, validTo, underlyingId, underlyingPayoff] = await Promise.all([
@@ -102,27 +93,7 @@ export async function transformPrice(
   return price18 / BigInt(1e12)
 }
 
-async function getMarketAddresses({
-  client,
-  chainId,
-}: {
-  client: PublicClient
-  chainId: SupportedChainId
-  graphClient?: GraphQLClient
-}) {
-  /* if (graphClient) {
-    const query = gql(`
-      query getMarketAddresses_instanceRegistereds($marketFactory: Bytes!) {
-        instanceRegistereds(where: { factory: $marketFactory }) { instance }
-      }
-    `)
-
-    const { instanceRegistereds } = await graphClient.request(query, {
-      marketFactory: MarketFactoryAddress[chainId],
-    })
-
-    return instanceRegistereds.map((o) => getAddress(o.instance))
-  } */
+async function getMarketAddresses({ client, chainId }: { client: PublicClient; chainId: SupportedChainId }) {
   const logs = await client.getLogs({
     address: MarketFactoryAddress[chainId],
     event: getAbiItem({ abi: FactoryAbi, name: 'InstanceRegistered' }),
@@ -142,22 +113,7 @@ async function getFeedIdForProvider({
   client: PublicClient
   providerFactory: Address
   keeperOracle: Address
-  graphClient?: GraphQLClient
 }) {
-  /* if (graphClient) {
-    const query = gql(`
-      query getFeedIdForProvider_pythFactoryOracleCreateds($oracle: Bytes!) {
-        pythFactoryOracleCreateds(where: { oracle: $oracle }) { PythFactory_id }
-      }
-    `)
-
-    const { pythFactoryOracleCreateds } = await graphClient.request(query, {
-      oracle: keeperOracle,
-    })
-
-    return pythFactoryOracleCreateds[0]?.PythFactory_id as Hex | undefined
-  } */
-
   const feedEvents = await client.getLogs({
     address: providerFactory,
     event: getAbiItem({ abi: KeeperFactoryImpl, name: 'OracleCreated' }),
