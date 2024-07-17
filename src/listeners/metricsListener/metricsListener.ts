@@ -16,7 +16,6 @@ import {
   MultiInvokerAddress,
   OracleFactoryAddress,
   USDCAddresses,
-  UseGraphEvents,
 } from '../../constants/network.js'
 import { gql } from '../../../types/gql/gql.js'
 import tracer from '../../tracer.js'
@@ -46,13 +45,11 @@ export class MetricsListener {
     this.markets = await getMarkets({
       chainId: Chain.id,
       client: Client,
-      graphClient: UseGraphEvents[Chain.id] ? GraphClient : undefined,
     })
     this.marketAddresses = this.markets.map((m) => m.market)
     this.vaultAddreses = await getVaults({
       chainId: Chain.id,
       client: Client,
-      graphClient: UseGraphEvents[Chain.id] ? GraphClient : undefined,
     })
     console.log('Market Addresses:', this.marketAddresses.join(', '))
     console.log('Vault Addresses:', this.vaultAddreses.join(', '))
@@ -153,73 +150,67 @@ export class MetricsListener {
     const hour = startOfHour(new Date())
     const volumeQuery = gql(`
       query OnInterval_Volumes($markets: [Bytes!]!, $hour: BigInt!) {
-        all: bucketedVolumes(where: {
-          bucket: all,
-          market_in: $markets
-        }) {
-          bucket
-          market
-          makerNotional
-          longNotional
-          shortNotional
-        }
-
-        hourly: bucketedVolumes(where: {
-          bucket: hourly,
-          periodStartTimestamp_gte: $hour,
-          market_in: $markets
-        }) {
-          bucket
-          market
-          makerNotional
-          longNotional
-          shortNotional
+        markets(where: {id_in: $markets}) {
+          id
+          all: accumulations(where: {bucket: all}) {
+            bucket
+            makerNotional
+            longNotional
+            shortNotional
+          }
+          hourly: accumulations(where: {bucket: hourly, timestamp_gte: $hour}) {
+            bucket
+            makerNotional
+            longNotional
+            shortNotional
+          }
         }
       }
     `)
 
-    const { all, hourly } = await GraphClient.request(volumeQuery, {
+    const { markets } = await GraphClient.request(volumeQuery, {
       markets: this.marketAddresses,
       hour: Math.floor(hour.getTime() / 1000).toString(),
     })
 
-    all.forEach((v) => {
-      const marketAddress = getAddress(v.market)
+    markets.forEach((market) => {
+      const marketAddress = getAddress(market.id)
       const marketTag = marketAddressToMarketTag(Chain.id, marketAddress)
-      tracer.dogstatsd.gauge('market.makerNotional', Big6Math.toUnsafeFloat(BigInt(v.makerNotional)), {
-        chain: Chain.id,
-        market: marketTag,
-        bucket: v.bucket,
-      })
-      tracer.dogstatsd.gauge('market.longNotional', Big6Math.toUnsafeFloat(BigInt(v.longNotional)), {
-        chain: Chain.id,
-        market: marketTag,
-        bucket: v.bucket,
-      })
-      tracer.dogstatsd.gauge('market.shortNotional', Big6Math.toUnsafeFloat(BigInt(v.shortNotional)), {
-        chain: Chain.id,
-        market: marketTag,
-        bucket: v.bucket,
-      })
-    })
 
-    hourly.forEach((v) => {
-      const marketAddress = getAddress(v.market)
-      const marketTag = marketAddressToMarketTag(Chain.id, marketAddress)
-      tracer.dogstatsd.gauge('market.makerNotional', Big6Math.toUnsafeFloat(BigInt(v.makerNotional)), {
-        chain: Chain.id,
-        market: marketTag,
-        bucket: v.bucket,
+      market.all.forEach((v) => {
+        tracer.dogstatsd.gauge('market.makerNotional', Big6Math.toUnsafeFloat(BigInt(v.makerNotional)), {
+          chain: Chain.id,
+          market: marketTag,
+          bucket: v.bucket,
+        })
+        tracer.dogstatsd.gauge('market.longNotional', Big6Math.toUnsafeFloat(BigInt(v.longNotional)), {
+          chain: Chain.id,
+          market: marketTag,
+          bucket: v.bucket,
+        })
+        tracer.dogstatsd.gauge('market.shortNotional', Big6Math.toUnsafeFloat(BigInt(v.shortNotional)), {
+          chain: Chain.id,
+          market: marketTag,
+          bucket: v.bucket,
+        })
       })
-      tracer.dogstatsd.gauge('market.longNotional', Big6Math.toUnsafeFloat(BigInt(v.longNotional)), {
-        chain: Chain.id,
-        market: marketTag,
-        bucket: v.bucket,
-      })
-      tracer.dogstatsd.gauge('market.shortNotional', Big6Math.toUnsafeFloat(BigInt(v.shortNotional)), {
-        chain: Chain.id,
-        market: marketTag,
-        bucket: v.bucket,
+
+      market.hourly.forEach((v) => {
+        tracer.dogstatsd.gauge('market.makerNotional', Big6Math.toUnsafeFloat(BigInt(v.makerNotional)), {
+          chain: Chain.id,
+          market: marketTag,
+          bucket: v.bucket,
+        })
+        tracer.dogstatsd.gauge('market.longNotional', Big6Math.toUnsafeFloat(BigInt(v.longNotional)), {
+          chain: Chain.id,
+          market: marketTag,
+          bucket: v.bucket,
+        })
+        tracer.dogstatsd.gauge('market.shortNotional', Big6Math.toUnsafeFloat(BigInt(v.shortNotional)), {
+          chain: Chain.id,
+          market: marketTag,
+          bucket: v.bucket,
+        })
       })
     })
 

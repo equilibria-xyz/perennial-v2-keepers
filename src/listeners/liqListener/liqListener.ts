@@ -1,13 +1,13 @@
 import { Address, Hex, getAddress } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
-import { Chain, Client, GraphClient, liquidatorAccount, liquidatorSigner } from '../../config'
+import { Chain, Client, liquidatorAccount, liquidatorSigner } from '../../config'
 import { BatchKeeperAbi, MarketImpl } from '../../constants/abi'
 import { buildCommit } from '../../utils/oracleUtils'
 import { getRecentVaa } from '../../utils/pythUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
-import { BatchKeeperAddresses, MaxSimSizes, UseGraphEvents } from '../../constants/network'
+import { BatchKeeperAddresses, MaxSimSizes } from '../../constants/network'
 import { marketAddressToMarketTag } from '../../constants/addressTagging'
 import { chunk, notEmpty, unique } from '../../utils/arrayUtils'
 
@@ -31,7 +31,6 @@ export class LiqListener {
       await getMarkets({
         chainId: Chain.id,
         client: Client,
-        graphClient: UseGraphEvents[Chain.id] ? GraphClient : undefined,
       })
     ).map((m) => ({ ...m, users: [] }))
     // Fetch users for market
@@ -59,15 +58,17 @@ export class LiqListener {
   public async refreshMarketUsers() {
     const usersRes = await getMarketsUsers(this.markets.map((m) => m.market))
     this.markets.forEach((m) => {
-      m.users = usersRes.marketAccountPositions
-        .filter((u) => getAddress(u.market) === m.market)
-        .map((u) => getAddress(u.account))
+      m.users = usersRes.marketAccounts
+        .filter((u) => getAddress(u.market.id) === m.market)
+        .map((u) => getAddress(u.account.id))
+      const marketTag = marketAddressToMarketTag(Chain.id, m.market)
+      console.log(`${marketTag}: Found ${m.users.length} users after refresh`)
     })
   }
 
   private async watchUpdates(market: LiqMarketDetails) {
     const marketTag = marketAddressToMarketTag(Chain.id, market.market)
-    console.log(`watching market ${market.market} (${marketTag})`)
+    console.log(`${marketTag}: Watching market ${market.market}`)
 
     Client.watchContractEvent({
       address: market.market,

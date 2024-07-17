@@ -7,7 +7,7 @@ import { buildCommit } from '../../utils/oracleUtils'
 import { notEmpty } from '../../utils/arrayUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
-import { BatchKeeperAddresses, UseGraphEvents } from '../../constants/network'
+import { BatchKeeperAddresses } from '../../constants/network'
 import { getRecentVaa } from '../../utils/pythUtils'
 
 export class OrderListener {
@@ -19,7 +19,6 @@ export class OrderListener {
     this.markets = await getMarkets({
       chainId: Chain.id,
       client: Client,
-      graphClient: UseGraphEvents[Chain.id] ? GraphClient : undefined,
     })
   }
 
@@ -46,7 +45,6 @@ export class OrderListener {
         this.markets.map((market) => {
           const pythData = pythPrices.find((p) => p.feedId === market.underlyingId)
           if (!pythData) return null
-
           return this.tryExecuteOrders({
             market,
             pythPrice: pythData.price,
@@ -137,13 +135,13 @@ export class OrderListener {
     const res = await queryAll(async (page: number) => {
       const subQueries = marketPrices.map(({ market, price }) => {
         return `
-          market_${market.market}: multiInvokerOrderPlaceds(
+          market_${market.market}: multiInvokerTriggerOrders(
             where: {
               and: [
                 {market: "${market.market}", cancelled: false, executed: false},
                 {or: [
-                  {order_comparison: 1, order_price_lte: "${price}"},
-                  {order_comparison: -1, order_price_gte: "${price}"}
+                  {triggerOrderComparison: 1, triggerOrderPrice_lte: "${price}"},
+                  {triggerOrderComparison: -1, triggerOrderPrice_gte: "${price}"}
                 ]}
               ]
             }, first: ${GraphDefaultPageSize}, skip: ${page * GraphDefaultPageSize}

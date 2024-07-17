@@ -30,20 +30,20 @@ export async function queryAll<T extends { [key: string]: any }>(query: (page: n
 export async function getMarketsUsers(markets: Address[]) {
   const query = gql(`
     query GetMarketsUsers(
-      $markets: [Bytes!]!,
+      $markets: [String!]!,
       $first: Int!,
       $skip: Int!,
     ) {
-    marketAccountPositions(
+    marketAccounts(
       where:{
         market_in: $markets
-        collateral_gt: 0
+        collateral_not: 0
       }
       first: $first
       skip: $skip
     ) {
-      account
-      market
+      account { id }
+      market { id }
       collateral
     }
   }`)
