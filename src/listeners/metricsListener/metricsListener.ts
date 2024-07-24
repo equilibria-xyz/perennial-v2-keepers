@@ -165,37 +165,48 @@ export class MetricsListener {
             shortNotional
           }
         }
+
+        allProtocol: protocolAccumulations(where: { bucket: all }) {
+          bucket
+          makerNotional
+          longNotional
+          shortNotional
+        }
+
+        hourlyProtocol: protocolAccumulations(where: { bucket: hourly, timestamp_gte: $hour }) {
+          bucket
+          makerNotional
+          longNotional
+          shortNotional
+        }
       }
     `)
 
-    const { markets } = await GraphClient.request(volumeQuery, {
+    const { markets, allProtocol, hourlyProtocol } = await GraphClient.request(volumeQuery, {
       markets: this.marketAddresses,
       hour: Math.floor(hour.getTime() / 1000).toString(),
+    })
+
+    ;[...allProtocol, ...hourlyProtocol].forEach((v) => {
+      tracer.dogstatsd.gauge('protocol.makerNotional', Big6Math.toUnsafeFloat(BigInt(v.makerNotional)), {
+        chain: Chain.id,
+        bucket: v.bucket,
+      })
+      tracer.dogstatsd.gauge('protocol.longNotional', Big6Math.toUnsafeFloat(BigInt(v.longNotional)), {
+        chain: Chain.id,
+        bucket: v.bucket,
+      })
+      tracer.dogstatsd.gauge('protocol.shortNotional', Big6Math.toUnsafeFloat(BigInt(v.shortNotional)), {
+        chain: Chain.id,
+        bucket: v.bucket,
+      })
     })
 
     markets.forEach((market) => {
       const marketAddress = getAddress(market.id)
       const marketTag = marketAddressToMarketTag(Chain.id, marketAddress)
 
-      market.all.forEach((v) => {
-        tracer.dogstatsd.gauge('market.makerNotional', Big6Math.toUnsafeFloat(BigInt(v.makerNotional)), {
-          chain: Chain.id,
-          market: marketTag,
-          bucket: v.bucket,
-        })
-        tracer.dogstatsd.gauge('market.longNotional', Big6Math.toUnsafeFloat(BigInt(v.longNotional)), {
-          chain: Chain.id,
-          market: marketTag,
-          bucket: v.bucket,
-        })
-        tracer.dogstatsd.gauge('market.shortNotional', Big6Math.toUnsafeFloat(BigInt(v.shortNotional)), {
-          chain: Chain.id,
-          market: marketTag,
-          bucket: v.bucket,
-        })
-      })
-
-      market.hourly.forEach((v) => {
+      ;[...market.all, ...market.hourly].forEach((v) => {
         tracer.dogstatsd.gauge('market.makerNotional', Big6Math.toUnsafeFloat(BigInt(v.makerNotional)), {
           chain: Chain.id,
           market: marketTag,
