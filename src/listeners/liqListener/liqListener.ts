@@ -152,34 +152,37 @@ export class LiqListener {
     }
   }
 
-  private async executeLiquidations(market: Address, accounts: Address[], commit: Invocation) {
-    if (accounts.length === 0) return true
+  private async executeLiquidations(market: Address, allAccounts: Address[], commit: Invocation) {
+    if (allAccounts.length === 0) return true
     const marketTag = marketAddressToMarketTag(Chain.id, market)
 
     try {
       tracer.dogstatsd.increment('liquidator.transaction.sent', 1, {
         chain: Chain.id,
       })
-      console.log(`${marketTag}: Executing liquidation of: ${accounts}`)
-      const { result: liqRes, hash, receipt } = await this.sendLiquidations(market, accounts, commit)
-      console.log(`${marketTag}: Liquidation txn hash: ${hash}`)
+      const accountsChunked = chunk(allAccounts, 10) // Liquidate at most 10 users per txn
+      for (const accounts of accountsChunked) {
+        console.log(`${marketTag}: Executing liquidation of: ${accounts}`)
+        const { result: liqRes, hash, receipt } = await this.sendLiquidations(market, accounts, commit)
+        console.log(`${marketTag}: Liquidation txn hash: ${hash}`)
 
-      liqRes.forEach((userRes) => {
-        if (userRes.result.success) {
-          console.log(`${marketTag}: Liquidated ${userRes.account}`)
-        } else {
-          console.log(`${marketTag}: Could not execute liquidation for user ${userRes.result.reason}`)
-        }
-      })
+        liqRes.forEach((userRes) => {
+          if (userRes.result.success) {
+            console.log(`${marketTag}: Liquidated ${userRes.account}`)
+          } else {
+            console.log(`${marketTag}: Could not execute liquidation for user ${userRes.result.reason}`)
+          }
+        })
 
-      if (receipt.status === 'success')
-        tracer.dogstatsd.increment('liquidator.transaction.success', 1, {
-          chain: Chain.id,
-        })
-      if (receipt.status === 'reverted')
-        tracer.dogstatsd.increment('liquidator.transaction.reverted', 1, {
-          chain: Chain.id,
-        })
+        if (receipt.status === 'success')
+          tracer.dogstatsd.increment('liquidator.transaction.success', 1, {
+            chain: Chain.id,
+          })
+        if (receipt.status === 'reverted')
+          tracer.dogstatsd.increment('liquidator.transaction.reverted', 1, {
+            chain: Chain.id,
+          })
+      }
     } catch (e) {
       console.error(`${marketTag}: Error sending liquidate txn ${e}`)
       return false
