@@ -9,6 +9,8 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
       return (
         {
           [getAddress('0x0142a8bfF8D887Fc4f04469fCA6c66F5e0936Ea7')]: 'eth',
+          [getAddress('0xfC51de1f1a4ddeE5AD50df492f0A642cF1894E73')]: 'eth',
+          [getAddress('0x122b781CF4fCa219aDB9704132D7fa11460D4fBa')]: 'xau',
         }[market] ?? market
       )
     }
