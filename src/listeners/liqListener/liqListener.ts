@@ -45,11 +45,14 @@ export class LiqListener {
       console.log(`Running Liq Handler. Block: ${blockNumber}`)
 
       const results = await Promise.allSettled(this.markets.map((market) => this.checkMarket(market)))
-      results.forEach((r) => {
+      for (const r of results) {
         if (r.status === 'rejected') {
           console.error(`Liq Keeper got error: Error ${r.reason}`)
+        } else {
+          const { market, users, commit } = r.value
+          if (users.length > 0) await this.executeLiquidations(market, users, commit)
         }
-      })
+      }
     } catch (e) {
       console.error(`Liq Keeper got error: Error ${e.message}`)
     }
@@ -114,7 +117,7 @@ export class LiqListener {
       market: marketAddressToMarketTag(Chain.id, market),
     })
 
-    await this.executeLiquidations(market, liqUsers, commit)
+    return { market, users: liqUsers, commit }
   }
 
   private async batchLiquidationSimulation(market: Address, accounts: Address[], commit: Invocation) {
@@ -157,11 +160,11 @@ export class LiqListener {
     const marketTag = marketAddressToMarketTag(Chain.id, market)
 
     try {
-      tracer.dogstatsd.increment('liquidator.transaction.sent', 1, {
-        chain: Chain.id,
-      })
       const accountsChunked = chunk(allAccounts, 10) // Liquidate at most 10 users per txn
       for (const accounts of accountsChunked) {
+        tracer.dogstatsd.increment('liquidator.transaction.sent', 1, {
+          chain: Chain.id,
+        })
         console.log(`${marketTag}: Executing liquidation of: ${accounts}`)
         const { result: liqRes, hash, receipt } = await this.sendLiquidations(market, accounts, commit)
         console.log(`${marketTag}: Liquidation txn hash: ${hash}`)
