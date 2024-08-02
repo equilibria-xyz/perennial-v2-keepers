@@ -98,6 +98,8 @@ export const PythConnections = [
       }),
   )
 
+export const PythBenchmarksURL = 'https://benchmarks.pyth.network'
+
 export enum TaskType {
   'liq',
   'orders',

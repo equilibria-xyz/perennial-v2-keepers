@@ -1,5 +1,5 @@
 import { Hex } from 'viem'
-import { PythConnections } from '../config'
+import { PythBenchmarksURL, PythConnections } from '../config'
 
 export const getRecentVaa = async ({
   pythClientIndex = 0,
@@ -82,4 +82,13 @@ export function pythPriceToBig6(price: bigint, expo: number) {
   const normalizedPrice =
     normalizedExpo >= 0 ? price * 10n ** BigInt(normalizedExpo) : price / 10n ** BigInt(Math.abs(normalizedExpo))
   return normalizedPrice
+}
+
+export async function pythMarketOpen(priceFeedId: Hex) {
+  const url = `${PythBenchmarksURL}/v1/price_feeds/${priceFeedId}`
+  const response = await fetch(url)
+  if (!response.ok) return true // default to open if we can't get the data
+
+  const data: { market_hours: { is_open: boolean } } = await response.json()
+  return data.market_hours.is_open
 }

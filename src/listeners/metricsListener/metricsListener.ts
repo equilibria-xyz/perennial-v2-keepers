@@ -28,7 +28,7 @@ import { getVaults } from '../../utils/vaultUtils.js'
 import { VaultImplAbi } from '../../constants/abi/VaultImpl.abi.js'
 import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
 import { OracleFactoryAbi } from '../../constants/abi/OracleFactory.abi.js'
-import { getRecentVaa } from '../../utils/pythUtils.js'
+import { getRecentVaa, pythMarketOpen } from '../../utils/pythUtils.js'
 
 const Balances = ['ETH', 'USDC', 'DSU']
 const ERC20Abi = parseAbi(['function balanceOf(address owner) view returns (uint256)'] as const)
@@ -405,10 +405,12 @@ export class MetricsListener {
         feeds: this.markets.map((m) => ({ providerId: m.underlyingId, minValidTime: m.validFrom })),
       })
       const now = Math.floor(Date.now() / 1000)
-      pythPrices.forEach((price) => {
+      pythPrices.forEach(async (price) => {
         const market = this.markets.find((m) => m.underlyingId === price.feedId)
         if (!market) return
-        tracer.dogstatsd.gauge('pythHermes.delay', now - price.publishTime, {
+        const isOpen = await pythMarketOpen(price.feedId)
+        const publishTime = isOpen ? price.publishTime : now // If market is closed, use current time
+        tracer.dogstatsd.gauge('pythHermes.delay', now - publishTime, {
           chain: Chain.id,
           market: marketAddressToMarketTag(Chain.id, market.market),
         })
