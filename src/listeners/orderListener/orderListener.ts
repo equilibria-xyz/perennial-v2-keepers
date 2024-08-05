@@ -47,7 +47,6 @@ export class OrderListener {
           if (!pythData) return null
           return this.tryExecuteOrders({
             market,
-            pythPrice: pythData.price,
             pythVaa: pythData.vaa,
             version: pythData.version,
             orders: ordersForMarkets[`market_${market.market}`] || [],
@@ -99,7 +98,6 @@ export class OrderListener {
   }: {
     market: MarketDetails
     version: bigint
-    pythPrice: bigint
     pythVaa: Hex
     orders: { account: string; nonce: string }[]
   }) {

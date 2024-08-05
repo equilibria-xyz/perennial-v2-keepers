@@ -70,14 +70,15 @@ export async function getMarkets({ client, chainId }: { client: PublicClient; ch
   return Promise.all(marketsWithOracle)
 }
 
+// Price is expected to be in 18 decimals, returns a 6 decimal transformed price
 export async function transformPrice(
   payoffAddress: Address,
   payoffDecimals: bigint,
-  price: bigint,
+  price18: bigint,
   client: PublicClient,
 ) {
   const base18Base = BigInt(1e18)
-  let transformedPrice = price * BigInt(1e12)
+  let transformedPrice = price18
 
   if (payoffAddress !== zeroAddress) {
     transformedPrice = await client.readContract({
@@ -89,8 +90,9 @@ export async function transformPrice(
   }
 
   const base = base18Base * 10n ** (payoffDecimals < 0 ? -payoffDecimals : payoffDecimals)
-  const price18 = payoffDecimals < 0 ? (transformedPrice * base18Base) / base : (transformedPrice * base) / base18Base
-  return price18 / BigInt(1e12)
+  const decimalTransformedPrice =
+    payoffDecimals < 0 ? (transformedPrice * base18Base) / base : (transformedPrice * base) / base18Base
+  return decimalTransformedPrice / BigInt(1e12)
 }
 
 async function getMarketAddresses({ client, chainId }: { client: PublicClient; chainId: SupportedChainId }) {
