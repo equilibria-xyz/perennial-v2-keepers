@@ -29,11 +29,10 @@ export const getRecentVaa = async ({
 
       const priceData = priceFeed.getPriceUnchecked()
       const publishTime = priceData.publishTime
-      const price = pythPriceToBig6(BigInt(priceData.price), priceData.expo)
       const minValidTime = feeds.find(({ providerId }) => `0x${providerId}` === priceFeed.id)?.minValidTime
 
       return {
-        price,
+        price: pythPriceToBig18(BigInt(priceData.price), priceData.expo),
         feedId: `0x${priceFeed.id}` as Hex,
         vaa: `0x${Buffer.from(vaa, 'base64').toString('hex')}` as Hex,
         publishTime,
@@ -77,8 +76,8 @@ export const getVaaWithBackupRetry = async ({
   }
 }
 
-export function pythPriceToBig6(price: bigint, expo: number) {
-  const normalizedExpo = price ? 6 + expo : 0
+export function pythPriceToBig18(price: bigint, expo: number) {
+  const normalizedExpo = price ? 18 + expo : 0
   const normalizedPrice =
     normalizedExpo >= 0 ? price * 10n ** BigInt(normalizedExpo) : price / 10n ** BigInt(Math.abs(normalizedExpo))
   return normalizedPrice
