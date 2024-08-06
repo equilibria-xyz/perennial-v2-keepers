@@ -87,7 +87,15 @@ export class LiqListener {
     })
   }
 
-  private async checkMarket({ market, users, underlyingId, validFrom, providerFactory, feed }: LiqMarketDetails) {
+  private async checkMarket({
+    market,
+    users,
+    underlyingId,
+    validFrom,
+    providerFactory,
+    feed,
+    staleAfter,
+  }: LiqMarketDetails) {
     const marketTag = marketAddressToMarketTag(Chain.id, market)
 
     const now = Date.now()
@@ -98,7 +106,7 @@ export class LiqListener {
     })
 
     const [vaa] = await getRecentVaa({
-      feeds: [{ providerId: underlyingId, minValidTime: validFrom }],
+      feeds: [{ providerId: underlyingId, minValidTime: validFrom, staleAfter }],
     })
     const commit = buildCommit({
       oracleProviderFactory: providerFactory,

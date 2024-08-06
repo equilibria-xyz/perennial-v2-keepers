@@ -28,7 +28,11 @@ export class OrderListener {
       console.log(`Running Order Handler. Block: ${blockNumber}`)
 
       const pythPrices = await getRecentVaa({
-        feeds: this.markets.map((m) => ({ providerId: m.underlyingId, minValidTime: m.validFrom })),
+        feeds: this.markets.map((m) => ({
+          providerId: m.underlyingId,
+          minValidTime: m.validFrom,
+          staleAfter: m.staleAfter,
+        })),
       })
 
       const marketPrices = await Promise.all(

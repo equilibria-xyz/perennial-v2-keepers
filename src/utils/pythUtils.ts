@@ -1,12 +1,13 @@
 import { Hex } from 'viem'
 import { PythBenchmarksURL, PythConnections } from '../config'
+import { nowSeconds } from './timeUtils'
 
 export const getRecentVaa = async ({
   pythClientIndex = 0,
   feeds,
 }: {
   pythClientIndex?: number
-  feeds: { providerId: string; minValidTime: bigint }[]
+  feeds: { providerId: string; minValidTime: bigint; staleAfter: bigint }[]
   fallbackIndex?: number
 }): Promise<
   {
@@ -29,17 +30,22 @@ export const getRecentVaa = async ({
 
       const priceData = priceFeed.getPriceUnchecked()
       const publishTime = priceData.publishTime
-      const minValidTime = feeds.find(({ providerId }) => `0x${providerId}` === priceFeed.id)?.minValidTime
+      const feedData = feeds.find(({ providerId }) => `0x${priceFeed.id}` === providerId)
+      const minValidTime = feedData?.minValidTime ?? 4n
+      const staleAfter = feedData?.staleAfter
+      const now = BigInt(nowSeconds())
+      if (staleAfter && BigInt(publishTime) + staleAfter < now) throw new Error('Price feed is too old')
 
       return {
         price: pythPriceToBig18(BigInt(priceData.price), priceData.expo),
         feedId: `0x${priceFeed.id}` as Hex,
         vaa: `0x${Buffer.from(vaa, 'base64').toString('hex')}` as Hex,
         publishTime,
-        version: BigInt(publishTime) - (minValidTime ?? 4n),
+        version: BigInt(publishTime) - minValidTime,
       }
     })
   } catch (e) {
+    console.warn(`[Pyth] Error getting VAA: ${e}`)
     const nextClientIndex = pythClientIndex + 1
     if (PythConnections.at(nextClientIndex)) {
       console.warn('[Pyth] Using backup connection')

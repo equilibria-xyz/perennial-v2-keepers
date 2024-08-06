@@ -13,7 +13,11 @@ export async function getMarkets({ client, chainId }: { client: PublicClient; ch
   const marketsWithOracle = marketAddresses.map(async (marketAddress) => {
     const marketContract = getContract({ abi: MarketImpl, address: marketAddress, client })
     // Market -> Oracle
-    const [oracle, token] = await Promise.all([marketContract.read.oracle(), marketContract.read.token()])
+    const [oracle, token, riskParameter] = await Promise.all([
+      marketContract.read.oracle(),
+      marketContract.read.token(),
+      marketContract.read.riskParameter(),
+    ])
 
     // Oracle -> KeeperOracle
     const [current] = await client.readContract({
@@ -64,6 +68,7 @@ export async function getMarkets({ client, chainId }: { client: PublicClient; ch
       timeout,
       validFrom,
       validTo,
+      staleAfter: riskParameter.staleAfter,
     }
   })
 

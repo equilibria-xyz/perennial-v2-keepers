@@ -29,6 +29,7 @@ import { VaultImplAbi } from '../../constants/abi/VaultImpl.abi.js'
 import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
 import { OracleFactoryAbi } from '../../constants/abi/OracleFactory.abi.js'
 import { getRecentVaa, pythMarketOpen } from '../../utils/pythUtils.js'
+import { nowSeconds } from '../../utils/timeUtils.js'
 
 const Balances = ['ETH', 'USDC', 'DSU']
 const ERC20Abi = parseAbi(['function balanceOf(address owner) view returns (uint256)'] as const)
@@ -402,9 +403,13 @@ export class MetricsListener {
 
     try {
       const pythPrices = await getRecentVaa({
-        feeds: this.markets.map((m) => ({ providerId: m.underlyingId, minValidTime: m.validFrom })),
+        feeds: this.markets.map((m) => ({
+          providerId: m.underlyingId,
+          minValidTime: m.validFrom,
+          staleAfter: m.staleAfter,
+        })),
       })
-      const now = Math.floor(Date.now() / 1000)
+      const now = nowSeconds()
       pythPrices.forEach(async (price) => {
         const market = this.markets.find((m) => m.underlyingId === price.feedId)
         if (!market) return

@@ -9,6 +9,7 @@ import { KeeperFactoryImpl } from '../../constants/abi/KeeperFactoryImpl.abi.js'
 import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
 import { buildCommit } from '../../utils/oracleUtils.js'
+import { nowSeconds } from '../../utils/timeUtils.js'
 
 type Commitment = {
   action: number
@@ -151,7 +152,7 @@ export abstract class BaseOracleListener {
 
       console.log(`${providerTag}: Versions to commit: ${versionsToCommit.map((v) => v.version).join(', ')}`)
 
-      const now = BigInt(Math.floor(Date.now() / 1000))
+      const now = BigInt(nowSeconds())
       const updateDatas = await Promise.allSettled(
         versionsToCommit.map(async ({ version, index }, i) => {
           const vaaQueryTime = Big6Math.max(global.latestVersion, version + MinDelay + windowOffset)
