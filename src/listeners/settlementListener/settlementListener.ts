@@ -13,10 +13,7 @@ export class SettlementListener {
   protected markets: MarketDetails[] = []
 
   public async init() {
-    this.markets = await getMarkets({
-      chainId: Chain.id,
-      client: Client,
-    })
+    this.markets = await getMarkets()
   }
 
   public async listen() {

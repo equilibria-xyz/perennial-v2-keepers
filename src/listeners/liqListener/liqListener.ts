@@ -27,12 +27,7 @@ export class LiqListener {
   protected markets: LiqMarketDetails[] = []
 
   public async init() {
-    this.markets = (
-      await getMarkets({
-        chainId: Chain.id,
-        client: Client,
-      })
-    ).map((m) => ({ ...m, users: [] }))
+    this.markets = (await getMarkets()).map((m) => ({ ...m, users: [] }))
     // Fetch users for market
     await this.refreshMarketUsers()
     // Watch for updates
@@ -59,19 +54,26 @@ export class LiqListener {
   }
 
   public async refreshMarketUsers() {
+    // Pull new markets that might have launched
+    const allMarkets = await getMarkets()
+    const newMarkets = allMarkets.filter((m) => !this.markets.some((lm) => lm.market === m.market))
+    for (const newMarket of newMarkets) {
+      const newMarketDetails = { ...newMarket, users: [] }
+      this.markets.push(newMarketDetails)
+      this.watchUpdates(newMarketDetails)
+    }
+
     const usersRes = await getMarketsUsers(this.markets.map((m) => m.market))
     this.markets.forEach((m) => {
       m.users = usersRes.marketAccounts
         .filter((u) => getAddress(u.market.id) === m.market)
         .map((u) => getAddress(u.account.id))
-      const marketTag = marketAddressToMarketTag(Chain.id, m.market)
-      console.log(`${marketTag}: Found ${m.users.length} users after refresh`)
+      console.log(`${m.metricsTag}: Found ${m.users.length} users after refresh`)
     })
   }
 
   private async watchUpdates(market: LiqMarketDetails) {
-    const marketTag = marketAddressToMarketTag(Chain.id, market.market)
-    console.log(`${marketTag}: Watching market ${market.market}`)
+    console.log(`${market.metricsTag}: Watching market ${market.market}`)
 
     Client.watchContractEvent({
       address: market.market,
@@ -95,14 +97,13 @@ export class LiqListener {
     providerFactory,
     feed,
     staleAfter,
+    metricsTag: marketTag,
   }: LiqMarketDetails) {
-    const marketTag = marketAddressToMarketTag(Chain.id, market)
-
     const now = Date.now()
     console.log(`${marketTag}: Checking if any of ${users.length} users can be liquidated.`)
     tracer.dogstatsd.gauge('market.users', users.length, {
       chain: Chain.id,
-      market: marketAddressToMarketTag(Chain.id, market),
+      market: marketTag,
     })
 
     const [vaa] = await getRecentVaa({
@@ -122,7 +123,7 @@ export class LiqListener {
     console.log(`${marketTag}: Liquidation sim took ${Date.now() - now}ms`)
     tracer.dogstatsd.distribution('liquidator.simulation.time', Date.now() - now, {
       chain: Chain.id,
-      market: marketAddressToMarketTag(Chain.id, market),
+      market: marketTag,
     })
 
     return { market, users: liqUsers, commit }

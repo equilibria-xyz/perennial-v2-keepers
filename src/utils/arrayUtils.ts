@@ -15,5 +15,7 @@ export function unique<T>(values: T[]) {
   return Array.from(new Set(values))
 }
 
-export const chunk = <T>(arr: T[], size: number) =>
-  Array.from({ length: Math.ceil(arr.length / size) }, (_: T, i: number) => arr.slice(i * size, i * size + size))
+export const chunk = <T>(arr: T[], chunkSize: number) =>
+  Array.from({ length: Math.ceil(arr.length / chunkSize) }, (_: T, i: number) =>
+    arr.slice(i * chunkSize, i * chunkSize + chunkSize),
+  )
