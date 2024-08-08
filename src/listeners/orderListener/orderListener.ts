@@ -4,7 +4,7 @@ import { GraphDefaultPageSize, queryAll } from '../../utils/graphUtils'
 import { Chain, Client, GraphClient, orderSigner } from '../../config'
 import { BatchKeeperAbi } from '../../constants/abi'
 import { buildCommit } from '../../utils/oracleUtils'
-import { notEmpty } from '../../utils/arrayUtils'
+import { chunk, notEmpty } from '../../utils/arrayUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { BatchKeeperAddresses } from '../../constants/network'
@@ -16,10 +16,7 @@ export class OrderListener {
   protected markets: MarketDetails[] = []
 
   public async init() {
-    this.markets = await getMarkets({
-      chainId: Chain.id,
-      client: Client,
-    })
+    this.markets = await getMarkets()
   }
 
   public async run() {
@@ -59,35 +56,39 @@ export class OrderListener {
       )
 
       const executableOrders = executableOrders_.filter(notEmpty).filter((o) => o.orders.length > 0)
-      console.log(`Executable orders: ${executableOrders.length}`)
 
       for (let i = 0; i < executableOrders.length; i++) {
-        const { market, orders, commit } = executableOrders[i]
-        const { request } = await Client.simulateContract({
-          address: BatchKeeperAddresses[Chain.id],
-          abi: BatchKeeperAbi,
-          functionName: 'tryExecute',
-          args: [market.market, orders.map((o) => o.account), orders.map((o) => o.nonce), [commit]],
-          value: 1n,
-          account: orderSigner.account,
-        })
-        const gasEstimate = await Client.estimateContractGas(request)
-        const gas = Big6Math.max(5000000n, gasEstimate * 6n)
-        const hash = await orderSigner.writeContract({ ...request, gas })
+        const { market, orders: allOrders, commit } = executableOrders[i]
+        console.log(`Market ${market.metricsTag} - Executable orders: ${allOrders.length}`)
 
-        tracer.dogstatsd.increment('orderKeeper.transaction.sent', 1, {
-          chain: Chain.id,
-        })
-        console.log(`Orders execute published. Number: ${orders.length}. Hash: ${hash}`)
-        const receipt = await Client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
-        if (receipt.status === 'success')
-          tracer.dogstatsd.increment('orderKeeper.transaction.success', 1, {
+        const chunks = chunk(allOrders, 10) // Execute 10 orders at a time
+        for (const orders of chunks) {
+          const { request } = await Client.simulateContract({
+            address: BatchKeeperAddresses[Chain.id],
+            abi: BatchKeeperAbi,
+            functionName: 'tryExecute',
+            args: [market.market, orders.map((o) => o.account), orders.map((o) => o.nonce), [commit]],
+            value: 1n,
+            account: orderSigner.account,
+          })
+          const gasEstimate = await Client.estimateContractGas(request)
+          const gas = Big6Math.max(5000000n, gasEstimate * 6n)
+          const hash = await orderSigner.writeContract({ ...request, gas })
+
+          tracer.dogstatsd.increment('orderKeeper.transaction.sent', 1, {
             chain: Chain.id,
           })
-        if (receipt.status === 'reverted')
-          tracer.dogstatsd.increment('orderKeeper.transaction.reverted', 1, {
-            chain: Chain.id,
-          })
+          console.log(`Orders execute published. Number: ${orders.length}. Hash: ${hash}`)
+          const receipt = await Client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
+          if (receipt.status === 'success')
+            tracer.dogstatsd.increment('orderKeeper.transaction.success', 1, {
+              chain: Chain.id,
+            })
+          if (receipt.status === 'reverted')
+            tracer.dogstatsd.increment('orderKeeper.transaction.reverted', 1, {
+              chain: Chain.id,
+            })
+        }
       }
     } catch (e) {
       console.error(`Order Keeper got error: Error ${e.message}`)

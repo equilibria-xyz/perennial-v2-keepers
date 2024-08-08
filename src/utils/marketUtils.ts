@@ -5,13 +5,16 @@ import { MarketImpl } from '../constants/abi/MarketImpl.abi.js'
 import { KeeperOracleImpl } from '../constants/abi/KeeperOracleImpl.abi.js'
 import { KeeperFactoryImpl } from '../constants/abi/KeeperFactoryImpl.abi.js'
 import { PayoffAbi } from '../constants/abi/Payoff.abi.js'
+import { marketAddressToMarketTag } from '../constants/addressTagging.js'
+import { Chain, Client } from '../config.js'
 
 export type MarketDetails = Awaited<ReturnType<typeof getMarkets>>[number]
-export async function getMarkets({ client, chainId }: { client: PublicClient; chainId: SupportedChainId }) {
-  const marketAddresses = await getMarketAddresses({ client, chainId })
+export async function getMarkets() {
+  const chainId = Chain.id
+  const marketAddresses = await getMarketAddresses({ client: Client, chainId })
 
   const marketsWithOracle = marketAddresses.map(async (marketAddress) => {
-    const marketContract = getContract({ abi: MarketImpl, address: marketAddress, client })
+    const marketContract = getContract({ abi: MarketImpl, address: marketAddress, client: Client })
     // Market -> Oracle
     const [oracle, token, riskParameter] = await Promise.all([
       marketContract.read.oracle(),
@@ -20,12 +23,12 @@ export async function getMarkets({ client, chainId }: { client: PublicClient; ch
     ])
 
     // Oracle -> KeeperOracle
-    const [current] = await client.readContract({
+    const [current] = await Client.readContract({
       address: oracle,
       abi: parseAbi(['function global() view returns (uint128,uint128)'] as const),
       functionName: 'global',
     })
-    const [keeperOracle] = await client.readContract({
+    const [keeperOracle] = await Client.readContract({
       address: oracle,
       abi: parseAbi(['function oracles(uint256) view returns ((address, uint96))'] as const),
       functionName: 'oracles',
@@ -33,7 +36,7 @@ export async function getMarkets({ client, chainId }: { client: PublicClient; ch
     })
 
     // KeeperOracle -> Feed
-    const keeperOracleContract = getContract({ abi: KeeperOracleImpl, address: keeperOracle, client })
+    const keeperOracleContract = getContract({ abi: KeeperOracleImpl, address: keeperOracle, client: Client })
     const [timeout, providerFactory] = await Promise.all([
       keeperOracleContract.read.timeout(),
       keeperOracleContract.read.factory(),
@@ -42,10 +45,10 @@ export async function getMarkets({ client, chainId }: { client: PublicClient; ch
     const providerFactoryContract = getContract({
       abi: KeeperFactoryImpl,
       address: providerFactory,
-      client,
+      client: Client,
     })
 
-    const feed = await getFeedIdForProvider({ client, providerFactory, keeperOracle })
+    const feed = await getFeedIdForProvider({ client: Client, providerFactory, keeperOracle })
     if (!feed) throw new Error(`No feed found for ${keeperOracle}`)
 
     const [validFrom, validTo, underlyingId, underlyingPayoff] = await Promise.all([
@@ -69,6 +72,7 @@ export async function getMarkets({ client, chainId }: { client: PublicClient; ch
       validFrom,
       validTo,
       staleAfter: riskParameter.staleAfter,
+      metricsTag: marketAddressToMarketTag(chainId, marketAddress),
     }
   })
 

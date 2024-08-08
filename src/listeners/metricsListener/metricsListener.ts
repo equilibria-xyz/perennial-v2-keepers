@@ -43,10 +43,7 @@ export class MetricsListener {
 
   public async init() {
     console.log('Initing Metrics Listener')
-    this.markets = await getMarkets({
-      chainId: Chain.id,
-      client: Client,
-    })
+    this.markets = await getMarkets()
     this.marketAddresses = this.markets.map((m) => m.market)
     this.vaultAddreses = await getVaults({
       chainId: Chain.id,
