@@ -2,6 +2,8 @@ import { Hex } from 'viem'
 import { PythBenchmarksURL, PythConnections } from '../config'
 import { nowSeconds } from './timeUtils'
 
+const marketOpenCache = new Map<string, { isOpen: boolean; expiration: number }>()
+
 export const getRecentVaa = async ({
   pythClientIndex = 0,
   feeds,
@@ -24,7 +26,7 @@ export const getRecentVaa = async ({
     const priceFeeds = await pyth.getLatestPriceFeeds(feeds.map(({ providerId }) => providerId))
     if (!priceFeeds) throw new Error('No price feeds found')
 
-    return Promise.all(
+    return await Promise.all(
       priceFeeds.map(async (priceFeed) => {
         const vaa = priceFeed.getVAA()
         if (!vaa) throw new Error('No VAA found')
@@ -99,10 +101,23 @@ export function pythPriceToBig18(price: bigint, expo: number) {
 }
 
 export async function pythMarketOpen(priceFeedId: Hex) {
+  const now = nowSeconds()
+  const cachedResult = marketOpenCache.get(priceFeedId)
+
+  // Query if we don't have a cached result or if the cached result is expired
+  const shouldQuery = !cachedResult || cachedResult.expiration < now
+  if (!shouldQuery) return cachedResult.isOpen
+  console.log(`[Pyth] Querying market open status for ${priceFeedId}`)
+
   const url = `${PythBenchmarksURL}/v1/price_feeds/${priceFeedId}`
   const response = await fetch(url)
   if (!response.ok) return true // default to open if we can't get the data
 
-  const data: { market_hours: { is_open: boolean } } = await response.json()
+  const data: { market_hours: { is_open: boolean; next_open: number; next_close: number } } = await response.json()
+  marketOpenCache.set(priceFeedId, {
+    isOpen: data.market_hours.is_open,
+    expiration: data.market_hours.is_open ? data.market_hours.next_close : data.market_hours.next_open,
+  })
+
   return data.market_hours.is_open
 }
