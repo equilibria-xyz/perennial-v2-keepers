@@ -48,7 +48,7 @@ export const getRecentVaa = async ({
     console.warn(`[Pyth] Error getting VAA: ${e}`)
     const nextClientIndex = pythClientIndex + 1
     if (PythConnections.at(nextClientIndex)) {
-      console.warn('[Pyth] Using backup connection')
+      console.warn(`[Pyth] Using backup connection ${nextClientIndex}`)
       return getRecentVaa({
         feeds,
         pythClientIndex: nextClientIndex,
@@ -75,7 +75,7 @@ export const getVaaWithBackupRetry = async ({
   } catch (e) {
     const nextClientIndex = pythClientIndex + 1
     if (PythConnections.at(nextClientIndex)) {
-      console.warn('[Pyth] Using backup connection')
+      console.warn(`[Pyth] Using backup connection ${nextClientIndex}`)
       return getVaaWithBackupRetry({ pythClientIndex: nextClientIndex, priceFeedId, vaaQueryTime })
     }
     throw e
