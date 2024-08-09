@@ -23,6 +23,13 @@ export const ChainlinkFactoryAddress: AddressMapping = {
   [hardhat.id]: getAddress(zeroAddress),
 }
 
+export const CryptexFactoryAddress: AddressMapping = {
+  [arbitrum.id]: getAddress(zeroAddress),
+  [arbitrumSepolia.id]: getAddress('0x161Ef7447eC2B3F9425edc405830A111F4033Cb6'),
+  [base.id]: getAddress(zeroAddress),
+  [hardhat.id]: getAddress(zeroAddress),
+}
+
 export const MarketFactoryAddress: AddressMapping = {
   [arbitrum.id]: getAddress('0xDaD8A103473dfd47F90168A0E46766ed48e26EC7'),
   [arbitrumSepolia.id]: getAddress('0x32F3aB7b3c5BBa0738b72FdB83FcE6bb1a1a943c'),

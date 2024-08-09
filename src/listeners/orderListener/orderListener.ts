@@ -1,14 +1,13 @@
 import { Hex, getAddress } from 'viem'
-import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUtils'
+import { MarketDetails, ProviderType, getMarkets, transformPrice } from '../../utils/marketUtils'
 import { GraphDefaultPageSize, queryAll } from '../../utils/graphUtils'
 import { Chain, Client, GraphClient, orderSigner } from '../../config'
 import { BatchKeeperAbi } from '../../constants/abi'
-import { buildCommit } from '../../utils/oracleUtils'
+import { buildCommit, getUpdateDataForProviderType } from '../../utils/oracleUtils'
 import { chunk, notEmpty } from '../../utils/arrayUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { BatchKeeperAddresses } from '../../constants/network'
-import { getRecentVaa } from '../../utils/pythUtils'
 
 export class OrderListener {
   public static PollingInterval = 4000 // 4s
@@ -24,32 +23,42 @@ export class OrderListener {
       const blockNumber = await Client.getBlockNumber()
       console.log(`Running Order Handler. Block: ${blockNumber}`)
 
-      const pythPrices = await getRecentVaa({
-        feeds: this.markets.map((m) => ({
-          providerId: m.underlyingId,
-          minValidTime: m.validFrom,
-          staleAfter: m.staleAfter,
-        })),
+      const groupedMarkets = this.markets.reduce((acc, market) => {
+        if (!acc.has(market.providerType)) acc.set(market.providerType, [])
+        acc.get(market.providerType)?.push(market)
+        return acc
+      }, new Map<ProviderType, MarketDetails[]>())
+      const pricesPromises = Array.from(groupedMarkets.entries()).map(async ([providerType, markets]) => {
+        return getUpdateDataForProviderType({
+          providerType,
+          feeds: markets.map((m) => ({
+            providerId: m.underlyingId,
+            minValidTime: m.validFrom,
+            staleAfter: m.staleAfter,
+          })),
+        })
       })
+      const prices = (await Promise.all(pricesPromises)).flat()
 
-      const marketPrices = await Promise.all(
+      const transformedPrices = await Promise.all(
         this.markets.map(async (market) => {
-          const pythData = pythPrices.find((p) => p.feedId === market.underlyingId)
-          if (!pythData) return null
+          const priceData = prices.find((p) => p.feedId === market.underlyingId)
+          if (!priceData) return null
 
-          return { market, price: await transformPrice(market.payoff, market.payoffDecimals, pythData.price, Client) }
+          return { market, price: await transformPrice(market.payoff, market.payoffDecimals, priceData.price, Client) }
         }),
       )
-      const ordersForMarkets = await this.getOrdersForMarkets(marketPrices.filter(notEmpty))
+      const ordersForMarkets = await this.getOrdersForMarkets(transformedPrices.filter(notEmpty))
 
       const executableOrders_ = await Promise.all(
         this.markets.map((market) => {
-          const pythData = pythPrices.find((p) => p.feedId === market.underlyingId)
-          if (!pythData) return null
+          const priceData = prices.find((p) => p.feedId === market.underlyingId)
+          if (!priceData) return null
           return this.tryExecuteOrders({
             market,
-            pythVaa: pythData.vaa,
-            version: pythData.version,
+            updateData: priceData.data,
+            version: priceData.version,
+            value: priceData.value,
             orders: ordersForMarkets[`market_${market.market}`] || [],
           })
         }),
@@ -97,13 +106,15 @@ export class OrderListener {
 
   private async tryExecuteOrders({
     market,
-    pythVaa,
+    updateData,
     version,
+    value,
     orders,
   }: {
     market: MarketDetails
     version: bigint
-    pythVaa: Hex
+    updateData: Hex
+    value: bigint
     orders: { account: string; nonce: string }[]
   }) {
     if (orders.length === 0) return null
@@ -114,9 +125,9 @@ export class OrderListener {
     const commit = buildCommit({
       oracleProviderFactory: market.providerFactory,
       version,
-      value: 1n,
+      value: value,
       ids: [market.feed],
-      data: pythVaa,
+      data: updateData,
       revertOnFailure: false,
     })
 

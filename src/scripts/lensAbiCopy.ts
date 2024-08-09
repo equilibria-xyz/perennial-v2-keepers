@@ -1,4 +1,3 @@
-// TODO: implement https://github.com/equilibria-xyz/perennial-interface-v2/blob/dev/scripts/lensAbiCopy.js
 /* eslint-disable */
 import fs from 'fs'
 import path from 'path'

@@ -37,12 +37,15 @@ export abstract class BaseOracleListener {
 
   public async init() {
     this.oracleAddresses = await this.getOracleAddresses()
-    console.log('Oracle Addresses:', this.oracleAddresses.map(({ oracle }) => oracle).join(', '))
+    console.log(
+      `[${this.statsPrefix()}] Oracle Addresses:`,
+      this.oracleAddresses.map(({ oracle }) => oracle).join(', '),
+    )
   }
 
   public async run() {
     const blockNumber = await Client.getBlockNumber()
-    console.log(`Running Oracle Handler. Block: ${blockNumber}`)
+    console.log(`[${this.statsPrefix()}] Running Oracle Handler. Block: ${blockNumber}`)
     tracer.dogstatsd.gauge(`${this.statsPrefix()}.blockNumber`, Number(blockNumber), { chain: Chain.id })
 
     const commitments = (await this.getCommitments())

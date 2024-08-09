@@ -3,8 +3,7 @@ import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
 import { Chain, Client, liquidatorAccount, liquidatorSigner } from '../../config'
 import { BatchKeeperAbi, MarketImpl } from '../../constants/abi'
-import { buildCommit } from '../../utils/oracleUtils'
-import { getRecentVaa } from '../../utils/pythUtils'
+import { buildCommit, getUpdateDataForProviderType } from '../../utils/oracleUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { BatchKeeperAddresses, MaxSimSizes } from '../../constants/network'
@@ -107,6 +106,7 @@ export class LiqListener {
     feed,
     staleAfter,
     metricsTag: marketTag,
+    providerType,
   }: LiqMarketDetails) {
     const now = Date.now()
     tracer.dogstatsd.gauge('market.users', users.length, {
@@ -114,20 +114,25 @@ export class LiqListener {
       market: marketTag,
     })
 
-    const [vaa] = await getRecentVaa({
+    const updateDatas = await getUpdateDataForProviderType({
+      providerType,
       feeds: [{ providerId: underlyingId, minValidTime: validFrom, staleAfter }],
     })
+
+    const updateData = updateDatas.at(0)
+    if (!updateData) throw new Error(`No update data for market ${marketTag}`)
     console.log(
       `${marketTag}: Checking if any of ${users.length} users can be liquidated at current price $${formatEther(
-        vaa.price,
+        updateData.price,
       )}.`,
     )
+
     const commit = buildCommit({
       oracleProviderFactory: providerFactory,
       ids: [feed],
-      data: vaa.vaa,
-      version: vaa.version,
-      value: 1n,
+      data: updateData.data,
+      version: updateData.version,
+      value: updateData.value,
       revertOnFailure: false,
     })
 

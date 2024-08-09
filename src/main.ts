@@ -1,14 +1,16 @@
 import 'dotenv/config'
 import './tracer.js'
 import { PythOracleListener } from './listeners/oracleListener/pythOracle.js'
-import { Task, TaskType, IsMainnet } from './config.js'
+import { Task, TaskType, IsMainnet, Chain } from './config.js'
 import { MetricsListener } from './listeners/metricsListener/metricsListener.js'
 import deployBatchKeeper from './scripts/DeployBatchKeeper.js'
 import { OrderListener } from './listeners/orderListener/orderListener.js'
 import { LiqListener } from './listeners/liqListener/liqListener.js'
 import { SettlementListener } from './listeners/settlementListener/settlementListener.js'
-import { ChainlinkOracleListener } from './listeners/oracleListener/chainlinkOracle.js'
 import ClaimBatchKeeper from './scripts/claimBatchKeeper.js'
+import { BaseOracleListener } from './listeners/oracleListener/baseOracleListener.js'
+import { GenericSignerOracleListener } from './listeners/oracleListener/genericSignerOracleListener.js'
+import { CryptexFactoryAddress } from './constants/network.js'
 
 const run = async () => {
   switch (Task) {
@@ -45,25 +47,16 @@ const run = async () => {
     }
     case TaskType.oracle: {
       const pythListener = new PythOracleListener()
+      const cryptexListener = new GenericSignerOracleListener(CryptexFactoryAddress[Chain.id], 'cryptexOracle')
       await pythListener.init()
+      await cryptexListener.init()
 
       setInterval(
         () => {
           pythListener.run()
+          cryptexListener.run()
         },
-        IsMainnet ? PythOracleListener.PollingInterval : 2 * PythOracleListener.PollingInterval,
-      )
-      break
-    }
-    case TaskType.clOracle: {
-      const chainlinkOracleListener = new ChainlinkOracleListener()
-      await chainlinkOracleListener.init()
-
-      setInterval(
-        () => {
-          chainlinkOracleListener.run()
-        },
-        IsMainnet ? ChainlinkOracleListener.PollingInterval : 2 * ChainlinkOracleListener.PollingInterval,
+        IsMainnet ? BaseOracleListener.PollingInterval : 2 * BaseOracleListener.PollingInterval,
       )
       break
     }

@@ -30,6 +30,8 @@ export const ChainlinkConfig = {
   userSecret: process.env.CHAINLINK_SECRET || '',
 }
 
+export const CryptexPriceFeedUrl = process.env.CRYPTEX_PRICE_FEED_URL || ''
+
 const _chainId = process.argv[2]
 if (!_chainId) throw new Error('Missing chainId argument')
 const _chain = SupportedChains.find((c) => c.id === Number(_chainId))
@@ -107,7 +109,6 @@ export enum TaskType {
   'liq',
   'orders',
   'oracle',
-  'clOracle',
   'settlement',
   'metrics',
   'deploy',

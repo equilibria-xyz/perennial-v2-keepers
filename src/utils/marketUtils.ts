@@ -1,5 +1,11 @@
-import { Address, PublicClient, getAbiItem, getContract, parseAbi, zeroAddress } from 'viem'
-import { MarketFactoryAddress, SupportedChainId } from '../constants/network.js'
+import { Address, Hex, PublicClient, getAbiItem, getContract, parseAbi, zeroAddress } from 'viem'
+import {
+  ChainlinkFactoryAddress,
+  CryptexFactoryAddress,
+  MarketFactoryAddress,
+  PythFactoryAddress,
+  SupportedChainId,
+} from '../constants/network.js'
 import { FactoryAbi } from '../constants/abi/Factory.abi.js'
 import { MarketImpl } from '../constants/abi/MarketImpl.abi.js'
 import { KeeperOracleImpl } from '../constants/abi/KeeperOracleImpl.abi.js'
@@ -8,6 +14,7 @@ import { PayoffAbi } from '../constants/abi/Payoff.abi.js'
 import { marketAddressToMarketTag } from '../constants/addressTagging.js'
 import { Chain, Client } from '../config.js'
 
+export type ProviderType = 'pyth' | 'chainlink' | 'cryptex' | 'unknown'
 export type MarketDetails = Awaited<ReturnType<typeof getMarkets>>[number]
 export async function getMarkets() {
   const chainId = Chain.id
@@ -65,14 +72,15 @@ export async function getMarkets() {
       providerFactory,
       payoff: underlyingPayoff.provider,
       payoffDecimals: BigInt(underlyingPayoff.decimals),
-      feed,
-      underlyingId,
+      feed: feed as Hex,
+      underlyingId: underlyingId as Hex,
       token,
       timeout,
       validFrom,
       validTo,
       staleAfter: riskParameter.staleAfter,
       metricsTag: marketAddressToMarketTag(chainId, marketAddress),
+      providerType: providerAddressToProviderType(providerFactory),
     }
   })
 
@@ -133,4 +141,11 @@ async function getFeedIdForProvider({
     toBlock: 'latest',
   })
   return feedEvents.at(0)?.args.id
+}
+
+function providerAddressToProviderType(providerAddress: Address): 'pyth' | 'chainlink' | 'cryptex' | 'unknown' {
+  if (providerAddress === PythFactoryAddress[Chain.id]) return 'pyth'
+  if (providerAddress === ChainlinkFactoryAddress[Chain.id]) return 'chainlink'
+  if (providerAddress === CryptexFactoryAddress[Chain.id]) return 'cryptex'
+  return 'unknown'
 }

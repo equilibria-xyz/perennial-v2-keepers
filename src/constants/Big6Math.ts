@@ -87,12 +87,20 @@ export class Big6Math {
     return a < 0n ? -a : a
   }
 
-  public static max(a: bigint, b: bigint): bigint {
-    return a >= b ? a : b
+  public static max(...values: bigint[]): bigint {
+    let maxVal = values[0]
+    for (const val of values) {
+      maxVal = val > maxVal ? val : maxVal
+    }
+    return maxVal
   }
 
-  public static min(a: bigint, b: bigint): bigint {
-    return a <= b ? a : b
+  public static min(...values: bigint[]): bigint {
+    let minVal = values[0]
+    for (const val of values) {
+      minVal = val < minVal ? val : minVal
+    }
+    return minVal
   }
 
   public static cmp(a: bigint, b: bigint): number {

@@ -400,11 +400,13 @@ export class MetricsListener {
 
     try {
       const pythPrices = await getRecentVaa({
-        feeds: this.markets.map((m) => ({
-          providerId: m.underlyingId,
-          minValidTime: m.validFrom,
-          staleAfter: m.staleAfter,
-        })),
+        feeds: this.markets
+          .filter((m) => m.providerType === 'pyth')
+          .map((m) => ({
+            providerId: m.underlyingId,
+            minValidTime: m.validFrom,
+            staleAfter: m.staleAfter,
+          })),
       })
       const now = nowSeconds()
       pythPrices.forEach(async (price) => {
