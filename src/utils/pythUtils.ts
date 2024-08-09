@@ -24,26 +24,35 @@ export const getRecentVaa = async ({
     const priceFeeds = await pyth.getLatestPriceFeeds(feeds.map(({ providerId }) => providerId))
     if (!priceFeeds) throw new Error('No price feeds found')
 
-    return priceFeeds.map((priceFeed) => {
-      const vaa = priceFeed.getVAA()
-      if (!vaa) throw new Error('No VAA found')
+    return Promise.all(
+      priceFeeds.map(async (priceFeed) => {
+        const vaa = priceFeed.getVAA()
+        if (!vaa) throw new Error('No VAA found')
 
-      const priceData = priceFeed.getPriceUnchecked()
-      const publishTime = priceData.publishTime
-      const feedData = feeds.find(({ providerId }) => `0x${priceFeed.id}` === providerId)
-      const minValidTime = feedData?.minValidTime ?? 4n
-      const staleAfter = feedData?.staleAfter
-      const now = BigInt(nowSeconds())
-      if (staleAfter && BigInt(publishTime) + staleAfter < now) throw new Error('Price feed is too old')
+        const priceData = priceFeed.getPriceUnchecked()
+        const publishTime = priceData.publishTime
+        const feedData = feeds.find(({ providerId }) => `0x${priceFeed.id}` === providerId)
+        const minValidTime = feedData?.minValidTime ?? 4n
+        const staleAfter = feedData?.staleAfter
+        const now = BigInt(nowSeconds())
+        if (staleAfter && BigInt(publishTime) + staleAfter < now) {
+          // Check if market is open
+          const marketOpen = await pythMarketOpen(`0x${priceFeed.id}`)
+          if (marketOpen)
+            throw new Error(
+              `${priceFeed.id} Price feed is too old: StaleAfter: ${staleAfter}, Delta: ${now - BigInt(publishTime)}`,
+            )
+        }
 
-      return {
-        price: pythPriceToBig18(BigInt(priceData.price), priceData.expo),
-        feedId: `0x${priceFeed.id}` as Hex,
-        vaa: `0x${Buffer.from(vaa, 'base64').toString('hex')}` as Hex,
-        publishTime,
-        version: BigInt(publishTime) - minValidTime,
-      }
-    })
+        return {
+          price: pythPriceToBig18(BigInt(priceData.price), priceData.expo),
+          feedId: `0x${priceFeed.id}` as Hex,
+          vaa: `0x${Buffer.from(vaa, 'base64').toString('hex')}` as Hex,
+          publishTime,
+          version: BigInt(publishTime) - minValidTime,
+        }
+      }),
+    )
   } catch (e) {
     console.warn(`[Pyth] Error getting VAA: ${e}`)
     const nextClientIndex = pythClientIndex + 1
