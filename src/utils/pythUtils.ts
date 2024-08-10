@@ -113,11 +113,11 @@ export async function pythMarketOpen(priceFeedId: Hex) {
   const response = await fetch(url)
   if (!response.ok) return true // default to open if we can't get the data
 
-  const data: { market_hours: { is_open: boolean; next_open: number; next_close: number } } = await response.json()
-  marketOpenCache.set(priceFeedId, {
-    isOpen: data.market_hours.is_open,
-    expiration: data.market_hours.is_open ? data.market_hours.next_close : data.market_hours.next_open,
-  })
+  const data: { market_hours: { is_open: boolean; next_open: number | null; next_close: number | null } } =
+    await response.json()
+
+  const expiration = data.market_hours.is_open ? data.market_hours.next_close : data.market_hours.next_open
+  if (expiration) marketOpenCache.set(priceFeedId, { isOpen: data.market_hours.is_open, expiration })
 
   return data.market_hours.is_open
 }
