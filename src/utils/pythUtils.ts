@@ -82,7 +82,8 @@ export const getVaaWithBackupRetry = async ({
   if (!pyth) throw new Error(`No Pyth Client Found for Index: ${pythClientIndex}`)
 
   try {
-    return pyth.getVaa(priceFeedId, vaaQueryTime)
+    const response = await pyth.getVaa(priceFeedId, vaaQueryTime)
+    return response
   } catch (e) {
     const nextClientIndex = pythClientIndex + 1
     if (PythConnections.at(nextClientIndex)) {
