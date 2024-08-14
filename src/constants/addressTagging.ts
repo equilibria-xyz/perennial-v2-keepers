@@ -33,6 +33,7 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
           [getAddress('0x1A1745e9cc740269D3e75b506e1AbF7Cbf1fE7d3')]: 'xau',
           [getAddress('0xc8b73eCFdb775cB9899A0d22fFc8d11228Ac35CB')]: 'mog',
           [getAddress('0xB7558189c794239ef9453208f2e58Fa049E1035c')]: 'jpy',
+          [getAddress('0xe8BF156034b64A7266AcD28046F67f3fa7Ecc53a')]: 'mkr',
         }[market] ?? market
       )
     }
@@ -87,6 +88,7 @@ export function oracleProviderAddressToOracleProviderTag(chainId: number, oracle
           [getAddress('0x04207f08CCc3BA84bbac73289f12330a63f94465')]: 'pyth-xau',
           [getAddress('0xEC015685aC6e98f86807b5D51477749371b8423c')]: 'pyth-mog',
           [getAddress('0x596a87B679550360E492f2dE34Fc18d2736cb34F')]: 'pyth-jpy',
+          [getAddress('0x13C12bD024C3E6d9b9C16Ea057E6CBDF45b25dAA')]: 'pyth-mkr',
         }[oracle] ?? oracle
       )
     }
