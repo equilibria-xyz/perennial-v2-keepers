@@ -87,7 +87,10 @@ export const settlementSigner = createWalletClient({
 
 export const PythConnections = [
   process.env.PYTH_HERMES_URL,
-  process.env.PYTH_HERMES_FALLBACK_URL,
+  ...(process.env.PYTH_HERMES_FALLBACK_URLS ?? '')
+    .split(',')
+    .filter((v) => !!v)
+    .map((url) => url.trim()),
   'https://hermes.pyth.network/',
 ]
   .filter(notEmpty)
