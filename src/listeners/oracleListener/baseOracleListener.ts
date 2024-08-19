@@ -137,6 +137,7 @@ export abstract class BaseOracleListener {
       // If the last committed publish time is greater than the next version + minDelay, we need to offset the query
       // time to account for the requirement that the next publish time must be after the previous
       // TODO: re-enable this once `lastCommittedPublishTime` fix is implemented
+      // TODO: Do we still need this as of 2.3?
       const windowOffset = 0n
       // if (lastCommittedPublishTime > nextVersion + MinDelay) {
       //   windowOffset = lastCommittedPublishTime - (nextVersion + MinDelay)
@@ -156,6 +157,8 @@ export abstract class BaseOracleListener {
       const updateDatas = await Promise.allSettled(
         versionsToCommit.map(async ({ version, index }, i) => {
           const vaaQueryTime = Big6Math.max(global.latestVersion, version + MinDelay + windowOffset)
+          if (vaaQueryTime > now) throw new Error(`${providerTag}: VAA query time is in the future: ${vaaQueryTime}`)
+
           const { data, publishTime } = await this.getUpdateDataAtTimestamp({
             timestamp: vaaQueryTime,
             underlyingId,
