@@ -1,4 +1,4 @@
-import { Address, Hex, getAddress } from 'viem'
+import { Address, Hex, WatchContractEventReturnType, getAddress } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
 import { Chain, Client, liquidatorAccount, liquidatorSigner } from '../../config'
@@ -25,13 +25,14 @@ export class LiqListener {
   public static UserRefreshInterval = 300000 // 5m
 
   protected markets: LiqMarketDetails[] = []
+  private unwatchUpdates: WatchContractEventReturnType | null = null
 
   public async init() {
     this.markets = (await getMarkets()).map((m) => ({ ...m, users: [] }))
     // Fetch users for market
     await this.refreshMarketUsers()
     // Watch for updates
-    this.markets.forEach((m) => this.watchUpdates(m))
+    this.watchUpdates()
   }
 
   public async run() {
@@ -60,8 +61,8 @@ export class LiqListener {
     for (const newMarket of newMarkets) {
       const newMarketDetails = { ...newMarket, users: [] }
       this.markets.push(newMarketDetails)
-      this.watchUpdates(newMarketDetails)
     }
+    if (newMarkets.length) this.watchUpdates()
 
     const usersRes = await getMarketsUsers(this.markets.map((m) => m.market))
     this.markets.forEach((m) => {
@@ -72,19 +73,27 @@ export class LiqListener {
     })
   }
 
-  private async watchUpdates(market: LiqMarketDetails) {
-    console.log(`${market.metricsTag}: Watching market ${market.market}`)
+  private async watchUpdates() {
+    console.log(`Watching market ${this.markets.map((m) => m.metricsTag).join(', ')} for updates.`)
 
-    Client.watchContractEvent({
-      address: market.market,
+    if (this.unwatchUpdates) this.unwatchUpdates()
+
+    this.unwatchUpdates = Client.watchContractEvent({
       abi: MarketImpl,
       eventName: 'Updated',
       strict: true,
       poll: true,
       pollingInterval: LiqListener.PollingInterval,
       onLogs: (logs) => {
-        const users = logs.map((log) => getAddress(log.args.account))
-        market.users = unique([...market.users, ...users])
+        this.markets.forEach((market) => {
+          const marketLogs = logs.filter((log) => getAddress(log.address) === market.market)
+          if (marketLogs.length === 0) return
+
+          const users = marketLogs.map((log) => getAddress(log.args.account))
+          console.log(`${market.metricsTag}: Found ${users.length} updates.`)
+
+          market.users = unique([...market.users, ...users])
+        })
       },
     })
   }
