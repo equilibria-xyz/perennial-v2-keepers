@@ -23,7 +23,7 @@ import { Big6Math, notional } from '../../constants/Big6Math.js'
 import { startOfHour } from 'date-fns'
 import { MarketImpl } from '../../constants/abi/MarketImpl.abi.js'
 import { marketAddressToMarketTag, vaultAddressToVaultTag } from '../../constants/addressTagging.js'
-import { MarketDetails, getMarkets } from '../../utils/marketUtils.js'
+import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUtils.js'
 import { getVaults } from '../../utils/vaultUtils.js'
 import { VaultImplAbi } from '../../constants/abi/VaultImpl.abi.js'
 import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
@@ -414,8 +414,16 @@ export class MetricsListener {
         const publishTime = isOpen ? price.publishTime : now // If market is closed, use current time
         tracer.dogstatsd.gauge('pythHermes.delay', now - publishTime, {
           chain: Chain.id,
-          market: marketAddressToMarketTag(Chain.id, market.market),
+          market: market.metricsTag,
         })
+        tracer.dogstatsd.gauge(
+          'market.price',
+          Number(formatUnits(await transformPrice(market.payoff, market.payoffDecimals, price.price, Client), 6)),
+          {
+            chain: Chain.id,
+            market: market.metricsTag,
+          },
+        )
       })
     } catch (e) {
       // Pass

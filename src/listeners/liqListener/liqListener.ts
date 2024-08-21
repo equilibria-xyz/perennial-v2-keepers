@@ -1,4 +1,4 @@
-import { Address, Hex, WatchContractEventReturnType, getAddress } from 'viem'
+import { Address, Hex, WatchContractEventReturnType, formatEther, getAddress } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
 import { Chain, Client, liquidatorAccount, liquidatorSigner } from '../../config'
@@ -109,7 +109,6 @@ export class LiqListener {
     metricsTag: marketTag,
   }: LiqMarketDetails) {
     const now = Date.now()
-    console.log(`${marketTag}: Checking if any of ${users.length} users can be liquidated.`)
     tracer.dogstatsd.gauge('market.users', users.length, {
       chain: Chain.id,
       market: marketTag,
@@ -118,6 +117,11 @@ export class LiqListener {
     const [vaa] = await getRecentVaa({
       feeds: [{ providerId: underlyingId, minValidTime: validFrom, staleAfter }],
     })
+    console.log(
+      `${marketTag}: Checking if any of ${users.length} users can be liquidated at current price $${formatEther(
+        vaa.price,
+      )}.`,
+    )
     const commit = buildCommit({
       oracleProviderFactory: providerFactory,
       ids: [feed],
