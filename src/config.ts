@@ -109,8 +109,9 @@ export enum TaskType {
   'oracle',
   'clOracle',
   'settlement',
-  'deploy',
   'metrics',
+  'deploy',
+  'claim',
 }
 
 const _task = process.argv[3]

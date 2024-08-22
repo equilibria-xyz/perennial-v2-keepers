@@ -8,6 +8,7 @@ import { OrderListener } from './listeners/orderListener/orderListener.js'
 import { LiqListener } from './listeners/liqListener/liqListener.js'
 import { SettlementListener } from './listeners/settlementListener/settlementListener.js'
 import { ChainlinkOracleListener } from './listeners/oracleListener/chainlinkOracle.js'
+import ClaimBatchKeeper from './scripts/claimBatchKeeper.js'
 
 const run = async () => {
   switch (Task) {
@@ -81,6 +82,10 @@ const run = async () => {
     }
     case TaskType.deploy: {
       await deployBatchKeeper()
+      break
+    }
+    case TaskType.claim: {
+      await ClaimBatchKeeper()
       break
     }
     case TaskType.metrics: {
