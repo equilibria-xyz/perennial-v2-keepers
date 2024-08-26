@@ -53,7 +53,7 @@
     "@equilibria/perennial-v2-extensions": "1.2.0-rc0",
     "@equilibria/perennial-v2-oracle": "1.2.0-rc0",
     "@equilibria/root": "2.2.0",
-    "@perennial/sdk": "npm:@perennial/sdk-private@0.0.2-beta21",
+    "@perennial/sdk": "npm:@perennial/sdk-private@0.0.2-beta21-2",
     "@pythnetwork/pyth-evm-js": "^1.20.1",
     "buffer": "^6.0.3",
     "chainlink": "^0.8.2",
