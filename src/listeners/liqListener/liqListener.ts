@@ -137,9 +137,9 @@ export class LiqListener {
     )
 
     const commit = buildCommit({
-      oracleProviderFactory: updateData.keeperFactory,
+      keeperFactory: updateData.keeperFactory,
       ids: updateData.ids,
-      data: updateData.updateData,
+      vaa: updateData.updateData,
       version: updateData.version,
       value: updateData.value,
       revertOnFailure: false,

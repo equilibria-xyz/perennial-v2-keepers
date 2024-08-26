@@ -183,11 +183,11 @@ export class OracleListener {
 
         commitments.push({
           commitment: buildCommit({
-            oracleProviderFactory: this.keeperFactoryAddress,
+            keeperFactory: this.keeperFactoryAddress,
             version: updatedData.value.version,
             value: updatedData.value.value,
             ids: [id],
-            data: updatedData.value.data,
+            vaa: updatedData.value.data,
             revertOnFailure: true,
           }),
           awaitingVersions: awaitingVersions,

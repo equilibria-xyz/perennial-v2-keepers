@@ -123,11 +123,11 @@ export class OrderListener {
     const accounts = orders.map((o) => getAddress(o.account))
     const nonces = orders.map((o) => BigInt(o.nonce))
     const commit = buildCommit({
-      oracleProviderFactory: market.providerFactory,
+      keeperFactory: market.providerFactory,
       version,
       value: value,
       ids: [market.feed],
-      data: updateData,
+      vaa: updateData,
       revertOnFailure: false,
     })
 
