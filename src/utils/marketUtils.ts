@@ -1,27 +1,16 @@
-import { Address, Hex, PublicClient, getAbiItem, getContract, parseAbi, zeroAddress } from 'viem'
-import {
-  ChainlinkFactoryAddress,
-  CryptexFactoryAddress,
-  MarketFactoryAddress,
-  PythFactoryAddress,
-  SupportedChainId,
-} from '../constants/network.js'
-import { FactoryAbi } from '../constants/abi/Factory.abi.js'
-import { MarketImpl } from '../constants/abi/MarketImpl.abi.js'
-import { KeeperOracleImpl } from '../constants/abi/KeeperOracleImpl.abi.js'
-import { KeeperFactoryImpl } from '../constants/abi/KeeperFactoryImpl.abi.js'
-import { PayoffAbi } from '../constants/abi/Payoff.abi.js'
+import { Address, Hex, PublicClient, getAbiItem, parseAbi, zeroAddress } from 'viem'
+import { MarketFactoryAddresses, SupportedChainId } from '../constants/network.js'
 import { marketAddressToMarketTag } from '../constants/addressTagging.js'
-import { Chain, Client } from '../config.js'
+import { Chain, Client, SDK } from '../config.js'
+import { oracleProviderForFactoryAddress, FactoryAbi, PayoffAbi, KeeperFactoryAbi } from '@perennial/sdk'
 
-export type ProviderType = 'pyth' | 'chainlink' | 'cryptex' | 'unknown'
 export type MarketDetails = Awaited<ReturnType<typeof getMarkets>>[number]
 export async function getMarkets() {
   const chainId = Chain.id
   const marketAddresses = await getMarketAddresses({ client: Client, chainId })
 
   const marketsWithOracle = marketAddresses.map(async (marketAddress) => {
-    const marketContract = getContract({ abi: MarketImpl, address: marketAddress, client: Client })
+    const marketContract = SDK.contracts.getMarketContract(marketAddress)
     // Market -> Oracle
     const [oracle, token, riskParameter] = await Promise.all([
       marketContract.read.oracle(),
@@ -43,19 +32,15 @@ export async function getMarkets() {
     })
 
     // KeeperOracle -> Feed
-    const keeperOracleContract = getContract({ abi: KeeperOracleImpl, address: keeperOracle, client: Client })
+    const keeperOracleContract = SDK.contracts.getKeeperOracleContract(keeperOracle)
     const [timeout, providerFactory] = await Promise.all([
       keeperOracleContract.read.timeout(),
       keeperOracleContract.read.factory(),
     ])
 
-    const providerFactoryContract = getContract({
-      abi: KeeperFactoryImpl,
-      address: providerFactory,
-      client: Client,
-    })
+    const providerFactoryContract = SDK.contracts.getKeeperFactoryContract(providerFactory)
 
-    const feed = await getFeedIdForProvider({ client: Client, providerFactory, keeperOracle })
+    const feed = await getFeedIdForProvider({ providerFactory, keeperOracle })
     if (!feed) throw new Error(`No feed found for ${keeperOracle}`)
 
     const [validFrom, validTo, underlyingId, underlyingPayoff] = await Promise.all([
@@ -80,7 +65,7 @@ export async function getMarkets() {
       validTo,
       staleAfter: riskParameter.staleAfter,
       metricsTag: marketAddressToMarketTag(chainId, marketAddress),
-      providerType: providerAddressToProviderType(providerFactory),
+      providerType: oracleProviderForFactoryAddress({ chainId, factory: providerFactory }),
     }
   })
 
@@ -114,7 +99,7 @@ export async function transformPrice(
 
 async function getMarketAddresses({ client, chainId }: { client: PublicClient; chainId: SupportedChainId }) {
   const logs = await client.getLogs({
-    address: MarketFactoryAddress[chainId],
+    address: MarketFactoryAddresses[chainId],
     event: getAbiItem({ abi: FactoryAbi, name: 'InstanceRegistered' }),
     strict: true,
     fromBlock: 0n,
@@ -124,28 +109,20 @@ async function getMarketAddresses({ client, chainId }: { client: PublicClient; c
   return logs.map((l) => l.args.instance)
 }
 
+// TODO: In v2.3 we can get this directly from the contract
 async function getFeedIdForProvider({
-  client,
   providerFactory,
   keeperOracle,
 }: {
-  client: PublicClient
   providerFactory: Address
   keeperOracle: Address
 }) {
-  const feedEvents = await client.getLogs({
+  const feedEvents = await Client.getLogs({
     address: providerFactory,
-    event: getAbiItem({ abi: KeeperFactoryImpl, name: 'OracleCreated' }),
+    event: getAbiItem({ abi: KeeperFactoryAbi, name: 'OracleCreated' }),
     args: { oracle: keeperOracle },
     fromBlock: 0n,
     toBlock: 'latest',
   })
   return feedEvents.at(0)?.args.id
-}
-
-function providerAddressToProviderType(providerAddress: Address): 'pyth' | 'chainlink' | 'cryptex' | 'unknown' {
-  if (providerAddress === PythFactoryAddress[Chain.id]) return 'pyth'
-  if (providerAddress === ChainlinkFactoryAddress[Chain.id]) return 'chainlink'
-  if (providerAddress === CryptexFactoryAddress[Chain.id]) return 'cryptex'
-  return 'unknown'
 }

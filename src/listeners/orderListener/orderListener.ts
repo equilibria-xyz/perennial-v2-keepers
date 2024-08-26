@@ -1,8 +1,9 @@
 import { Hex, getAddress } from 'viem'
-import { MarketDetails, ProviderType, getMarkets, transformPrice } from '../../utils/marketUtils'
-import { GraphDefaultPageSize, queryAll } from '../../utils/graphUtils'
+import { queryAll } from '@perennial/sdk'
+import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUtils'
+import { GraphDefaultPageSize } from '../../utils/graphUtils'
 import { Chain, Client, GraphClient, orderSigner } from '../../config'
-import { BatchKeeperAbi } from '../../constants/abi'
+import { BatchKeeperAbi } from '../../constants/abi/BatchKeeper.abi'
 import { buildCommit, getUpdateDataForProviderType } from '../../utils/oracleUtils'
 import { chunk, notEmpty } from '../../utils/arrayUtils'
 import { Big6Math } from '../../constants/Big6Math'
@@ -23,43 +24,42 @@ export class OrderListener {
       const blockNumber = await Client.getBlockNumber()
       console.log(`Running Order Handler. Block: ${blockNumber}`)
 
-      const groupedMarkets = this.markets.reduce((acc, market) => {
-        if (!acc.has(market.providerType)) acc.set(market.providerType, [])
-        acc.get(market.providerType)?.push(market)
-        return acc
-      }, new Map<ProviderType, MarketDetails[]>())
-      const pricesPromises = Array.from(groupedMarkets.entries()).map(async ([providerType, markets]) => {
-        return getUpdateDataForProviderType({
-          providerType,
-          feeds: markets.map((m) => ({
-            providerId: m.underlyingId,
-            minValidTime: m.validFrom,
-            staleAfter: m.staleAfter,
-          })),
-        })
+      const prices = await getUpdateDataForProviderType({
+        feeds: this.markets.map((m) => ({
+          id: m.feed,
+          underlyingId: m.underlyingId,
+          minValidTime: m.validFrom,
+          factory: m.providerFactory,
+          subOracle: m.keeperOracle,
+          staleAfter: m.staleAfter,
+        })),
       })
-      const prices = (await Promise.all(pricesPromises)).flat()
 
-      const transformedPrices = await Promise.all(
+      const transformedPrices_ = await Promise.all(
         this.markets.map(async (market) => {
-          const priceData = prices.find((p) => p.feedId === market.underlyingId)
+          const priceData = prices.find((p) => p.details.map((p) => p.underlyingId).includes(market.underlyingId))
           if (!priceData) return null
+          const price = priceData.details.find((p) => p.underlyingId === market.underlyingId)?.price
+          if (!price) return null
 
-          return { market, price: await transformPrice(market.payoff, market.payoffDecimals, priceData.price, Client) }
+          return {
+            market,
+            price: await transformPrice(market.payoff, market.payoffDecimals, price, Client),
+            priceData,
+          }
         }),
       )
-      const ordersForMarkets = await this.getOrdersForMarkets(transformedPrices.filter(notEmpty))
+      const transformedPrices = transformedPrices_.filter(notEmpty)
+      const ordersForMarkets = await this.getOrdersForMarkets(transformedPrices)
 
       const executableOrders_ = await Promise.all(
-        this.markets.map((market) => {
-          const priceData = prices.find((p) => p.feedId === market.underlyingId)
-          if (!priceData) return null
+        transformedPrices.map((transformedPrice) => {
           return this.tryExecuteOrders({
-            market,
-            updateData: priceData.data,
-            version: priceData.version,
-            value: priceData.value,
-            orders: ordersForMarkets[`market_${market.market}`] || [],
+            market: transformedPrice.market,
+            updateData: transformedPrice.priceData.updateData,
+            version: transformedPrice.priceData.version,
+            value: transformedPrice.priceData.value,
+            orders: ordersForMarkets[`market_${transformedPrice.market.market}`] || [],
           })
         }),
       )

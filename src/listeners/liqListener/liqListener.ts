@@ -2,13 +2,14 @@ import { Address, Hex, WatchContractEventReturnType, formatEther, getAddress } f
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { getMarketsUsers } from '../../utils/graphUtils'
 import { Chain, Client, liquidatorAccount, liquidatorSigner } from '../../config'
-import { BatchKeeperAbi, MarketImpl } from '../../constants/abi'
+import { BatchKeeperAbi } from '../../constants/abi/BatchKeeper.abi'
 import { buildCommit, getUpdateDataForProviderType } from '../../utils/oracleUtils'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
 import { BatchKeeperAddresses, MaxSimSizes } from '../../constants/network'
 import { marketAddressToMarketTag } from '../../constants/addressTagging'
 import { chunk, notEmpty, unique } from '../../utils/arrayUtils'
+import { MarketAbi } from '@perennial/sdk'
 
 type LiqMarketDetails = MarketDetails & {
   users: Address[]
@@ -78,7 +79,7 @@ export class LiqListener {
     if (this.unwatchUpdates) this.unwatchUpdates()
 
     this.unwatchUpdates = Client.watchContractEvent({
-      abi: MarketImpl,
+      abi: MarketAbi,
       eventName: 'Updated',
       strict: true,
       poll: true,
@@ -103,10 +104,10 @@ export class LiqListener {
     underlyingId,
     validFrom,
     providerFactory,
+    keeperOracle,
     feed,
     staleAfter,
     metricsTag: marketTag,
-    providerType,
   }: LiqMarketDetails) {
     const now = Date.now()
     tracer.dogstatsd.gauge('market.users', users.length, {
@@ -115,22 +116,30 @@ export class LiqListener {
     })
 
     const updateDatas = await getUpdateDataForProviderType({
-      providerType,
-      feeds: [{ providerId: underlyingId, minValidTime: validFrom, staleAfter }],
+      feeds: [
+        {
+          id: feed,
+          underlyingId,
+          minValidTime: validFrom,
+          factory: providerFactory,
+          subOracle: keeperOracle,
+          staleAfter,
+        },
+      ],
     })
 
     const updateData = updateDatas.at(0)
     if (!updateData) throw new Error(`No update data for market ${marketTag}`)
     console.log(
       `${marketTag}: Checking if any of ${users.length} users can be liquidated at current price $${formatEther(
-        updateData.price,
+        updateData.details[0].price,
       )}.`,
     )
 
     const commit = buildCommit({
-      oracleProviderFactory: providerFactory,
-      ids: [feed],
-      data: updateData.data,
+      oracleProviderFactory: updateData.keeperFactory,
+      ids: updateData.ids,
+      data: updateData.updateData,
       version: updateData.version,
       value: updateData.value,
       revertOnFailure: false,

@@ -1,6 +1,5 @@
 import 'dotenv/config'
 import './tracer.js'
-import { PythOracleListener } from './listeners/oracleListener/pythOracle.js'
 import { Task, TaskType, IsMainnet, Chain } from './config.js'
 import { MetricsListener } from './listeners/metricsListener/metricsListener.js'
 import deployBatchKeeper from './scripts/DeployBatchKeeper.js'
@@ -8,9 +7,8 @@ import { OrderListener } from './listeners/orderListener/orderListener.js'
 import { LiqListener } from './listeners/liqListener/liqListener.js'
 import { SettlementListener } from './listeners/settlementListener/settlementListener.js'
 import ClaimBatchKeeper from './scripts/claimBatchKeeper.js'
-import { BaseOracleListener } from './listeners/oracleListener/baseOracleListener.js'
-import { GenericSignerOracleListener } from './listeners/oracleListener/genericSignerOracleListener.js'
-import { CryptexFactoryAddress } from './constants/network.js'
+import { OracleListener } from './listeners/oracleListener/oracleListener.js'
+import { CryptexFactoryAddresses, PythFactoryAddresses } from './constants/network.js'
 
 const run = async () => {
   switch (Task) {
@@ -46,8 +44,8 @@ const run = async () => {
       break
     }
     case TaskType.oracle: {
-      const pythListener = new PythOracleListener()
-      const cryptexListener = new GenericSignerOracleListener(CryptexFactoryAddress[Chain.id], 'cryptexOracle')
+      const pythListener = new OracleListener(PythFactoryAddresses[Chain.id], 'pythOracle')
+      const cryptexListener = new OracleListener(CryptexFactoryAddresses[Chain.id], 'cryptexOracle')
       await pythListener.init()
       await cryptexListener.init()
 
@@ -56,7 +54,7 @@ const run = async () => {
           pythListener.run()
           cryptexListener.run()
         },
-        IsMainnet ? BaseOracleListener.PollingInterval : 2 * BaseOracleListener.PollingInterval,
+        IsMainnet ? OracleListener.PollingInterval : 2 * OracleListener.PollingInterval,
       )
       break
     }

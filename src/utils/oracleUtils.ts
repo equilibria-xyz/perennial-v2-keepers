@@ -1,7 +1,6 @@
 import { Address, Hex, encodeAbiParameters } from 'viem'
-import { ProviderType } from './marketUtils'
-import { getRecentVaa } from './pythUtils'
-import { fetchPriceLatest } from './cryptexUtils'
+import { UpdateDataRequest, UpdateDataResponse } from '@perennial/sdk'
+import { SDK } from '../config'
 
 export const buildCommit = ({
   oracleProviderFactory,
@@ -28,30 +27,11 @@ export const buildCommit = ({
 }
 
 export async function getUpdateDataForProviderType({
-  providerType,
   feeds,
 }: {
-  providerType: ProviderType
-  feeds: {
-    providerId: Hex
-    minValidTime: bigint
-    staleAfter: bigint
-  }[]
-}): Promise<{ feedId: Hex; data: Hex; version: bigint; value: bigint; price: bigint }[]> {
-  if (providerType === 'pyth') {
-    const feedData = await getRecentVaa({ feeds })
-    return feedData.map((d) => ({ feedId: d.feedId, data: d.vaa, version: d.version, value: 1n, price: d.price }))
-  }
-  if (providerType === 'cryptex') {
-    const data = await fetchPriceLatest(feeds)
-    return data.feeds.map((d) => ({
-      feedId: d.feedId,
-      data: data.updateData,
-      version: data.version,
-      value: 0n,
-      price: d.price,
-    }))
-  }
+  feeds: UpdateDataRequest[]
+}): Promise<UpdateDataResponse[]> {
+  const response = await SDK.oracles.read.oracleCommitmentsLatest({ requests: feeds })
 
-  return []
+  return response
 }

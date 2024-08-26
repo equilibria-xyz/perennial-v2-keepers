@@ -1,15 +1,15 @@
 /* eslint-disable */
-import { BatchKeeperAbi } from '../constants/abi/index.js'
+import { BatchKeeperAbi } from '../constants/abi/BatchKeeper.abi'
 import BatchKeeperBytecode from '../../artifacts/src/contracts/contracts/BatchKeeper.sol/BatchKeeper.json'
 import { Chain, Client, liquidatorAccount, liquidatorSigner } from '../config.js'
 import { Hex } from 'viem'
-import { MultiInvokerAddress } from '../constants/network.js'
+import { MultiInvokerAddresses } from '../constants/network.js'
 
 export default async function DeployBatchKeeper() {
   const hash = await liquidatorSigner.deployContract({
     abi: BatchKeeperAbi,
     account: liquidatorAccount,
-    args: [MultiInvokerAddress[Chain.id]],
+    args: [MultiInvokerAddresses[Chain.id]],
     bytecode: BatchKeeperBytecode.bytecode as Hex,
   })
 

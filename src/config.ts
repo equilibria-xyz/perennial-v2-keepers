@@ -1,18 +1,17 @@
 import { createPublicClient, createWalletClient, webSocket, http, Hex, PublicClient } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { SupportedChainId, SupportedChains } from './constants/network.js'
+import { SupportedChainId } from './constants/network.js'
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
 import { GraphQLClient } from 'graphql-request'
-import { arbitrum, arbitrumSepolia, base, hardhat } from 'viem/chains'
+import { arbitrum, arbitrumSepolia } from 'viem/chains'
 import { notEmpty } from './utils/arrayUtils.js'
+import PerennialSDK, { chainIdToChainMap, SupportedChainIds } from '@perennial/sdk'
 
 export const NodeUrls: {
   [key in SupportedChainId]: string
 } = {
   [arbitrum.id]: process.env.ARBITRUM_NODE_URL || '',
   [arbitrumSepolia.id]: process.env.ARBITRUM_SEPOLIA_NODE_URL || '',
-  [base.id]: process.env.BASE_NODE_URL || '',
-  [hardhat.id]: process.env.HARDHAT_NODE_URL || '',
 }
 
 export const GraphUrls: {
@@ -20,8 +19,6 @@ export const GraphUrls: {
 } = {
   [arbitrum.id]: process.env.ARBITRUM_GRAPH_URL || '',
   [arbitrumSepolia.id]: process.env.ARBITRUM_SEPOLIA_GRAPH_URL || '',
-  [base.id]: process.env.BASE_GRAPH_URL || '',
-  [hardhat.id]: process.env.ARBITRUM_GOERLI_GRAPH_URL || '',
 }
 
 export const ChainlinkConfig = {
@@ -34,10 +31,10 @@ export const CryptexPriceFeedUrl = process.env.CRYPTEX_PRICE_FEED_URL || ''
 
 const _chainId = process.argv[2]
 if (!_chainId) throw new Error('Missing chainId argument')
-const _chain = SupportedChains.find((c) => c.id === Number(_chainId))
+const _chain = SupportedChainIds.find((c) => c === Number(_chainId))
 if (!_chain) throw new Error('Invalid chainId argument')
 
-export const Chain = _chain
+export const Chain = chainIdToChainMap[_chain]
 export const IsMainnet = !([arbitrumSepolia.id] as SupportedChainId[]).includes(Chain.id)
 
 export const Client = createPublicClient({
@@ -87,21 +84,20 @@ export const settlementSigner = createWalletClient({
   account: settlementAccount,
 })
 
-export const PythConnections = [
+const PythUrls = [
   process.env.PYTH_HERMES_URL,
   ...(process.env.PYTH_HERMES_FALLBACK_URLS ?? '')
     .split(',')
     .filter((v) => !!v)
     .map((url) => url.trim()),
   'https://hermes.pyth.network/',
-]
-  .filter(notEmpty)
-  .map(
-    (url) =>
-      new EvmPriceServiceConnection(url, {
-        priceFeedRequestConfig: { binary: true },
-      }),
-  )
+].filter(notEmpty)
+export const PythConnections = PythUrls.map(
+  (url) =>
+    new EvmPriceServiceConnection(url, {
+      priceFeedRequestConfig: { binary: true },
+    }),
+)
 
 export const PythBenchmarksURL = 'https://benchmarks.pyth.network'
 
@@ -119,3 +115,11 @@ const _task = process.argv[3]
 if (!_task) throw new Error('Missing task argument')
 if (!(_task in TaskType)) throw new Error('task undefined')
 export const Task = TaskType[_task as keyof typeof TaskType]
+
+export const SDK = new PerennialSDK({
+  chainId: Chain.id,
+  graphUrl: GraphUrls[Chain.id],
+  pythUrl: PythUrls,
+  cryptexUrl: CryptexPriceFeedUrl,
+  rpcUrl: NodeUrls[Chain.id],
+})

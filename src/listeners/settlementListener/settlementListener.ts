@@ -3,8 +3,7 @@ import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { Chain, Client, settlementSigner } from '../../config'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
-import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi'
-import { KeeperFactoryImpl } from '../../constants/abi'
+import { KeeperFactoryAbi, KeeperOracleAbi } from '@perennial/sdk'
 
 export class SettlementListener {
   public static PollingInterval = 60000 // 60s. Event listeners should handle most updates, use polling as a backup
@@ -19,7 +18,7 @@ export class SettlementListener {
   public async listen() {
     this.markets.forEach((market) => {
       Client.watchContractEvent({
-        abi: KeeperOracleImpl,
+        abi: KeeperOracleAbi,
         address: market.keeperOracle,
         eventName: 'OracleProviderVersionFulfilled',
         strict: true,
@@ -41,7 +40,7 @@ export class SettlementListener {
         market,
         version: await Client.readContract({
           address: market.keeperOracle,
-          abi: KeeperOracleImpl,
+          abi: KeeperOracleAbi,
           functionName: 'latest',
         }),
       })),
@@ -55,12 +54,12 @@ export class SettlementListener {
   private async processLocalCallbacksForMarket(version: bigint, market: MarketDetails) {
     const keeperOracle = getContract({
       address: market.keeperOracle,
-      abi: KeeperOracleImpl,
+      abi: KeeperOracleAbi,
       client: Client,
     })
     const keeperOracleFactory = getContract({
       address: market.providerFactory,
-      abi: KeeperFactoryImpl,
+      abi: KeeperFactoryAbi,
       client: Client,
     })
     const callbacks = await keeperOracle.read.localCallbacks([version, market.market])
