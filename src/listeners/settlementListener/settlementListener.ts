@@ -1,4 +1,4 @@
-import { getContract } from 'viem'
+import { getAddress, getContract } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { Chain, Client, settlementSigner } from '../../config'
 import { Big6Math } from '../../constants/Big6Math'
@@ -20,19 +20,25 @@ export class SettlementListener {
       abi: KeeperOracleAbi,
       eventName: 'OracleProviderVersionFulfilled',
       strict: true,
+      poll: true,
       onLogs: async (logs) => {
-        for (const log of logs) {
-          const market = this.markets.find((m) => m.keeperOracle === log.address)
-          if (!market) continue
-          console.log(
-            `OracleProviderVersionFulfilled for market ${market.market}, version ${log.args.version.timestamp}. Processing local callbacks`,
-          )
-          await this.processLocalCallbacksForMarket(log.args.version.timestamp, market)
-          tracer.dogstatsd.increment('market.oracleProviderVersionFulfilled', 1, {
-            chain: Chain.id,
-            market: market.metricsTag,
-            valid: String(log.args.version.valid),
-          })
+        for (const market of this.markets) {
+          const marketLogs = logs.filter((log) => getAddress(log.address) === market.keeperOracle)
+          if (marketLogs.length === 0) continue
+
+          for (const log of marketLogs) {
+            console.log(
+              `OracleProviderVersionFulfilled for market ${market.market}, version ${log.args.version.timestamp}. Processing
+              local callbacks`,
+            )
+            await this.processLocalCallbacksForMarket(log.args.version.timestamp, market)
+
+            tracer.dogstatsd.increment('market.oracleProviderVersionFulfilled', 1, {
+              chain: Chain.id,
+              market: market.metricsTag,
+              valid: String(log.args.version.valid),
+            })
+          }
         }
       },
     })

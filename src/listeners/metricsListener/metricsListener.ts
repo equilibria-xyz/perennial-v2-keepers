@@ -57,6 +57,8 @@ export class MetricsListener {
       abi: MarketAbi,
       eventName: 'Updated',
       strict: true,
+      poll: true,
+      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           const marketTag = marketAddressToMarketTag(Chain.id, log.address)
@@ -80,6 +82,8 @@ export class MetricsListener {
       abi: MultiInvokerAbi,
       eventName: 'OrderPlaced',
       strict: true,
+      poll: true,
+      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           const marketTag = marketAddressToMarketTag(Chain.id, log.args.market)
@@ -107,6 +111,8 @@ export class MetricsListener {
       abi: MultiInvokerAbi,
       eventName: 'OrderExecuted',
       strict: true,
+      poll: true,
+      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           tracer.dogstatsd.increment('market.order.executed', 1, {
@@ -122,6 +128,8 @@ export class MetricsListener {
       abi: MultiInvokerAbi,
       eventName: 'OrderCancelled',
       strict: true,
+      poll: true,
+      pollingInterval: MetricsListener.PollingInterval,
       onLogs: (logs) => {
         logs.forEach((log) => {
           tracer.dogstatsd.increment('market.order.cancelled', 1, {
