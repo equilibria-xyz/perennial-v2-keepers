@@ -226,11 +226,16 @@ export class OracleListener {
     timestamp: bigint,
     requestData: UpdateDataRequest,
   ): Promise<{ data: Hex; publishTime: bigint; value: bigint }> {
-    const [data] = await SDK.oracles.read.oracleCommitmentsTimestamp({
-      timestamp,
-      requests: [requestData],
-    })
+    try {
+      const [data] = await SDK.oracles.read.oracleCommitmentsTimestamp({
+        timestamp,
+        requests: [requestData],
+      })
 
-    return { data: data.updateData, publishTime: BigInt(data.details[0].publishTime), value: data.value }
+      return { data: data.updateData, publishTime: BigInt(data.details[0].publishTime), value: data.value }
+    } catch (e) {
+      tracer.dogstatsd.increment('oracleCommitmentsTimestamp.error')
+      throw e
+    }
   }
 }

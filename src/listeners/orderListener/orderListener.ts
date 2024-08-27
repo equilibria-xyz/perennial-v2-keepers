@@ -24,16 +24,24 @@ export class OrderListener {
       const blockNumber = await Client.getBlockNumber()
       console.log(`Running Order Handler. Block: ${blockNumber}`)
 
-      const prices = await getUpdateDataForProviderType({
-        feeds: this.markets.map((m) => ({
-          id: m.feed,
-          underlyingId: m.underlyingId,
-          minValidTime: m.validFrom,
-          factory: m.providerFactory,
-          subOracle: m.keeperOracle,
-          staleAfter: m.staleAfter,
-        })),
-      })
+      const prices = (
+        await Promise.all(
+          this.markets.map(async (market) => {
+            return await getUpdateDataForProviderType({
+              feeds: [
+                {
+                  id: market.feed,
+                  underlyingId: market.underlyingId,
+                  minValidTime: market.validFrom,
+                  factory: market.providerFactory,
+                  subOracle: market.keeperOracle,
+                  staleAfter: market.staleAfter,
+                },
+              ],
+            })
+          }),
+        )
+      ).flat()
 
       const transformedPrices_ = await Promise.all(
         this.markets.map(async (market) => {

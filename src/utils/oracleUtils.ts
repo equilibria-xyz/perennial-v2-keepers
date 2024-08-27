@@ -1,5 +1,6 @@
 import { UpdateDataRequest, UpdateDataResponse, buildCommitPrice } from '@perennial/sdk'
 import { SDK } from '../config'
+import tracer from 'dd-trace'
 
 export const buildCommit = buildCommitPrice
 
@@ -8,7 +9,12 @@ export async function getUpdateDataForProviderType({
 }: {
   feeds: UpdateDataRequest[]
 }): Promise<UpdateDataResponse[]> {
-  const response = await SDK.oracles.read.oracleCommitmentsLatest({ requests: feeds })
+  try {
+    const response = await SDK.oracles.read.oracleCommitmentsLatest({ requests: feeds })
 
-  return response
+    return response
+  } catch (e) {
+    tracer.dogstatsd.increment('oracleCommitmentsLatest.error')
+    throw e
+  }
 }
