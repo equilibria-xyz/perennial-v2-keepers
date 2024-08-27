@@ -28,8 +28,7 @@ export class SettlementListener {
 
           for (const log of marketLogs) {
             console.log(
-              `OracleProviderVersionFulfilled for market ${market.market}, version ${log.args.version.timestamp}. Processing
-              local callbacks`,
+              `OracleProviderVersionFulfilled for market ${market.metricsTag}, version ${log.args.version.timestamp}, valid: ${log.args.version.valid}. Processing local callbacks`,
             )
             await this.processLocalCallbacksForMarket(log.args.version.timestamp, market)
 
