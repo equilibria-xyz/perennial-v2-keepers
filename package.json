@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Perennial V2 Keepers",
   "engines": {
-    "node": ">= 18.12 <19",
+    "node": ">= 20 <21",
     "yarn": "1.x"
   },
   "devDependencies": {
@@ -29,7 +29,7 @@
     "rimraf": "~5.0",
     "ts-api-utils": "~0.0.44",
     "ts-jest": "~29.1",
-    "typescript": "~5.0"
+    "typescript": "5.4.3"
   },
   "scripts": {
     "compile": "OPTIMIZER_ENABLED=true hardhat compile",
@@ -53,6 +53,7 @@
     "@equilibria/perennial-v2-extensions": "1.2.0-rc0",
     "@equilibria/perennial-v2-oracle": "1.2.0-rc0",
     "@equilibria/root": "2.2.0",
+    "@perennial/sdk": "npm:@perennial/sdk-private@0.0.2-beta21-2",
     "@pythnetwork/pyth-evm-js": "^1.20.1",
     "buffer": "^6.0.3",
     "chainlink": "^0.8.2",

@@ -1,4 +1,4 @@
-import { Address, formatEther, formatUnits, getAddress, getContract, maxUint256, parseAbi } from 'viem'
+import { Address, formatEther, formatUnits, getAddress, maxUint256, parseAbi } from 'viem'
 import {
   Chain,
   oracleAccount,
@@ -8,28 +8,26 @@ import {
   orderAccount,
   liquidatorSigner,
   settlementAccount,
+  SDK,
 } from '../../config.js'
 import {
   BatchKeeperAddresses,
   DSUAddresses,
-  MarketFactoryAddress,
-  MultiInvokerAddress,
-  OracleFactoryAddress,
+  MarketFactoryAddresses,
+  MultiInvokerAddresses,
+  OracleFactoryAddresses,
   USDCAddresses,
 } from '../../constants/network.js'
 import { gql } from '../../../types/gql/gql.js'
 import tracer from '../../tracer.js'
-import { Big6Math, notional } from '../../constants/Big6Math.js'
+import { Big6Math } from '../../constants/Big6Math.js'
 import { startOfHour } from 'date-fns'
-import { MarketImpl } from '../../constants/abi/MarketImpl.abi.js'
 import { marketAddressToMarketTag, vaultAddressToVaultTag } from '../../constants/addressTagging.js'
 import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUtils.js'
 import { getVaults } from '../../utils/vaultUtils.js'
-import { VaultImplAbi } from '../../constants/abi/VaultImpl.abi.js'
-import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
-import { OracleFactoryAbi } from '../../constants/abi/OracleFactory.abi.js'
-import { getRecentVaa, pythMarketOpen } from '../../utils/pythUtils.js'
 import { nowSeconds } from '../../utils/timeUtils.js'
+import { getUpdateDataForProviderType } from '../../utils/oracleUtils.js'
+import { calcNotional, pythMarketOpen, OracleFactoryAbi, MultiInvokerAbi, MarketAbi } from '@perennial/sdk'
 
 const Balances = ['ETH', 'USDC', 'DSU']
 const ERC20Abi = parseAbi(['function balanceOf(address owner) view returns (uint256)'] as const)
@@ -56,7 +54,7 @@ export class MetricsListener {
   public watchEvents() {
     Client.watchContractEvent({
       address: this.marketAddresses,
-      abi: MarketImpl,
+      abi: MarketAbi,
       eventName: 'Updated',
       strict: true,
       poll: true,
@@ -80,8 +78,8 @@ export class MetricsListener {
     })
 
     Client.watchContractEvent({
-      address: MultiInvokerAddress[Chain.id],
-      abi: MultiInvokerImplAbi,
+      address: MultiInvokerAddresses[Chain.id],
+      abi: MultiInvokerAbi,
       eventName: 'OrderPlaced',
       strict: true,
       poll: true,
@@ -109,8 +107,8 @@ export class MetricsListener {
     })
 
     Client.watchContractEvent({
-      address: MultiInvokerAddress[Chain.id],
-      abi: MultiInvokerImplAbi,
+      address: MultiInvokerAddresses[Chain.id],
+      abi: MultiInvokerAbi,
       eventName: 'OrderExecuted',
       strict: true,
       poll: true,
@@ -126,8 +124,8 @@ export class MetricsListener {
     })
 
     Client.watchContractEvent({
-      address: MultiInvokerAddress[Chain.id],
-      abi: MultiInvokerImplAbi,
+      address: MultiInvokerAddresses[Chain.id],
+      abi: MultiInvokerAbi,
       eventName: 'OrderCancelled',
       strict: true,
       poll: true,
@@ -228,7 +226,7 @@ export class MetricsListener {
       const [global, tvl] = await Promise.all([
         Client.readContract({
           address: marketAddress,
-          abi: MarketImpl,
+          abi: MarketAbi,
           functionName: 'global',
         }),
         Client.readContract({
@@ -241,7 +239,7 @@ export class MetricsListener {
       const [position] = await Promise.all([
         Client.readContract({
           address: marketAddress,
-          abi: MarketImpl,
+          abi: MarketAbi,
           functionName: 'position',
         }),
       ])
@@ -268,7 +266,7 @@ export class MetricsListener {
 
       tracer.dogstatsd.gauge(
         'market.global.makerOI',
-        Number(formatUnits(notional(position.maker, global.latestPrice), 6)),
+        Number(formatUnits(calcNotional(position.maker, global.latestPrice), 6)),
         {
           chain: Chain.id,
           market: marketTag,
@@ -277,7 +275,7 @@ export class MetricsListener {
 
       tracer.dogstatsd.gauge(
         'market.global.longOI',
-        Number(formatUnits(notional(position.long, global.latestPrice), 6)),
+        Number(formatUnits(calcNotional(position.long, global.latestPrice), 6)),
         {
           chain: Chain.id,
           market: marketTag,
@@ -286,7 +284,7 @@ export class MetricsListener {
 
       tracer.dogstatsd.gauge(
         'market.global.shortOI',
-        Number(formatUnits(notional(position.short, global.latestPrice), 6)),
+        Number(formatUnits(calcNotional(position.short, global.latestPrice), 6)),
         {
           chain: Chain.id,
           market: marketTag,
@@ -303,13 +301,13 @@ export class MetricsListener {
         contracts: [
           {
             address: marketAddress,
-            abi: MarketImpl,
+            abi: MarketAbi,
             functionName: 'update',
             args: [BatchKeeperAddresses[Chain.id], maxUint256, maxUint256, maxUint256, 0n, false],
           },
           {
             address: marketAddress,
-            abi: MarketImpl,
+            abi: MarketAbi,
             functionName: 'locals',
             args: [BatchKeeperAddresses[Chain.id]],
           },
@@ -330,7 +328,7 @@ export class MetricsListener {
 
     this.vaultAddreses.forEach(async (vault) => {
       const vaultTag = vaultAddressToVaultTag(Chain.id, vault)
-      const vaultContract = getContract({ abi: VaultImplAbi, address: vault, client: Client })
+      const vaultContract = SDK.contracts.getVaultContract(vault)
       const [totalAssets, totalShares] = await Promise.all([
         vaultContract.read.totalAssets(),
         vaultContract.read.totalShares(),
@@ -352,8 +350,8 @@ export class MetricsListener {
       { address: liquidatorAccount.address, role: 'liquidatorKeeper' },
       { address: orderAccount.address, role: 'orderKeeper' },
       { address: settlementAccount.address, role: 'settlementKeeper' },
-      { address: MarketFactoryAddress[Chain.id], role: 'marketFactory' },
-      { address: OracleFactoryAddress[Chain.id], role: 'oracleFactory' },
+      { address: MarketFactoryAddresses[Chain.id], role: 'marketFactory' },
+      { address: OracleFactoryAddresses[Chain.id], role: 'oracleFactory' },
       { address: BatchKeeperAddresses[Chain.id], role: 'batchKeeper' },
     ]
 
@@ -399,31 +397,36 @@ export class MetricsListener {
     })
 
     try {
-      const pythPrices = await getRecentVaa({
+      const feedPrices = await getUpdateDataForProviderType({
         feeds: this.markets.map((m) => ({
-          providerId: m.underlyingId,
+          factory: m.providerFactory,
+          id: m.feed,
+          underlyingId: m.underlyingId,
           minValidTime: m.validFrom,
+          subOracle: m.keeperOracle,
           staleAfter: m.staleAfter,
         })),
       })
       const now = nowSeconds()
-      pythPrices.forEach(async (price) => {
-        const market = this.markets.find((m) => m.underlyingId === price.feedId)
-        if (!market) return
-        const isOpen = await pythMarketOpen(price.feedId)
-        const publishTime = isOpen ? price.publishTime : now // If market is closed, use current time
-        tracer.dogstatsd.gauge('pythHermes.delay', now - publishTime, {
-          chain: Chain.id,
-          market: market.metricsTag,
-        })
-        tracer.dogstatsd.gauge(
-          'market.price',
-          Number(formatUnits(await transformPrice(market.payoff, market.payoffDecimals, price.price, Client), 6)),
-          {
+      feedPrices.forEach(async (feedData) => {
+        feedData.details.forEach(async (price) => {
+          const market = this.markets.find((m) => m.underlyingId === price.id)
+          if (!market) return
+          const isOpen = market.providerType === 'pyth' ? await pythMarketOpen(price.id) : true
+          const publishTime = isOpen ? price.publishTime : now // If market is closed, use current time
+          tracer.dogstatsd.gauge('offchainPrice.delay', now - publishTime, {
             chain: Chain.id,
             market: market.metricsTag,
-          },
-        )
+          })
+          tracer.dogstatsd.gauge(
+            'market.price',
+            Number(formatUnits(await transformPrice(market.payoff, market.payoffDecimals, price.price, Client), 6)),
+            {
+              chain: Chain.id,
+              market: market.metricsTag,
+            },
+          )
+        })
       })
     } catch (e) {
       // Pass
@@ -438,7 +441,7 @@ export class MetricsListener {
     const globals = await Promise.all(
       this.marketAddresses.map(async (m) => ({
         marketAddress: m,
-        global: await Client.readContract({ address: m, abi: MarketImpl, functionName: 'global' }),
+        global: await Client.readContract({ address: m, abi: MarketAbi, functionName: 'global' }),
       })),
     )
 
@@ -446,7 +449,7 @@ export class MetricsListener {
       if (global.global.oracleFee > Big6Math.fromFloatString('500')) {
         const hash = await liquidatorSigner.writeContract({
           chain: Chain,
-          address: OracleFactoryAddress[Chain.id],
+          address: OracleFactoryAddresses[Chain.id],
           abi: OracleFactoryAbi,
           functionName: 'fund',
           args: [global.marketAddress],
