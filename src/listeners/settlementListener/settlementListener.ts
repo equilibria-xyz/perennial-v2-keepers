@@ -16,21 +16,25 @@ export class SettlementListener {
   }
 
   public async listen() {
-    this.markets.forEach((market) => {
-      Client.watchContractEvent({
-        abi: KeeperOracleAbi,
-        address: market.keeperOracle,
-        eventName: 'OracleProviderVersionFulfilled',
-        strict: true,
-        onLogs: async (logs) => {
-          for (const log of logs) {
-            console.log(
-              `OracleProviderVersionFulfilled for market ${market.market}, version ${log.args.version.timestamp}. Processing local callbacks`,
-            )
-            await this.processLocalCallbacksForMarket(log.args.version.timestamp, market)
-          }
-        },
-      })
+    Client.watchContractEvent({
+      abi: KeeperOracleAbi,
+      eventName: 'OracleProviderVersionFulfilled',
+      strict: true,
+      onLogs: async (logs) => {
+        for (const log of logs) {
+          const market = this.markets.find((m) => m.keeperOracle === log.address)
+          if (!market) continue
+          console.log(
+            `OracleProviderVersionFulfilled for market ${market.market}, version ${log.args.version.timestamp}. Processing local callbacks`,
+          )
+          await this.processLocalCallbacksForMarket(log.args.version.timestamp, market)
+          tracer.dogstatsd.increment('market.oracleProviderVersionFulfilled', 1, {
+            chain: Chain.id,
+            market: market.metricsTag,
+            valid: String(log.args.version.valid),
+          })
+        }
+      },
     })
   }
 
