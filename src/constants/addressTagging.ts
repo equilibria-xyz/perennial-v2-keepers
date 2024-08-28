@@ -36,6 +36,8 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
           [getAddress('0xB7558189c794239ef9453208f2e58Fa049E1035c')]: 'jpy',
           [getAddress('0xe8BF156034b64A7266AcD28046F67f3fa7Ecc53a')]: 'mkr',
           [getAddress('0x5bef017aC7Ea4f6f59946f27d50A137D4362F6A4')]: 'doge',
+          [getAddress('0xb8df4bea28B1F0748D386E8A69ea1bD46B70922d')]: 'eur',
+          [getAddress('0xe588d7d041e18E754e95eF51D77f6e0fC6334EfD')]: 'gbp',
         }[market] ?? market
       )
     }
@@ -84,6 +86,8 @@ export function oracleProviderAddressToOracleProviderTag(chainId: number, oracle
           [getAddress('0x596a87B679550360E492f2dE34Fc18d2736cb34F')]: 'pyth-jpy',
           [getAddress('0x13C12bD024C3E6d9b9C16Ea057E6CBDF45b25dAA')]: 'pyth-mkr',
           [getAddress('0xe315df753FdFaBa7e7Af7768b78ed3343a7aFBD3')]: 'pyth-doge',
+          [getAddress('0x8603c81d81e8Ddfdd733B04A8a3d691703E7C7F0')]: 'pyth-eur',
+          [getAddress('0x9A79E5F67C18c87F6C0B601E461DdbfF76DD32e3')]: 'pyth-gbp',
         }[oracle] ?? oracle
       )
     }

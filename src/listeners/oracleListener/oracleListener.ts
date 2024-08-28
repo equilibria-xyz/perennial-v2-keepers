@@ -234,7 +234,7 @@ export class OracleListener {
 
       return { data: data.updateData, publishTime: BigInt(data.details[0].publishTime), value: data.value }
     } catch (e) {
-      tracer.dogstatsd.increment('oracleCommitmentsTimestamp.error')
+      tracer.dogstatsd.increment('oracleCommitmentsTimestamp.error', 1)
       throw e
     }
   }

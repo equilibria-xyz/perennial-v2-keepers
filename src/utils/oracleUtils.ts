@@ -14,7 +14,7 @@ export async function getUpdateDataForProviderType({
 
     return response
   } catch (e) {
-    tracer.dogstatsd.increment('oracleCommitmentsLatest.error')
+    tracer.dogstatsd.increment('oracleCommitmentsLatest.error', 1)
     throw e
   }
 }

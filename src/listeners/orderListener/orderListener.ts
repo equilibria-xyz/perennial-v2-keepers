@@ -75,7 +75,7 @@ export class OrderListener {
       const executableOrders = executableOrders_.filter(notEmpty).filter((o) => o.orders.length > 0)
 
       for (let i = 0; i < executableOrders.length; i++) {
-        const { market, orders: allOrders, commit } = executableOrders[i]
+        const { market, orders: allOrders, commit, value } = executableOrders[i]
         console.log(`Market ${market.metricsTag} - Executable orders: ${allOrders.length}`)
 
         const chunks = chunk(allOrders, 10) // Execute 10 orders at a time
@@ -85,7 +85,7 @@ export class OrderListener {
             abi: BatchKeeperAbi,
             functionName: 'tryExecute',
             args: [market.market, orders.map((o) => o.account), orders.map((o) => o.nonce), [commit]],
-            value: 1n,
+            value,
             account: orderSigner.account,
           })
           const gasEstimate = await Client.estimateContractGas(request)
@@ -133,7 +133,7 @@ export class OrderListener {
     const commit = buildCommit({
       keeperFactory: market.providerFactory,
       version,
-      value: value,
+      value,
       ids: [market.feed],
       vaa: updateData,
       revertOnFailure: false,
@@ -144,12 +144,12 @@ export class OrderListener {
       abi: BatchKeeperAbi,
       functionName: 'tryExecute',
       args: [market.market, accounts, nonces, [commit]],
-      value: 1n,
+      value,
       account: orderSigner.account,
     })
 
     // Return executable orders
-    return { orders: result[0].filter((r) => !!r.result.success), commit, market }
+    return { orders: result[0].filter((r) => !!r.result.success), value, commit, market }
   }
 
   // Uses a manual graph query to pull orders. This is more efficient as it batches all the markets into a single query
