@@ -73,7 +73,7 @@ export class SettlementListener {
     })
     const callbacks = await keeperOracle.read.localCallbacks([version, market.market])
     if (callbacks.length === 0) {
-      console.log(`No callbacks for market ${market.market} and version ${version}`)
+      console.log(`No callbacks for market ${market.metricsTag} and version ${version}`)
       return
     }
 
