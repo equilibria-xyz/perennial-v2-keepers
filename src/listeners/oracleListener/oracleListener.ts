@@ -23,13 +23,16 @@ type CommitmentWithMetrics = {
 export class OracleListener {
   public static PollingInterval = 4000 // 4s
 
-  protected oracleAddresses: { oracle: Address; id: Hex }[] = []
+  protected oracleAddresses: { oracle: Address; id: Hex; providerTag: string }[] = []
 
   constructor(private keeperFactoryAddress: Address, private statsPrefix: string) {}
 
   public async init() {
     this.oracleAddresses = await this.getOracleAddresses()
-    console.log(`[${this.statsPrefix}] Oracle Addresses:`, this.oracleAddresses.map(({ oracle }) => oracle).join(', '))
+    console.log(
+      `[${this.statsPrefix}] Oracle Addresses:`,
+      this.oracleAddresses.map(({ oracle, providerTag }) => `${providerTag} (${oracle})`).join(', '),
+    )
   }
 
   public async run() {
@@ -87,8 +90,7 @@ export class OracleListener {
   }
 
   protected async getCommitments(): Promise<CommitmentWithMetrics[]> {
-    const commitmentPromises = this.oracleAddresses.map(async ({ oracle, id }) => {
-      const providerTag = oracleProviderAddressToOracleProviderTag(Chain.id, oracle)
+    const commitmentPromises = this.oracleAddresses.map(async ({ oracle, id, providerTag }) => {
       const factoryContract = SDK.contracts.getKeeperFactoryContract(this.keeperFactoryAddress)
       const oracleContract = SDK.contracts.getKeeperOracleContract(oracle)
 
@@ -219,7 +221,18 @@ export class OracleListener {
       fromBlock: 0n,
       toBlock: 'latest',
     })
-    return logs.map((l) => ({ id: l.args.id, oracle: l.args.oracle }))
+    const marketOracles = await SDK.markets.read.marketOracles()
+
+    return logs.map((l) => ({
+      id: l.args.id,
+      oracle: l.args.oracle,
+      providerTag: oracleProviderAddressToOracleProviderTag(
+        Chain.id,
+        this.keeperFactoryAddress,
+        l.args.oracle,
+        marketOracles,
+      ),
+    }))
   }
 
   private async getUpdateDataAtTimestamp(
