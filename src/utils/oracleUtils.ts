@@ -1,25 +1,20 @@
-import { Address, Hex, encodeAbiParameters } from 'viem'
+import { UpdateDataRequest, UpdateDataResponse, buildCommitPrice } from '@perennial/sdk'
+import { SDK } from '../config'
+import tracer from 'dd-trace'
 
-export const buildCommit = ({
-  oracleProviderFactory,
-  version,
-  value,
-  ids,
-  data,
-  revertOnFailure,
+export const buildCommit = buildCommitPrice
+
+export async function getUpdateDataForProviderType({
+  feeds,
 }: {
-  oracleProviderFactory: Address
-  version: bigint
-  value: bigint
-  ids: string[]
-  data: string
-  revertOnFailure: boolean
-}): { action: number; args: Hex } => {
-  return {
-    action: 6,
-    args: encodeAbiParameters(
-      ['address', 'uint256', 'bytes32[]', 'uint256', 'bytes', 'bool'].map((type) => ({ type })),
-      [oracleProviderFactory, value, ids, version, data, revertOnFailure],
-    ),
+  feeds: UpdateDataRequest[]
+}): Promise<UpdateDataResponse[]> {
+  try {
+    const response = await SDK.oracles.read.oracleCommitmentsLatest({ requests: feeds })
+
+    return response
+  } catch (e) {
+    tracer.dogstatsd.increment('oracleCommitmentsLatest.error', 1)
+    throw e
   }
 }

@@ -1,14 +1,15 @@
 import 'dotenv/config'
 import './tracer.js'
-import { PythOracleListener } from './listeners/oracleListener/pythOracle.js'
-import { Task, TaskType, IsMainnet } from './config.js'
+import { Task, TaskType, IsMainnet, Chain } from './config.js'
 import { MetricsListener } from './listeners/metricsListener/metricsListener.js'
 import deployBatchKeeper from './scripts/DeployBatchKeeper.js'
 import { OrderListener } from './listeners/orderListener/orderListener.js'
 import { LiqListener } from './listeners/liqListener/liqListener.js'
 import { SettlementListener } from './listeners/settlementListener/settlementListener.js'
-import { ChainlinkOracleListener } from './listeners/oracleListener/chainlinkOracle.js'
 import ClaimBatchKeeper from './scripts/claimBatchKeeper.js'
+import { OracleListener } from './listeners/oracleListener/oracleListener.js'
+import { CryptexFactoryAddresses, PythFactoryAddresses } from './constants/network.js'
+import { zeroAddress } from 'viem'
 
 const run = async () => {
   switch (Task) {
@@ -44,26 +45,20 @@ const run = async () => {
       break
     }
     case TaskType.oracle: {
-      const pythListener = new PythOracleListener()
+      const pythListener = new OracleListener(PythFactoryAddresses[Chain.id], 'pythOracle')
+      const cryptexListener =
+        CryptexFactoryAddresses[Chain.id] !== zeroAddress
+          ? new OracleListener(CryptexFactoryAddresses[Chain.id], 'cryptexOracle')
+          : undefined
       await pythListener.init()
+      await cryptexListener?.init()
 
       setInterval(
         () => {
           pythListener.run()
+          cryptexListener?.run()
         },
-        IsMainnet ? PythOracleListener.PollingInterval : 2 * PythOracleListener.PollingInterval,
-      )
-      break
-    }
-    case TaskType.clOracle: {
-      const chainlinkOracleListener = new ChainlinkOracleListener()
-      await chainlinkOracleListener.init()
-
-      setInterval(
-        () => {
-          chainlinkOracleListener.run()
-        },
-        IsMainnet ? ChainlinkOracleListener.PollingInterval : 2 * ChainlinkOracleListener.PollingInterval,
+        IsMainnet ? OracleListener.PollingInterval : 2 * OracleListener.PollingInterval,
       )
       break
     }

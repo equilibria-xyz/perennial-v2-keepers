@@ -1,10 +1,9 @@
-import { getContract } from 'viem'
+import { getAddress, getContract } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils'
 import { Chain, Client, settlementSigner } from '../../config'
 import { Big6Math } from '../../constants/Big6Math'
 import tracer from '../../tracer'
-import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi'
-import { KeeperFactoryImpl } from '../../constants/abi'
+import { KeeperFactoryAbi, KeeperOracleAbi } from '@perennial/sdk'
 
 export class SettlementListener {
   public static PollingInterval = 60000 // 60s. Event listeners should handle most updates, use polling as a backup
@@ -17,21 +16,30 @@ export class SettlementListener {
   }
 
   public async listen() {
-    this.markets.forEach((market) => {
-      Client.watchContractEvent({
-        abi: KeeperOracleImpl,
-        address: market.keeperOracle,
-        eventName: 'OracleProviderVersionFulfilled',
-        strict: true,
-        onLogs: async (logs) => {
-          for (const log of logs) {
+    Client.watchContractEvent({
+      abi: KeeperOracleAbi,
+      eventName: 'OracleProviderVersionFulfilled',
+      strict: true,
+      poll: true,
+      onLogs: async (logs) => {
+        for (const market of this.markets) {
+          const marketLogs = logs.filter((log) => getAddress(log.address) === market.keeperOracle)
+          if (marketLogs.length === 0) continue
+
+          for (const log of marketLogs) {
             console.log(
-              `OracleProviderVersionFulfilled for market ${market.market}, version ${log.args.version.timestamp}. Processing local callbacks`,
+              `OracleProviderVersionFulfilled for market ${market.metricsTag}, version ${log.args.version.timestamp}, valid: ${log.args.version.valid}. Processing local callbacks`,
             )
             await this.processLocalCallbacksForMarket(log.args.version.timestamp, market)
+
+            tracer.dogstatsd.increment('market.oracleProviderVersionFulfilled', 1, {
+              chain: Chain.id,
+              market: market.metricsTag,
+              valid: String(log.args.version.valid),
+            })
           }
-        },
-      })
+        }
+      },
     })
   }
 
@@ -41,7 +49,7 @@ export class SettlementListener {
         market,
         version: await Client.readContract({
           address: market.keeperOracle,
-          abi: KeeperOracleImpl,
+          abi: KeeperOracleAbi,
           functionName: 'latest',
         }),
       })),
@@ -55,12 +63,12 @@ export class SettlementListener {
   private async processLocalCallbacksForMarket(version: bigint, market: MarketDetails) {
     const keeperOracle = getContract({
       address: market.keeperOracle,
-      abi: KeeperOracleImpl,
+      abi: KeeperOracleAbi,
       client: Client,
     })
     const keeperOracleFactory = getContract({
       address: market.providerFactory,
-      abi: KeeperFactoryImpl,
+      abi: KeeperFactoryAbi,
       client: Client,
     })
     const callbacks = await keeperOracle.read.localCallbacks([version, market.market])

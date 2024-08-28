@@ -1,6 +1,6 @@
 import { PublicClient, getAbiItem } from 'viem'
 import { SupportedChainId, VaultFactoryAddresses } from '../constants/network'
-import { FactoryAbi } from '../constants/abi/Factory.abi'
+import { FactoryAbi } from '@perennial/sdk'
 
 export async function getVaults({ client, chainId }: { client: PublicClient; chainId: SupportedChainId }) {
   const logs = await client.getLogs({

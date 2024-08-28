@@ -1,15 +1,13 @@
-import { Address, Hex, getAbiItem, getContract } from 'viem'
+import { Address, Hex, getAbiItem } from 'viem'
 import tracer from '../../tracer.js'
-import { MultiInvokerAddress } from '../../constants/network.js'
-import { MultiInvokerImplAbi } from '../../constants/abi/MultiInvokerImpl.abi.js'
-import { Chain, Client, oracleAccount, oracleSigner } from '../../config.js'
+import { MultiInvokerAddresses } from '../../constants/network.js'
+import { Chain, Client, oracleAccount, oracleSigner, SDK } from '../../config.js'
 import { notEmpty, range } from '../../utils/arrayUtils.js'
 import { Big6Math } from '../../constants/Big6Math.js'
-import { KeeperFactoryImpl } from '../../constants/abi/KeeperFactoryImpl.abi.js'
-import { KeeperOracleImpl } from '../../constants/abi/KeeperOracleImpl.abi.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
 import { buildCommit } from '../../utils/oracleUtils.js'
 import { nowSeconds } from '../../utils/timeUtils.js'
+import { UpdateDataRequest, KeeperFactoryAbi, MultiInvokerAbi } from '@perennial/sdk'
 
 type Commitment = {
   action: number
@@ -22,32 +20,26 @@ type CommitmentWithMetrics = {
   providerTag: string
 }
 
-export abstract class BaseOracleListener {
+export class OracleListener {
   public static PollingInterval = 4000 // 4s
 
   protected oracleAddresses: { oracle: Address; id: Hex }[] = []
 
-  abstract keeperFactoryAddress(): Address
-  abstract statsPrefix(): string
-  abstract getUpdateDataAtTimestamp(data: {
-    timestamp: bigint
-    underlyingId: Hex
-  }): Promise<{ data: Hex; publishTime: bigint }>
-  abstract getUpdateMsgValue(updateData: Hex): Promise<bigint>
+  constructor(private keeperFactoryAddress: Address, private statsPrefix: string) {}
 
   public async init() {
     this.oracleAddresses = await this.getOracleAddresses()
-    console.log('Oracle Addresses:', this.oracleAddresses.map(({ oracle }) => oracle).join(', '))
+    console.log(`[${this.statsPrefix}] Oracle Addresses:`, this.oracleAddresses.map(({ oracle }) => oracle).join(', '))
   }
 
   public async run() {
     const blockNumber = await Client.getBlockNumber()
-    console.log(`Running Oracle Handler. Block: ${blockNumber}`)
-    tracer.dogstatsd.gauge(`${this.statsPrefix()}.blockNumber`, Number(blockNumber), { chain: Chain.id })
+    console.log(`[${this.statsPrefix}] Running Oracle Handler. Block: ${blockNumber}`)
+    tracer.dogstatsd.gauge(`${this.statsPrefix}.blockNumber`, Number(blockNumber), { chain: Chain.id })
 
     const commitments = (await this.getCommitments())
       .map((commitment) => {
-        tracer.dogstatsd.gauge(`${this.statsPrefix()}.awaitingVersions`, commitment.awaitingVersions, {
+        tracer.dogstatsd.gauge(`${this.statsPrefix}.awaitingVersions`, commitment.awaitingVersions, {
           oracleProvider: commitment.providerTag,
           chain: Chain.id,
         })
@@ -58,8 +50,8 @@ export abstract class BaseOracleListener {
 
     try {
       const res = await Client.simulateContract({
-        address: MultiInvokerAddress[Chain.id],
-        abi: MultiInvokerImplAbi,
+        address: MultiInvokerAddresses[Chain.id],
+        abi: MultiInvokerAbi,
         functionName: 'invoke',
         args: [commitments],
         value: BigInt(commitments.length),
@@ -70,26 +62,26 @@ export abstract class BaseOracleListener {
       // Multiply by 6 for safety, min gas of 5M
       const gas = Big6Math.max(5000000n, gasEstimate * 6n)
       const hash = await oracleSigner.writeContract({ ...res.request, gas })
-      tracer.dogstatsd.increment(`${this.statsPrefix()}.transaction.sent`, 1, {
+      tracer.dogstatsd.increment(`${this.statsPrefix}.transaction.sent`, 1, {
         chain: Chain.id,
       })
       console.log(`Commitments published. Number: ${commitments.length}. Hash: ${hash}`)
       const receipt = await Client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
       if (receipt.status === 'success')
-        tracer.dogstatsd.increment(`${this.statsPrefix()}.transaction.success`, 1, {
+        tracer.dogstatsd.increment(`${this.statsPrefix}.transaction.success`, 1, {
           chain: Chain.id,
         })
       if (receipt.status === 'reverted')
-        tracer.dogstatsd.increment(`${this.statsPrefix()}.transaction.reverted`, 1, {
+        tracer.dogstatsd.increment(`${this.statsPrefix}.transaction.reverted`, 1, {
           chain: Chain.id,
         })
     } catch (error) {
       if (error.response) {
-        console.error(`${this.statsPrefix()} Got error: ${error.response.status}, ${error.response.data}`)
+        console.error(`${this.statsPrefix} Got error: ${error.response.status}, ${error.response.data}`)
       } else if (error.request) {
-        console.error(`${this.statsPrefix()} got error: ${error.request}`)
+        console.error(`${this.statsPrefix} got error: ${error.request}`)
       } else {
-        console.error(`${this.statsPrefix()} got error: ${error.message}`)
+        console.error(`${this.statsPrefix} got error: ${error.message}`)
       }
     }
   }
@@ -97,16 +89,8 @@ export abstract class BaseOracleListener {
   protected async getCommitments(): Promise<CommitmentWithMetrics[]> {
     const commitmentPromises = this.oracleAddresses.map(async ({ oracle, id }) => {
       const providerTag = oracleProviderAddressToOracleProviderTag(Chain.id, oracle)
-      const factoryContract = getContract({
-        address: this.keeperFactoryAddress(),
-        abi: KeeperFactoryImpl,
-        client: Client,
-      })
-      const oracleContract = getContract({
-        address: oracle,
-        abi: KeeperOracleImpl,
-        client: Client,
-      })
+      const factoryContract = SDK.contracts.getKeeperFactoryContract(this.keeperFactoryAddress)
+      const oracleContract = SDK.contracts.getKeeperOracleContract(oracle)
 
       const [MinDelay, MaxDelay, GracePeriod, nextVersion, global, underlyingId] = await Promise.all([
         factoryContract.read.validFrom(),
@@ -159,9 +143,12 @@ export abstract class BaseOracleListener {
           const vaaQueryTime = Big6Math.max(global.latestVersion, version + MinDelay + windowOffset)
           if (vaaQueryTime > now) throw new Error(`${providerTag}: VAA query time is in the future: ${vaaQueryTime}`)
 
-          const { data, publishTime } = await this.getUpdateDataAtTimestamp({
-            timestamp: vaaQueryTime,
+          const { data, publishTime, value } = await this.getUpdateDataAtTimestamp(vaaQueryTime, {
+            id,
             underlyingId,
+            minValidTime: MinDelay,
+            factory: this.keeperFactoryAddress,
+            subOracle: oracle,
           })
 
           // Create a commitment with no data to commit invalid
@@ -172,6 +159,7 @@ export abstract class BaseOracleListener {
               publishTime: 0n,
               index: versionsToCommit[i].index,
               prevVersion: 0n,
+              value: 0n,
             }
 
           if (publishTime - version < MinDelay)
@@ -179,7 +167,7 @@ export abstract class BaseOracleListener {
           if (publishTime - version > MaxDelay)
             throw new Error(`${providerTag}: VAA too late: Version: ${version}. Publish Time: ${publishTime}`)
 
-          return { version, data, publishTime, index, prevVersion: i > 0 ? versionsToCommit[i - 1].version : 0n }
+          return { version, data, publishTime, index, prevVersion: i > 0 ? versionsToCommit[i - 1].version : 0n, value }
         }),
       )
 
@@ -195,11 +183,11 @@ export abstract class BaseOracleListener {
 
         commitments.push({
           commitment: buildCommit({
-            oracleProviderFactory: this.keeperFactoryAddress(),
+            keeperFactory: this.keeperFactoryAddress,
             version: updatedData.value.version,
-            value: await this.getUpdateMsgValue(updatedData.value.data),
+            value: updatedData.value.value,
             ids: [id],
-            data: updatedData.value.data,
+            vaa: updatedData.value.data,
             revertOnFailure: true,
           }),
           awaitingVersions: awaitingVersions,
@@ -225,12 +213,29 @@ export abstract class BaseOracleListener {
 
   public async getOracleAddresses() {
     const logs = await Client.getLogs({
-      address: this.keeperFactoryAddress(),
-      event: getAbiItem({ abi: KeeperFactoryImpl, name: 'OracleCreated' }),
+      address: this.keeperFactoryAddress,
+      event: getAbiItem({ abi: KeeperFactoryAbi, name: 'OracleCreated' }),
       strict: true,
       fromBlock: 0n,
       toBlock: 'latest',
     })
     return logs.map((l) => ({ id: l.args.id, oracle: l.args.oracle }))
+  }
+
+  private async getUpdateDataAtTimestamp(
+    timestamp: bigint,
+    requestData: UpdateDataRequest,
+  ): Promise<{ data: Hex; publishTime: bigint; value: bigint }> {
+    try {
+      const [data] = await SDK.oracles.read.oracleCommitmentsTimestamp({
+        timestamp,
+        requests: [requestData],
+      })
+
+      return { data: data.updateData, publishTime: BigInt(data.details[0].publishTime), value: data.value }
+    } catch (e) {
+      tracer.dogstatsd.increment('oracleCommitmentsTimestamp.error', 1)
+      throw e
+    }
   }
 }

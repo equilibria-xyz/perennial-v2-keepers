@@ -1,5 +1,5 @@
 import { Chain, Client, orderSigner } from '../config'
-import { BatchKeeperAbi } from '../constants/abi'
+import { BatchKeeperAbi } from '../constants/abi/BatchKeeper.abi'
 import { BatchKeeperAddresses, DSUAddresses } from '../constants/network'
 import { getMarkets } from '../utils/marketUtils'
 

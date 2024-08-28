@@ -1,6 +1,6 @@
 import { getAddress } from 'viem'
 import { SupportedChainId } from './network.js'
-import { arbitrum, arbitrumSepolia, base } from 'viem/chains'
+import { arbitrum, arbitrumSepolia } from 'viem/chains'
 
 export function marketAddressToMarketTag(chainId: SupportedChainId, market_: string) {
   const market = getAddress(market_)
@@ -11,6 +11,7 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
           [getAddress('0x0142a8bfF8D887Fc4f04469fCA6c66F5e0936Ea7')]: 'eth',
           [getAddress('0xfC51de1f1a4ddeE5AD50df492f0A642cF1894E73')]: 'cmsqeth',
           [getAddress('0x122b781CF4fCa219aDB9704132D7fa11460D4fBa')]: 'xau',
+          [getAddress('0x7A2fE407C4F459eD62ea75fEeBB27188e4F9E6aD')]: 'meme',
         }[market] ?? market
       )
     }
@@ -35,14 +36,8 @@ export function marketAddressToMarketTag(chainId: SupportedChainId, market_: str
           [getAddress('0xB7558189c794239ef9453208f2e58Fa049E1035c')]: 'jpy',
           [getAddress('0xe8BF156034b64A7266AcD28046F67f3fa7Ecc53a')]: 'mkr',
           [getAddress('0x5bef017aC7Ea4f6f59946f27d50A137D4362F6A4')]: 'doge',
-        }[market] ?? market
-      )
-    }
-    case base.id: {
-      return (
-        {
-          [getAddress('0xfeD3725B449c79791e9771E069FC0c75749FE385')]: 'eth',
-          [getAddress('0x9BB798317F002682A33A686598EE87bfB91Be675')]: 'btc',
+          [getAddress('0xb8df4bea28B1F0748D386E8A69ea1bD46B70922d')]: 'eur',
+          [getAddress('0xe588d7d041e18E754e95eF51D77f6e0fC6334EfD')]: 'gbp',
         }[market] ?? market
       )
     }
@@ -91,14 +86,8 @@ export function oracleProviderAddressToOracleProviderTag(chainId: number, oracle
           [getAddress('0x596a87B679550360E492f2dE34Fc18d2736cb34F')]: 'pyth-jpy',
           [getAddress('0x13C12bD024C3E6d9b9C16Ea057E6CBDF45b25dAA')]: 'pyth-mkr',
           [getAddress('0xe315df753FdFaBa7e7Af7768b78ed3343a7aFBD3')]: 'pyth-doge',
-        }[oracle] ?? oracle
-      )
-    }
-    case base.id: {
-      return (
-        {
-          [getAddress('0x171B079ab920AC927220bBdF5505c5a77e42f24F')]: 'pyth-eth',
-          [getAddress('0x1cbaec51D32ae9BB2f607D1368428FE77588bf6C')]: 'pyth-btc',
+          [getAddress('0x8603c81d81e8Ddfdd733B04A8a3d691703E7C7F0')]: 'pyth-eur',
+          [getAddress('0x9A79E5F67C18c87F6C0B601E461DdbfF76DD32e3')]: 'pyth-gbp',
         }[oracle] ?? oracle
       )
     }
