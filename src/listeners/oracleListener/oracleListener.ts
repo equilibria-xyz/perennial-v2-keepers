@@ -145,13 +145,17 @@ export class OracleListener {
           const vaaQueryTime = Big6Math.max(global.latestVersion, version + MinDelay + windowOffset)
           if (vaaQueryTime > now) throw new Error(`${providerTag}: VAA query time is in the future: ${vaaQueryTime}`)
 
-          const { data, publishTime, value } = await this.getUpdateDataAtTimestamp(vaaQueryTime, {
-            id,
-            underlyingId,
-            minValidTime: MinDelay,
-            factory: this.keeperFactoryAddress,
-            subOracle: oracle,
-          })
+          const { data, publishTime, value } = await this.getUpdateDataAtTimestamp(
+            vaaQueryTime,
+            {
+              id,
+              underlyingId,
+              minValidTime: MinDelay,
+              factory: this.keeperFactoryAddress,
+              subOracle: oracle,
+            },
+            providerTag,
+          )
 
           // Create a commitment with no data to commit invalid
           if (now - version > GracePeriod)
@@ -238,6 +242,7 @@ export class OracleListener {
   private async getUpdateDataAtTimestamp(
     timestamp: bigint,
     requestData: UpdateDataRequest,
+    providerTag: string,
   ): Promise<{ data: Hex; publishTime: bigint; value: bigint }> {
     try {
       const [data] = await SDK.oracles.read.oracleCommitmentsTimestamp({
@@ -247,7 +252,10 @@ export class OracleListener {
 
       return { data: data.updateData, publishTime: BigInt(data.details[0].publishTime), value: data.value }
     } catch (e) {
-      tracer.dogstatsd.increment('oracleCommitmentsTimestamp.error', 1)
+      tracer.dogstatsd.increment('oracleCommitmentsTimestamp.error', 1, {
+        chain: SDK.currentChainId,
+        providerTag,
+      })
       throw e
     }
   }
