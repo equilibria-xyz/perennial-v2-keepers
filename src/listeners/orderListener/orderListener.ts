@@ -161,6 +161,7 @@ export class OrderListener {
             where: {
               and: [
                 {market: "${market.market}", cancelled: false, executed: false},
+                {marketAccount_: {collateral_gt: 0}},
                 {or: [
                   {triggerOrderComparison: 1, triggerOrderPrice_lte: "${price}"},
                   {triggerOrderComparison: -1, triggerOrderPrice_gte: "${price}"}
