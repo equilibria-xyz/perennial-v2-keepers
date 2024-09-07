@@ -410,7 +410,7 @@ export class MetricsListener {
       const now = nowSeconds()
       feedPrices.forEach(async (feedData) => {
         feedData.details.forEach(async (price) => {
-          const market = this.markets.find((m) => m.underlyingId === price.id)
+          const market = this.markets.find((m) => m.feed === price.id)
           if (!market) return
           const isOpen = market.providerType === 'pyth' ? await pythMarketOpen(price.id) : true
           const publishTime = isOpen ? price.publishTime : now // If market is closed, use current time
