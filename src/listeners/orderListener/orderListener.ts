@@ -45,9 +45,9 @@ export class OrderListener {
 
       const transformedPrices_ = await Promise.all(
         this.markets.map(async (market) => {
-          const priceData = prices.find((p) => p.details.map((p) => p.underlyingId).includes(market.underlyingId))
+          const priceData = prices.find((p) => p.details.map((p) => p.id).includes(market.feed))
           if (!priceData) return null
-          const price = priceData.details.find((p) => p.underlyingId === market.underlyingId)?.price
+          const price = priceData.details.find((p) => p.id === market.feed)?.price
           if (!price) return null
 
           return {
