@@ -2,7 +2,7 @@ import { Address, Hex, PublicClient, getAbiItem, parseAbi, zeroAddress } from 'v
 import { MarketFactoryAddresses, SupportedChainId } from '../constants/network.js'
 import { marketAddressToMarketTag } from '../constants/addressTagging.js'
 import { Chain, Client, SDK } from '../config.js'
-import { oracleProviderForFactoryAddress, FactoryAbi, PayoffAbi, KeeperFactoryAbi } from '@perennial/sdk'
+import { oracleProviderTypeForFactoryAddress, FactoryAbi, PayoffAbi, KeeperFactoryAbi } from '@perennial/sdk'
 
 export type MarketDetails = Awaited<ReturnType<typeof getMarkets>>[number]
 export async function getMarkets() {
@@ -65,7 +65,7 @@ export async function getMarkets() {
       validTo,
       staleAfter: riskParameter.staleAfter,
       metricsTag: marketAddressToMarketTag(chainId, marketAddress),
-      providerType: oracleProviderForFactoryAddress({ chainId, factory: providerFactory }),
+      providerType: oracleProviderTypeForFactoryAddress({ chainId, factory: providerFactory }),
     }
   })
 

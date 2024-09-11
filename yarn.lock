@@ -2738,10 +2738,10 @@
     tslib "^2.5.0"
     webcrypto-core "^1.7.7"
 
-"@perennial/sdk@0.0.2-beta22":
-  version "0.0.2-beta22"
-  resolved "https://registry.yarnpkg.com/@perennial/sdk/-/sdk-0.0.2-beta22.tgz#6f5b136c65732bc0e2195e35194e73be7436029b"
-  integrity sha512-vOuJOKepAFru468cZzwL8QfQQEMiQ2mHp7R6czRtTf/zuLFimUVLxbmxA3T4gTf1FLRf7VRhKzkOMTEBlYb6Hw==
+"@perennial/sdk@0.0.2-beta25":
+  version "0.0.2-beta25"
+  resolved "https://registry.yarnpkg.com/@perennial/sdk/-/sdk-0.0.2-beta25.tgz#c0fbd655a8319a22c52fb29c27ff22a7fb4eb68c"
+  integrity sha512-/qitZhSfs+tZK1MGfMVQIsjmsoFdy/14yLrlylpTr4YYhwKStMEmcHsTmPjUD5FP+mJSQ98QePWhST2zwb/Cxw==
   dependencies:
     "@microsoft/tsdoc" "^0.14.2"
     "@pythnetwork/hermes-client" "^1.0.4"
