@@ -71,7 +71,7 @@ export class SettlementListener {
       abi: KeeperFactoryAbi,
       client: Client,
     })
-    const callbacks = await keeperOracle.read.localCallbacks([version, market.market])
+    const callbacks = await keeperOracle.read.localCallbacks([version])
     if (callbacks.length === 0) {
       console.log(`No callbacks for market ${market.metricsTag} and version ${version}`)
       return
@@ -80,7 +80,7 @@ export class SettlementListener {
     const sendCallbackTx = async () => {
       try {
         const { request } = await keeperOracleFactory.simulate.settle(
-          [[market.feed], [market.market], [version], [SettlementListener.MaxCount]],
+          [[market.feed], [version], [SettlementListener.MaxCount]],
           { account: settlementSigner.account },
         )
 

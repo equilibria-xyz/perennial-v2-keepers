@@ -2,7 +2,7 @@ import { Address, Hex, PublicClient, getAbiItem, parseAbi, zeroAddress } from 'v
 import { MarketFactoryAddresses, SupportedChainId } from '../constants/network.js'
 import { marketAddressToMarketTag } from '../constants/addressTagging.js'
 import { Chain, Client, SDK } from '../config.js'
-import { oracleProviderTypeForFactoryAddress, FactoryAbi, PayoffAbi, KeeperFactoryAbi } from '@perennial/sdk'
+import { FactoryAbi, PayoffAbi, KeeperFactoryAbi } from '@perennial/sdk'
 
 export type MarketDetails = Awaited<ReturnType<typeof getMarkets>>[number]
 export async function getMarkets() {
@@ -43,11 +43,11 @@ export async function getMarkets() {
     const feed = await getFeedIdForProvider({ providerFactory, keeperOracle })
     if (!feed) throw new Error(`No feed found for ${keeperOracle}`)
 
-    const [validFrom, validTo, underlyingId, underlyingPayoff] = await Promise.all([
-      providerFactoryContract.read.validFrom(),
-      providerFactoryContract.read.validTo(),
+    const [providerParameter, underlyingId, underlyingPayoff, providerType] = await Promise.all([
+      providerFactoryContract.read.parameter(),
       providerFactoryContract.read.toUnderlyingId([feed]),
       providerFactoryContract.read.toUnderlyingPayoff([feed]),
+      providerFactoryContract.read.factoryType(),
     ])
 
     return {
@@ -61,11 +61,11 @@ export async function getMarkets() {
       underlyingId: underlyingId as Hex,
       token,
       timeout,
-      validFrom,
-      validTo,
+      validFrom: providerParameter.validFrom,
+      validTo: providerParameter.validTo,
       staleAfter: riskParameter.staleAfter,
       metricsTag: marketAddressToMarketTag(chainId, marketAddress),
-      providerType: oracleProviderTypeForFactoryAddress({ chainId, factory: providerFactory }),
+      providerType,
     }
   })
 
