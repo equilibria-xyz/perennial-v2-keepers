@@ -1,4 +1,4 @@
-import { HardhatUserConfig } from 'hardhat/config'
+import { HardhatUserConfig } from 'hardhat/config.js'
 import 'hardhat-dependency-compiler'
 import '@nomicfoundation/hardhat-verify'
 import 'dotenv/config'

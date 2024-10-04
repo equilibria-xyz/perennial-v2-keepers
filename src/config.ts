@@ -109,6 +109,7 @@ export enum TaskType {
   'metrics',
   'deploy',
   'claim',
+  'relayer',
 }
 
 const _task = process.argv[3]
@@ -116,7 +117,7 @@ if (!_task) throw new Error('Missing task argument')
 if (!(_task in TaskType)) throw new Error('task undefined')
 export const Task = TaskType[_task as keyof typeof TaskType]
 
-export const SDK = new PerennialSDK({
+export const SDK = new PerennialSDK.default({
   chainId: Chain.id,
   graphUrl: GraphUrls[Chain.id],
   pythUrl: PythUrls,
