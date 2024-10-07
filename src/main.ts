@@ -10,7 +10,7 @@ import ClaimBatchKeeper from './scripts/claimBatchKeeper.js'
 import { OracleListener } from './listeners/oracleListener/oracleListener.js'
 import { PythFactoryAddresses, CryptexFactoryAddresses } from './constants/network.js'
 import { zeroAddress } from 'viem'
-import { createRelayer } from './relayer/relayer.js'
+import { createRelayer } from './relayer/index.js'
 
 const run = async () => {
   switch (Task) {

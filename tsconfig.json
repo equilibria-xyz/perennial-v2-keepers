@@ -22,6 +22,6 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*", "test/**/*", "graph-codegen.ts", "hardhat.config.ts"],
+  "include": ["src/**/*", "test/**/*", "graph-codegen.ts"],
   "exclude": ["types/gql/*"]
 }

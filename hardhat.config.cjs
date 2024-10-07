@@ -1,15 +1,10 @@
-import { HardhatUserConfig } from 'hardhat/config.js'
-import 'hardhat-dependency-compiler'
-import '@nomicfoundation/hardhat-verify'
-import 'dotenv/config'
-import { NetworkUserConfig } from 'hardhat/types'
+require('hardhat-dependency-compiler')
+require('@nomicfoundation/hardhat-verify')
+require('dotenv/config')
 
-export const OPTIMIZER_ENABLED = process.env.OPTIMIZER_ENABLED === 'true' || false
-type configOverrides = {
-  dependencyPaths?: string[]
-}
+const OPTIMIZER_ENABLED = process.env.OPTIMIZER_ENABLED === 'true' || false
 
-function getUrl(networkName: string): string {
+function getUrl(networkName) {
   switch (networkName) {
     case 'arbitrum':
       return process.env.ARBITRUM_NODE_URL ?? ''
@@ -22,7 +17,7 @@ function getUrl(networkName: string): string {
   }
 }
 
-function createNetworkConfig(network: string): NetworkUserConfig {
+function createNetworkConfig(network) {
   const cfg = {
     url: getUrl(network),
   }
@@ -30,7 +25,7 @@ function createNetworkConfig(network: string): NetworkUserConfig {
   return cfg
 }
 
-function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserConfig {
+function defaultConfig({ dependencyPaths } = {}) {
   return {
     networks: {
       arbitrum: createNetworkConfig('arbitrum'),
@@ -40,7 +35,9 @@ function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserCo
         forking: {
           url: process.env.ARBITRUM_GOERLI_NODE_URL || '',
           enabled: process.env.FORK_ENABLED === 'true' || false,
-          blockNumber: process.env.FORK_BLOCK_NUMBER ? parseInt(process.env.FORK_BLOCK_NUMBER) : undefined,
+          blockNumber: process.env.FORK_BLOCK_NUMBER
+            ? parseInt(process.env.FORK_BLOCK_NUMBER)
+            : undefined,
         },
         // chainId: getChainId('hardhat'),
         // allowUnlimitedContractSize: true,
@@ -103,4 +100,4 @@ function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserCo
 
 const config = defaultConfig()
 
-export default config
+module.exports = config
