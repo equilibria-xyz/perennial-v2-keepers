@@ -108,25 +108,6 @@ export async function createRelayer() {
       let txHash: Hash | undefined
       if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash })
       res.send(JSON.stringify({ success: true, uoHash: hash, txHash }))
-
-    } catch (e) {
-      console.warn(e)
-      res.send(JSON.stringify({ success: false, error: 'Unable to relay transaction' }))
-    }
-  })
-
-  // TODO: Move this to a POST /relayIntent endpoint
-  // We should generate the TX based on an Intent payload rather than just accepting a raw transaction
-  app.post('/relay', async (req: Request, res: Response) => {
-    const { to, value, data, meta } = req.body as { to: Address; value: string; data: Hex; meta?: any }
-    const uo = { target: to, value: BigInt(value), data }
-    try {
-      const { hash } = await client.sendUserOperation({ uo })
-
-      let txHash: Hash | undefined
-      if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash })
-
-      res.send(JSON.stringify({ success: true, uoHash: hash, txHash }))
     } catch (e) {
       console.warn(e)
       res.send(JSON.stringify({ success: false, error: 'Unable to relay transaction' }))
