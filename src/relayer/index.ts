@@ -5,7 +5,7 @@ import { createLightAccount } from '@account-kit/smart-contracts'
 import { alchemy, createAlchemySmartAccountClient, arbitrum, arbitrumSepolia } from '@account-kit/infra'
 import { LocalAccountSigner } from '@aa-sdk/core'
 import { Hex, Hash, Address, isAddress } from 'viem'
-import { Chain, /* relayerAccount */ } from '../config.js'
+import { Chain, relayerAccount } from '../config.js'
 
 import { verifyTypedData } from 'viem'
 import { constructUserOperation, getDomain, parseIntentPayload } from '../utils/relayerUtils.js'
@@ -73,15 +73,6 @@ export async function createRelayer() {
       return
     }
 
-    // used to generate signature which is then an api input param
-    // const s = await relayerAccount.signTypedData({
-      // domain,
-      // types,
-      // primaryType: intent,
-      // message: parsedIntent.message
-    // })
-    // console.log("Constructed signature", s)
-
     const valid = await verifyTypedData({
       address,
       domain,
@@ -112,6 +103,32 @@ export async function createRelayer() {
       console.warn(e)
       res.send(JSON.stringify({ success: false, error: 'Unable to relay transaction' }))
     }
+  })
+
+  // helper used in testing to generate signatures for relayIntent
+  app.post('/genSig', async (req: Request, res: Response) => {
+    const {
+      intent,
+      payload
+    } = req.body as { intent: Intent, payload: any }
+
+    // used to generate signature which is then an api input param
+    const parsedIntent = parseIntentPayload(payload, intent)
+    if (!parsedIntent) {
+      res.send(JSON.stringify({ success: false, error: `${intent} payload structure invalid` }))
+      return
+    }
+
+    const domain = getDomain();
+    const signature = await relayerAccount.signTypedData({
+      domain,
+      types,
+      primaryType: intent,
+      message: parsedIntent.message
+    })
+
+    console.log("Constructed signature", signature)
+    res.send(JSON.stringify({ success: false, signature }))
   })
 
   app.get('/status', async (req: Request, res: Response) => {
