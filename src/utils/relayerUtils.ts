@@ -1,20 +1,18 @@
-import { Intent, UserOperation, SignatureMessage, SignaturePayload } from '../relayer/types.js'
-
-import { Chain } from '../config.js'
 import { encodeFunctionData, erc20Abi } from 'viem';
-import { USDCAddresses, ControllerAddresses } from '../constants/address.js';
-import { ControllerAbi } from '../constants/abi/Controller.abi.js';
+import { arbitrum, arbitrumSepolia } from 'viem/chains';
 
-export const getDomain = () => {
-  return (
-    {
-      name: 'Perennial V2 Collateral Account',
-      version: '1.0.0',
-      chainId: Chain.id,
-      // TODO [Dospore] get verifying contract from the sdk
-      verifyingContract: '0x6FaabfA2fDb093A027Ed16F291ADc7F07780014A',
-    } as const
-  )
+import { Intent, UserOperation, SignatureMessage, SignaturePayload } from '../relayer/types.js'
+import { Chain } from '../config.js'
+
+import { EIP712_Domain } from '@perennial/sdk/dist/constants/eip712/index.js';
+import { USDCAddresses, ControllerAddresses } from '@perennial/sdk/dist/constants/contracts.js';
+import { ControllerAbi } from '@perennial/sdk/dist/abi/Controller.abi.js';
+
+export const getRelayerDomain = () => {
+  if (Chain.id !== arbitrum.id || (Chain.id as number) !== arbitrumSepolia.id) {
+    return
+  }
+  return EIP712_Domain(Chain.id, "collateralAccount")
 }
 
 export const parseIntentPayload = (payload: Record<any, any>, intent: Intent): ({
@@ -58,7 +56,6 @@ export const constructUserOperation = (payload: SignaturePayload): UserOperation
   switch (payload.intent) {
     case Intent.Transfer:
       return ({
-        // TODO [Dospore] replace with sdk
         target: USDCAddresses[Chain.id],
         data: encodeFunctionData({
           abi: erc20Abi,
@@ -68,7 +65,6 @@ export const constructUserOperation = (payload: SignaturePayload): UserOperation
       })
     case Intent.DeployAccount:
       return ({
-        // TODO [Dospore] replace with sdk
         target: ControllerAddresses[Chain.id],
         data: encodeFunctionData({
           abi: ControllerAbi,

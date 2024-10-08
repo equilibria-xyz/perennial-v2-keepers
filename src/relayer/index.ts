@@ -8,7 +8,7 @@ import { Hex, Hash, Address, isAddress } from 'viem'
 import { Chain, relayerAccount } from '../config.js'
 
 import { verifyTypedData } from 'viem'
-import { constructUserOperation, getDomain, parseIntentPayload } from '../utils/relayerUtils.js'
+import { constructUserOperation, getRelayerDomain, parseIntentPayload } from '../utils/relayerUtils.js'
 import { Intent, types } from './types.js'
 
 const ChainIdToAlchemyChain = {
@@ -65,7 +65,7 @@ export async function createRelayer() {
     }
 
     // TODO [Dospore] replace with sdk
-    const domain = getDomain();
+    const domain = getRelayerDomain();
 
     const parsedIntent = parseIntentPayload(payload, intent)
     if (!parsedIntent) {
@@ -119,7 +119,7 @@ export async function createRelayer() {
       return
     }
 
-    const domain = getDomain();
+    const domain = getRelayerDomain();
     const signature = await relayerAccount.signTypedData({
       domain,
       types,
