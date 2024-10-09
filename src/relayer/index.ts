@@ -9,7 +9,7 @@ import { Chain } from '../config.js'
 
 import { verifyTypedData } from 'viem'
 import { constructUserOperation, parseIntentPayload } from '../utils/relayerUtils.js'
-import { Intent } from './types.js'
+import { Intent, SigningPayload } from './types.js'
 import { privateKeyToAccount } from 'viem/accounts'
 
 const ChainIdToAlchemyChain = {
@@ -77,8 +77,8 @@ export async function createRelayer() {
     }
 
     const signingPayload = parseIntentPayload(payload, intent)
-    if (!signingPayload) {
-      res.send(JSON.stringify({ success: false, error: `${intent} payload structure invalid` }))
+    if ((signingPayload as { error: string }).error) {
+      res.send(JSON.stringify({ success: false, error: `Payload structure invalid: ${(signingPayload as { error: string }).error}` }))
       return
     }
 
@@ -94,7 +94,7 @@ export async function createRelayer() {
     }
 
     try {
-      const uo = constructUserOperation(signingPayload)
+      const uo = constructUserOperation(signingPayload as SigningPayload)
 
       if (!uo) {
         throw Error('Failed to construct user operation')

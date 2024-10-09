@@ -21,15 +21,13 @@ export const parseIntentPayload = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: Record<string, any>,
   intent: Intent
-): (SigningPayload | undefined) => {
+): (SigningPayload | { error: string }) => {
   if (
     payload.maxFee === undefined ||
     payload.expiry === undefined ||
     payload.address === undefined
   ) {
-    // Do we need to validate chainId here?
-    // invalid payload
-    return
+    return { error: `Missing default args: ${findMissingArgs(payload, ['maxFee', 'expiry', 'address'])}` }
   }
 
   const defaultArgs = {
@@ -49,7 +47,7 @@ export const parseIntentPayload = (
       )
     case Intent.MarketTransfer:
       if (!payload.market || !payload.amount) {
-        return
+        return { error: `Missing MarketTransfer args: ${findMissingArgs(payload, ['market', 'amount'])}` }
       }
 
       return (
@@ -66,7 +64,7 @@ export const parseIntentPayload = (
         payload.markets === undefined ||
         payload.configs === undefined
     ) {
-        return
+        return { error: `Missing RebalanceConfigChange args: ${findMissingArgs(payload, ['rebalanceMaxFee', 'group', 'markets', 'configs'])}` }
       }
       return (
         buildRebalanceConfigChangeSigningPayload({
@@ -81,7 +79,9 @@ export const parseIntentPayload = (
       if (
         payload.amount === undefined ||
         payload.unwrap === undefined
-      ) { return }
+      ) {
+        return { error: `Missing Withdrawal args: ${findMissingArgs(payload, ['amount', 'unwrap' ])}` }
+      }
       return (
         buildWithdrawalSigningPayload({
           ...defaultArgs,
@@ -92,7 +92,9 @@ export const parseIntentPayload = (
     case Intent.RelayedGroupCancellation:
       if (
         payload.groupToCancel === undefined
-      ) { return }
+      ) {
+        return { error: `Missing Withdrawal args: ${findMissingArgs(payload, ['groupToCancel' ])}` }
+      }
       return (
         buildRelayedGroupCancellationSigningPayload({
           ...defaultArgs,
@@ -102,7 +104,9 @@ export const parseIntentPayload = (
     case Intent.RelayedNonceCancellation:
       if (
         payload.nonceToCancel === undefined
-      ) { return }
+      ) {
+        return { error: `Missing Withdrawal args: ${findMissingArgs(payload, ['nonceToCancel' ])}` }
+      }
       return (
         buildRelayedNonceCancellationSigningPayload({
           ...defaultArgs,
@@ -113,7 +117,9 @@ export const parseIntentPayload = (
       if (
         payload.newOperator === undefined ||
         payload.approved === undefined
-      ) { return }
+      ) {
+        return { error: `Missing RelayedOperatorUpdate args: ${findMissingArgs(payload, ['newOperator', 'approved' ])}` }
+      }
       return (
         buildRelayedOperatorUpdateSigningPayload({
           ...defaultArgs,
@@ -125,7 +131,9 @@ export const parseIntentPayload = (
       if (
         payload.newSigner === undefined ||
         payload.approved === undefined
-      ) { return }
+      ) {
+        return { error: `Missing RelayedSignerUpdate args: ${findMissingArgs(payload, ['newSigner', 'approved' ])}` }
+      }
       return (
         buildRelayedSignerUpdateSigningPayload({
           ...defaultArgs,
@@ -137,7 +145,9 @@ export const parseIntentPayload = (
       console.log('TODO implement intent')
       break
   }
-  return
+  return {
+    error: `Unknown intent: ${intent}`
+  }
 }
 
 export const constructUserOperation = (payload: SigningPayload): UserOperation | undefined => {
@@ -224,4 +234,19 @@ export const constructUserOperation = (payload: SigningPayload): UserOperation |
   }
 
   return
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const findMissingArgs = (payload: any, requiredArgs: string[]): string => {
+  if (!payload) {
+    return requiredArgs.join(', ')
+  }
+  const missing = []
+  for (const arg of requiredArgs) {
+    if (!payload[arg]) {
+      missing.push(arg)
+    }
+  }
+
+  return missing.join(', ')
 }

@@ -13,7 +13,7 @@ const publicClient: PublicClient = createPublicClient({
 import {
   CollateralAccountModule
 } from '@perennial/sdk/dist/lib/collateralAccounts/index.js'
-import { parseIntentPayload } from '../utils/relayerUtils.js'
+import { findMissingArgs, parseIntentPayload } from '../utils/relayerUtils.js'
 import { Intent } from './types.js'
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -307,5 +307,14 @@ describe('Validates signatures', () => {
     expect(!!signingPayload).toBe(true)
 
     // TODO [Dospore] validate signature
+  })
+})
+
+describe('Finds missing args', () => {
+  it('Finds missing args', () => {
+    expect(findMissingArgs(undefined, ['arg1', 'arg2', 'arg3'])).toBe('arg1, arg2, arg3')
+    expect(findMissingArgs({ arg2: '2' }, ['arg1', 'arg2', 'arg3'])).toBe('arg1, arg3')
+    expect(findMissingArgs({ arg1: '1', arg2: '2' }, ['arg1', 'arg2', 'arg3'])).toBe('arg3')
+    expect(findMissingArgs({ arg1: '1', arg2: '2', arg3: 3 }, ['arg1', 'arg2', 'arg3'])).toBe('')
   })
 })
