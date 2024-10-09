@@ -7,6 +7,7 @@ import {
   RelayedGroupCancellationSigningPayload,
   RelayedNonceCancellationSigningPayload,
   RelayedSignerUpdateSigningPayload,
+  RelayedOperatorUpdateSigningPayload,
   WithdrawalSigningPayload
 } from '@perennial/sdk/dist/constants/eip712/collateralAccount/index.js'
 
@@ -38,4 +39,5 @@ export type SigningPayload =
   | RelayedGroupCancellationSigningPayload
   | RelayedNonceCancellationSigningPayload
   | RelayedSignerUpdateSigningPayload
+  | RelayedOperatorUpdateSigningPayload
   | WithdrawalSigningPayload

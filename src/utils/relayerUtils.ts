@@ -4,14 +4,24 @@ import { Intent, UserOperation, SigningPayload } from '../relayer/types.js'
 
 import { ControllerAddresses } from '@perennial/sdk/dist/constants/contracts.js'
 import { ControllerAbi } from '@perennial/sdk/dist/abi/Controller.abi.js'
-import { buildWithdrawalSigningPayload } from '@perennial/sdk/dist/lib/collateralAccounts/intent/buildWithdrawalSigningPayload.js'
-import { buildDeployAccountSigningPayload } from '@perennial/sdk/dist/lib/collateralAccounts/intent/buildDeployAccountSigningPayload.js'
-import { buildMarketTransferSigningPayload } from '@perennial/sdk/dist/lib/collateralAccounts/intent/buildMarketTransferSigningPayload.js'
-import { buildRebalanceConfigChangeSigningPayload } from '@perennial/sdk/dist/lib/collateralAccounts/intent/buildRebalanceConfigChangeSigningPayload.js'
+import {
+  buildWithdrawalSigningPayload,
+  buildDeployAccountSigningPayload,
+  buildMarketTransferSigningPayload,
+  buildRebalanceConfigChangeSigningPayload,
+  buildRelayedGroupCancellationSigningPayload,
+  buildRelayedNonceCancellationSigningPayload,
+  buildRelayedSignerUpdateSigningPayload,
+  buildRelayedOperatorUpdateSigningPayload
+} from '@perennial/sdk/dist/lib/collateralAccounts/intent/index.js'
 
 import { SupportedChainId } from '@perennial/sdk'
 
-export const parseIntentPayload = (payload: Record<any, any>, intent: Intent): (SigningPayload | undefined) => {
+export const parseIntentPayload = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payload: Record<string, any>,
+  intent: Intent
+): (SigningPayload | undefined) => {
   if (
     payload.maxFee === undefined ||
     payload.expiry === undefined ||
@@ -79,6 +89,50 @@ export const parseIntentPayload = (payload: Record<any, any>, intent: Intent): (
           unwrap: payload.unwrap
         }).withdrawal
       )
+    case Intent.RelayedGroupCancellation:
+      if (
+        payload.groupToCancel === undefined
+      ) { return }
+      return (
+        buildRelayedGroupCancellationSigningPayload({
+          ...defaultArgs,
+          groupToCancel: payload.groupToCancel,
+        }).relayedGroupCancellation
+      )
+    case Intent.RelayedNonceCancellation:
+      if (
+        payload.nonceToCancel === undefined
+      ) { return }
+      return (
+        buildRelayedNonceCancellationSigningPayload({
+          ...defaultArgs,
+          nonceToCancel: payload.nonceToCancel,
+        }).relayedNonceCancellation
+      )
+    case Intent.RelayedOperatorUpdate:
+      if (
+        payload.newOperator === undefined ||
+        payload.approved === undefined
+      ) { return }
+      return (
+        buildRelayedOperatorUpdateSigningPayload({
+          ...defaultArgs,
+          newOperator: payload.newOperator,
+          approved: payload.approved,
+        }).relayedOperatorUpdate
+      )
+    case Intent.RelayedSignerUpdate:
+      if (
+        payload.newSigner === undefined ||
+        payload.approved === undefined
+      ) { return }
+      return (
+        buildRelayedSignerUpdateSigningPayload({
+          ...defaultArgs,
+          newSigner: payload.newSigner,
+          approved: payload.approved
+        }).relayedSignerUpdate
+      )
     default:
       console.log('TODO implement intent')
       break
@@ -87,7 +141,7 @@ export const parseIntentPayload = (payload: Record<any, any>, intent: Intent): (
 }
 
 export const constructUserOperation = (payload: SigningPayload): UserOperation | undefined => {
-  const chainId = payload.domain?.chainId as SupportedChainId;
+  const chainId = payload.domain?.chainId as SupportedChainId
   switch (payload.primaryType) {
     case Intent.DeployAccount:
       return ({
@@ -124,12 +178,46 @@ export const constructUserOperation = (payload: SigningPayload): UserOperation |
           args: [payload.message.amount, payload.message.unwrap]
         })
       })
-      /*
-      | RelayedAccessUpdateBatchSigningPayload
-      | RelayedGroupCancellationSigningPayload
-      | RelayedNonceCancellationSigningPayload
-      | RelayedSignerUpdateSigningPayload
-      */
+    // TODO [Dospore] confirm args
+    case Intent.RelayedGroupCancellation:
+      return ({
+        target: ControllerAddresses[chainId],
+        data: encodeFunctionData({
+          abi: ControllerAbi,
+          functionName: 'groupCancellation',
+          args: [payload.message.groupCancellation.group]
+        })
+      })
+    // TODO [Dospore] confirm args
+    case Intent.RelayedNonceCancellation:
+      return ({
+        target: ControllerAddresses[chainId],
+        data: encodeFunctionData({
+          abi: ControllerAbi,
+          functionName: 'nonceCancellation',
+          args: [payload.message.nonceCancellation.nonce]
+        })
+      })
+    // TODO [Dospore] confirm args
+    case Intent.RelayedSignerUpdate:
+      return ({
+        target: ControllerAddresses[chainId],
+        data: encodeFunctionData({
+          abi: ControllerAbi,
+          functionName: 'relaySignerUpdate',
+          args: [payload.message.signerUpdate.access]
+        })
+      })
+    // TODO [Dospore] confirm args
+    case Intent.RelayedOperatorUpdate:
+      return ({
+        target: ControllerAddresses[chainId],
+        data: encodeFunctionData({
+          abi: ControllerAbi,
+          functionName: 'relayOperatorUpdate',
+          args: [payload.message.operatorUpdate.access]
+        })
+      })
     default:
       console.log('TODO Implement function encoding')
       break

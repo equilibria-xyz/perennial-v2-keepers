@@ -84,14 +84,6 @@ export const settlementSigner = createWalletClient({
   account: settlementAccount,
 })
 
-export const relayerAccount = privateKeyToAccount(process.env.ORDER_PRIVATE_KEY! as Hex)
-export const relayerSigner = createWalletClient({
-  chain: Chain,
-  transport: http(NodeUrls[Chain.id]),
-  account: relayerAccount,
-})
-
-
 const PythUrls = [
   process.env.PYTH_HERMES_URL,
   ...(process.env.PYTH_HERMES_FALLBACK_URLS ?? '')

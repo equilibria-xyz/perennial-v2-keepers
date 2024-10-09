@@ -4,17 +4,21 @@ import express, { Request, Response } from 'express'
 import { createLightAccount } from '@account-kit/smart-contracts'
 import { alchemy, createAlchemySmartAccountClient, arbitrum, arbitrumSepolia } from '@account-kit/infra'
 import { LocalAccountSigner } from '@aa-sdk/core'
-import { Hex, Hash, Address, isAddress } from 'viem'
-import { Chain, relayerAccount } from '../config.js'
+import { Hex, Hash, Address, isAddress, VerifyTypedDataParameters, SignTypedDataParameters } from 'viem'
+import { Chain } from '../config.js'
 
 import { verifyTypedData } from 'viem'
 import { constructUserOperation, parseIntentPayload } from '../utils/relayerUtils.js'
 import { Intent } from './types.js'
+import { privateKeyToAccount } from 'viem/accounts'
 
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
   [arbitrumSepolia.id]: arbitrumSepolia,
 }
+
+
+
 
 export async function createRelayer() {
   const app = express()
@@ -47,7 +51,15 @@ export async function createRelayer() {
       address,
       payload,
       meta
-    } = req.body as { signature: Hex; intent: Intent, address: Address, payload: any, meta?: any }
+    } = req.body as {
+      signature: Hex;
+      intent: Intent,
+      address: Address,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      payload: any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      meta?: any
+    }
 
     let error
     if (!intent || !Intent[intent]) {
@@ -74,7 +86,7 @@ export async function createRelayer() {
       ...signingPayload,
       address,
       signature,
-    } as any)
+    } as VerifyTypedDataParameters)
 
     if (!valid) {
       res.send(JSON.stringify({ success: false, error: `${intent} signature invalid`  }))
@@ -104,7 +116,11 @@ export async function createRelayer() {
     const {
       intent,
       payload
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } = req.body as { intent: Intent, payload: any }
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const testAccount = privateKeyToAccount(process.env.RELAYER_PRIVATE_KEY! as Hex)
 
     // used to generate signature which is then an api input param
     const signingPayload = parseIntentPayload(payload, intent)
@@ -113,7 +129,7 @@ export async function createRelayer() {
       return
     }
 
-    const signature = await relayerAccount.signTypedData(signingPayload as any)
+    const signature = await testAccount.signTypedData(signingPayload as Omit<SignTypedDataParameters, 'account'>)
 
     console.log('Constructed signature', signature)
     res.send(JSON.stringify({ success: false, signature }))

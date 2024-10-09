@@ -1,11 +1,11 @@
-import { privateKeyToAccount } from "viem/accounts";
-import { Address, Hex, createPublicClient, createWalletClient, http, verifyTypedData, zeroAddress } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts'
+import { Hex, PublicClient, VerifyTypedDataParameters, WalletClient, createPublicClient, createWalletClient, http, verifyTypedData, zeroAddress } from 'viem'
 import { arbitrumSepolia } from 'viem/chains'
-import { describe, it, expect, beforeEach, assert } from "vitest";
+import { describe, it, expect, beforeEach, assert } from 'vitest'
 
-const chain = arbitrumSepolia;
+const chain = arbitrumSepolia
 
-const publicClient = createPublicClient({
+const publicClient: PublicClient = createPublicClient({
   chain: chain,
   transport: http()
 })
@@ -13,33 +13,31 @@ const publicClient = createPublicClient({
 import {
   CollateralAccountModule
 } from '@perennial/sdk/dist/lib/collateralAccounts/index.js'
-import { parseIntentPayload } from "../utils/relayerUtils.js";
-import { Intent } from "./types.js";
+import { parseIntentPayload } from '../utils/relayerUtils.js'
+import { Intent } from './types.js'
 
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const account = privateKeyToAccount(process.env.VITE_TESTING_PRIVATE_KEY! as Hex)
-const signer = createWalletClient({
+const signer: WalletClient = createWalletClient({
   chain,
   transport: http(),
   account,
 })
 
 
-let accountModule: CollateralAccountModule;
-let maxFee = 0n, expiry = 0n
-describe("Validates signatures", () => {
+let accountModule: CollateralAccountModule
+const maxFee = 0n, expiry = 0n
+describe('Validates signatures', () => {
   beforeEach(() => {
     accountModule = new CollateralAccountModule({
       chainId: chain.id,
-      publicClient: publicClient as any,
-      walletClient: signer as any,
+      publicClient: publicClient,
+      walletClient: signer,
     })
   })
 
-  it("Validates DeployAccount signature", async () => {
-    if (!accountModule) {
-      return
-    }
-    let args: Record<string, any> = {
+  it('Validates DeployAccount signature', async () => {
+    const args: Parameters<typeof accountModule.build.deployAccount> = {
       chainId: chain.id,
       maxFee,
       expiry,
@@ -47,7 +45,7 @@ describe("Validates signatures", () => {
     }
 
     const sig = await accountModule.write.deployAccount(args)
-    expect(!!sig?.signature).toBe(true);
+    expect(!!sig?.signature).toBe(true)
 
     args.overrides = {
       group: sig.deployAccount.action.common.group,
@@ -55,145 +53,259 @@ describe("Validates signatures", () => {
     }
 
     let signingPayload = parseIntentPayload({ ...args, maxFee: maxFee + 1n }, Intent.DeployAccount)
-    expect(!!signingPayload).toBe(true);
+    expect(!!signingPayload).toBe(true)
 
     let valid = await verifyTypedData({
       ...signingPayload,
       address: account.address,
       signature: sig.signature,
-    } as any)
-    expect(valid).toBe(false);
+    } as VerifyTypedDataParameters)
+    expect(valid).toBe(false)
 
-    signingPayload = parseIntentPayload(args, Intent.DeployAccount);
-    const build = accountModule.build.deployAccount(args);
+    signingPayload = parseIntentPayload(args, Intent.DeployAccount)
+    const build = accountModule.build.deployAccount(args)
     assert.deepEqual(signingPayload, build.deployAccount)
 
-    expect(!!signingPayload).toBe(true);
+    expect(!!signingPayload).toBe(true)
     valid = await verifyTypedData({
       ...signingPayload,
       address: account.address,
       signature: sig.signature,
-    } as any)
+    } as VerifyTypedDataParameters)
 
-    expect(valid).toBe(true);
-  });
+    expect(valid).toBe(true)
+  })
 
-  it("Validates MarketTransfer signature", async () => {
-    if (!accountModule) {
-      return
-    }
-    let defaultArgs = {
+  it('Validates MarketTransfer signature', async () => {
+    const defaultArgs = {
       chainId: chain.id,
       maxFee,
       expiry,
       address: account.address,
     }
-    let functionArgs = {
+    const functionArgs = {
       market: zeroAddress,
       amount: 1n
-    };
-    let args: Record<string, any> = {
+    }
+    const args: Parameters<typeof accountModule.build.marketTransfer> = {
       ...defaultArgs,
       ...functionArgs
     }
 
     const sig = await accountModule.write.marketTransfer(args)
-    expect(!!sig?.signature).toBe(true);
+    expect(!!sig?.signature).toBe(true)
 
     args.overrides = {
       group: sig.marketTransfer.action.common.group,
       nonce: sig.marketTransfer.action.common.nonce,
     }
 
-    let signingPayload = parseIntentPayload(args, Intent.MarketTransfer)
-    expect(!!signingPayload).toBe(true);
+    const signingPayload = parseIntentPayload(args, Intent.MarketTransfer)
+    expect(!!signingPayload).toBe(true)
 
-    let valid = await verifyTypedData({
+    const valid = await verifyTypedData({
       ...signingPayload,
       address: account.address,
       signature: sig.signature,
-    })
+    } as VerifyTypedDataParameters)
 
-    expect(valid).toBe(true);
-  });
+    expect(valid).toBe(true)
+  })
 
-  it("Validates RebalanceConfigChange signature", async () => {
-    if (!accountModule) {
-      return
-    }
-    let defaultArgs = {
+  it('Validates RebalanceConfigChange signature', async () => {
+    const defaultArgs = {
       chainId: chain.id,
       maxFee,
       expiry,
       address: account.address,
     }
-    let functionArgs = {
+    const functionArgs = {
       rebalanceMaxFee: 0n,
       markets: [],
       configs: [],
       group: 0n
-    };
-    let args: Record<string, any> = {
+    }
+    const args: Parameters<typeof accountModule.build.rebalanceConfigChange> = {
       ...defaultArgs,
       ...functionArgs
     }
 
     const sig = await accountModule.write.rebalanceConfigChange(args)
-    expect(!!sig?.signature).toBe(true);
+    expect(!!sig?.signature).toBe(true)
 
     args.overrides = {
       group: sig.rebalanceConfigChange.action.common.group,
       nonce: sig.rebalanceConfigChange.action.common.nonce,
     }
 
-    let signingPayload = parseIntentPayload(args, Intent.RebalanceConfigChange)
-    expect(!!signingPayload).toBe(true);
+    const signingPayload = parseIntentPayload(args, Intent.RebalanceConfigChange)
+    expect(!!signingPayload).toBe(true)
 
-    let valid = await verifyTypedData({
+    const valid = await verifyTypedData({
       ...signingPayload,
       address: account.address,
       signature: sig.signature,
-    })
+    } as VerifyTypedDataParameters)
 
-    expect(valid).toBe(true);
-  });
+    expect(valid).toBe(true)
+  })
 
-  it("Validates Withdrawal signature", async () => {
-    if (!accountModule) {
-      return
-    }
-    let defaultArgs = {
+  it('Validates Withdrawal signature', async () => {
+    const defaultArgs = {
       chainId: chain.id,
       maxFee,
       expiry,
       address: account.address,
     }
-    let functionArgs = {
+    const functionArgs = {
       amount: 1000000n,
       unwrap: true,
-    };
-    let args: Record<string, any> = {
+    }
+    const args: Parameters<typeof accountModule.build.withdrawal> = {
       ...defaultArgs,
       ...functionArgs
     }
 
     const sig = await accountModule.write.withdrawal(args)
-    expect(!!sig?.signature).toBe(true);
+    expect(!!sig?.signature).toBe(true)
 
     args.overrides = {
       group: sig.withdrawal.action.common.group,
       nonce: sig.withdrawal.action.common.nonce,
     }
 
-    let signingPayload = parseIntentPayload(args, Intent.Withdrawal)
-    expect(!!signingPayload).toBe(true);
+    const signingPayload = parseIntentPayload(args, Intent.Withdrawal)
+    expect(!!signingPayload).toBe(true)
 
-    let valid = await verifyTypedData({
+    const valid = await verifyTypedData({
       ...signingPayload,
       address: account.address,
       signature: sig.signature,
-    })
-    expect(valid).toBe(true);
+    } as VerifyTypedDataParameters)
+    expect(valid).toBe(true)
 
-  });
-});
+  })
+
+  it('Validates RelayedOperatorUpdate signature', async () => {
+    const defaultArgs = {
+      chainId: chain.id,
+      maxFee,
+      expiry,
+      address: account.address,
+    }
+    const functionArgs = {
+      newOperator: zeroAddress,
+      approved: true
+    }
+    const args: Parameters<typeof accountModule.build.relayedOperatorUpdate> = {
+      ...defaultArgs,
+      ...functionArgs
+    }
+
+    const sig = await accountModule.write.relayedOperatorUpdate(args)
+    expect(!!sig?.innerSignature).toBe(true)
+    expect(!!sig?.outerSignature).toBe(true)
+
+    args.overrides = {
+      group: sig.relayedOperatorUpdate.action.common.group,
+      nonce: sig.relayedOperatorUpdate.action.common.nonce,
+    }
+
+    const signingPayload = parseIntentPayload(args, Intent.RelayedOperatorUpdate)
+    expect(!!signingPayload).toBe(true)
+
+    // TODO [Dospore] validate signature
+  })
+
+  it('Validates RelayedGroupCancellation signature', async () => {
+    const defaultArgs = {
+      chainId: chain.id,
+      maxFee,
+      expiry,
+      address: account.address,
+    }
+    const functionArgs = {
+      groupToCancel: 0n,
+    }
+    const args: Parameters<typeof accountModule.build.relayedGroupCancellation> = {
+      ...defaultArgs,
+      ...functionArgs
+    }
+
+    const sig = await accountModule.write.relayedGroupCancellation(args)
+    expect(!!sig?.innerSignature).toBe(true)
+    expect(!!sig?.outerSignature).toBe(true)
+
+    args.overrides = {
+      group: sig.relayedGroupCancellation.action.common.group,
+      nonce: sig.relayedGroupCancellation.action.common.nonce,
+    }
+
+    const signingPayload = parseIntentPayload(args, Intent.RelayedGroupCancellation)
+    expect(!!signingPayload).toBe(true)
+
+    // TODO [Dospore] validate signature
+  })
+
+  it('Validates RelayedNonceCancellation signature', async () => {
+    const defaultArgs = {
+      chainId: chain.id,
+      maxFee,
+      expiry,
+      address: account.address,
+    }
+    const functionArgs = {
+      nonceToCancel: 0n,
+      domain: zeroAddress,
+    }
+    const args: Parameters<typeof accountModule.build.relayedNonceCancellation> = {
+      ...defaultArgs,
+      ...functionArgs
+    }
+
+    const sig = await accountModule.write.relayedNonceCancellation(args)
+    expect(!!sig?.innerSignature).toBe(true)
+    expect(!!sig?.outerSignature).toBe(true)
+
+    args.overrides = {
+      group: sig.relayedNonceCancellation.action.common.group,
+      nonce: sig.relayedNonceCancellation.action.common.nonce,
+    }
+
+    const signingPayload = parseIntentPayload(args, Intent.RelayedNonceCancellation)
+    expect(!!signingPayload).toBe(true)
+
+    // TODO [Dospore] validate signature
+  })
+
+  it('Validates RelayedSignerUpdate signature', async () => {
+    const defaultArgs = {
+      chainId: chain.id,
+      maxFee,
+      expiry,
+      address: account.address,
+    }
+    const functionArgs = {
+      newSigner: zeroAddress,
+      approved: true
+    }
+    const args: Parameters<typeof accountModule.build.relayedSignerUpdate> = {
+      ...defaultArgs,
+      ...functionArgs
+    }
+
+    const sig = await accountModule.write.relayedSignerUpdate(args)
+    expect(!!sig?.innerSignature).toBe(true)
+    expect(!!sig?.outerSignature).toBe(true)
+
+    args.overrides = {
+      group: sig.relayedSignerUpdate.action.common.group,
+      nonce: sig.relayedSignerUpdate.action.common.nonce,
+    }
+
+    const signingPayload = parseIntentPayload(args, Intent.RelayedSignerUpdate)
+    expect(!!signingPayload).toBe(true)
+
+    // TODO [Dospore] validate signature
+  })
+})
