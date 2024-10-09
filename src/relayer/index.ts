@@ -8,8 +8,8 @@ import { Hex, Hash, Address, isAddress } from 'viem'
 import { Chain, relayerAccount } from '../config.js'
 
 import { verifyTypedData } from 'viem'
-import { constructUserOperation, getRelayerDomain, parseIntentPayload } from '../utils/relayerUtils.js'
-import { Intent, types } from './types.js'
+import { constructUserOperation, parseIntentPayload } from '../utils/relayerUtils.js'
+import { Intent } from './types.js'
 
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
@@ -30,7 +30,7 @@ export async function createRelayer() {
     transport: alchemyTransport,
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex),
-  });
+  })
 
   const client = createAlchemySmartAccountClient({
     transport: alchemyTransport,
@@ -49,11 +49,11 @@ export async function createRelayer() {
       meta
     } = req.body as { signature: Hex; intent: Intent, address: Address, payload: any, meta?: any }
 
-    let error;
+    let error
     if (!intent || !Intent[intent]) {
       error = `Invalid intent ${intent}`
     } else if (!address || !isAddress(address.toLowerCase())) {
-      error = `Invalid address ${address}`;
+      error = `Invalid address ${address}`
     } else if (!payload) {
       error = 'Missing signature payload'
     } else if (!signature) {
@@ -64,23 +64,17 @@ export async function createRelayer() {
       return
     }
 
-    // TODO [Dospore] replace with sdk
-    const domain = getRelayerDomain();
-
-    const parsedIntent = parseIntentPayload(payload, intent)
-    if (!parsedIntent) {
+    const signingPayload = parseIntentPayload(payload, intent)
+    if (!signingPayload) {
       res.send(JSON.stringify({ success: false, error: `${intent} payload structure invalid` }))
       return
     }
 
     const valid = await verifyTypedData({
+      ...signingPayload,
       address,
-      domain,
-      types,
-      primaryType: intent,
-      message: parsedIntent.message,
       signature,
-    })
+    } as any)
 
     if (!valid) {
       res.send(JSON.stringify({ success: false, error: `${intent} signature invalid`  }))
@@ -88,10 +82,10 @@ export async function createRelayer() {
     }
 
     try {
-      const uo = constructUserOperation(parsedIntent.parsedPayload);
+      const uo = constructUserOperation(signingPayload)
 
       if (!uo) {
-        throw Error("Failed to construct user operation")
+        throw Error('Failed to construct user operation')
       }
 
       const { hash } = await client.sendUserOperation({ uo })
@@ -113,21 +107,15 @@ export async function createRelayer() {
     } = req.body as { intent: Intent, payload: any }
 
     // used to generate signature which is then an api input param
-    const parsedIntent = parseIntentPayload(payload, intent)
-    if (!parsedIntent) {
+    const signingPayload = parseIntentPayload(payload, intent)
+    if (!signingPayload) {
       res.send(JSON.stringify({ success: false, error: `${intent} payload structure invalid` }))
       return
     }
 
-    const domain = getRelayerDomain();
-    const signature = await relayerAccount.signTypedData({
-      domain,
-      types,
-      primaryType: intent,
-      message: parsedIntent.message
-    })
+    const signature = await relayerAccount.signTypedData(signingPayload as any)
 
-    console.log("Constructed signature", signature)
+    console.log('Constructed signature', signature)
     res.send(JSON.stringify({ success: false, signature }))
   })
 

@@ -1,79 +1,138 @@
-import { encodeFunctionData, erc20Abi } from 'viem';
-import { arbitrum, arbitrumSepolia } from 'viem/chains';
+import { encodeFunctionData } from 'viem'
 
-import { Intent, UserOperation, SignatureMessage, SignaturePayload } from '../relayer/types.js'
-import { Chain } from '../config.js'
+import { Intent, UserOperation, SigningPayload } from '../relayer/types.js'
 
-import { EIP712_Domain } from '@perennial/sdk/dist/constants/eip712/index.js';
-import { USDCAddresses, ControllerAddresses } from '@perennial/sdk/dist/constants/contracts.js';
-import { ControllerAbi } from '@perennial/sdk/dist/abi/Controller.abi.js';
+import { ControllerAddresses } from '@perennial/sdk/dist/constants/contracts.js'
+import { ControllerAbi } from '@perennial/sdk/dist/abi/Controller.abi.js'
+import { buildWithdrawalSigningPayload } from '@perennial/sdk/dist/lib/collateralAccounts/intent/buildWithdrawalSigningPayload.js'
+import { buildDeployAccountSigningPayload } from '@perennial/sdk/dist/lib/collateralAccounts/intent/buildDeployAccountSigningPayload.js'
+import { buildMarketTransferSigningPayload } from '@perennial/sdk/dist/lib/collateralAccounts/intent/buildMarketTransferSigningPayload.js'
+import { buildRebalanceConfigChangeSigningPayload } from '@perennial/sdk/dist/lib/collateralAccounts/intent/buildRebalanceConfigChangeSigningPayload.js'
 
-export const getRelayerDomain = () => {
-  if (Chain.id !== arbitrum.id || (Chain.id as number) !== arbitrumSepolia.id) {
+import { SupportedChainId } from '@perennial/sdk'
+
+export const parseIntentPayload = (payload: Record<any, any>, intent: Intent): (SigningPayload | undefined) => {
+  if (
+    payload.maxFee === undefined ||
+    payload.expiry === undefined ||
+    payload.address === undefined
+  ) {
+    // Do we need to validate chainId here?
+    // invalid payload
     return
   }
-  return EIP712_Domain(Chain.id, "collateralAccount")
-}
 
-export const parseIntentPayload = (payload: Record<any, any>, intent: Intent): ({
-  message: SignatureMessage,
-  parsedPayload: SignaturePayload,
-} | undefined) => {
+  const defaultArgs = {
+    chainId: payload.chainId,
+    address: payload.address,
+    maxFee: BigInt(payload.maxFee),
+    expiry: BigInt(payload.expiry),
+    overrides: payload.overrides
+  }
+
   switch (intent) {
-    case Intent.Transfer:
-      if (payload.amount && payload.to) {
-        return ({
-          message: {
-            intent,
-            to: payload.to,
-            amount: payload.amount,
-          },
-          parsedPayload: {
-            intent,
-            to: payload.to,
-            amount: BigInt(payload.amount)
-          },
-        })
-      }
-      break;
     case Intent.DeployAccount:
-      return ({
-        message: {
-          intent
-        },
-        parsedPayload: {
-          intent,
-        }
-      })
+      return (
+        buildDeployAccountSigningPayload({
+          ...defaultArgs,
+        }).deployAccount
+      )
+    case Intent.MarketTransfer:
+      if (!payload.market || !payload.amount) {
+        return
+      }
+
+      return (
+        buildMarketTransferSigningPayload({
+          ...defaultArgs,
+          market: payload.market,
+          amount: payload.amount
+        }).marketTransfer
+      )
+    case Intent.RebalanceConfigChange:
+      if (
+        payload.rebalanceMaxFee === undefined ||
+        payload.group === undefined ||
+        payload.markets === undefined ||
+        payload.configs === undefined
+    ) {
+        return
+      }
+      return (
+        buildRebalanceConfigChangeSigningPayload({
+          ...defaultArgs,
+          rebalanceMaxFee: payload.rebalanceMaxFee,
+          group: payload.group,
+          markets: payload.markets,
+          configs: payload.configs
+        }).rebalanceConfigChange
+      )
+    case Intent.Withdrawal:
+      if (
+        payload.amount === undefined ||
+        payload.unwrap === undefined
+      ) { return }
+      return (
+        buildWithdrawalSigningPayload({
+          ...defaultArgs,
+          amount: payload.amount,
+          unwrap: payload.unwrap
+        }).withdrawal
+      )
     default:
-      console.log("TODO implement intent");
-      break;
+      console.log('TODO implement intent')
+      break
   }
   return
 }
 
-export const constructUserOperation = (payload: SignaturePayload): UserOperation | undefined => {
-  switch (payload.intent) {
-    case Intent.Transfer:
-      return ({
-        target: USDCAddresses[Chain.id],
-        data: encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'transfer',
-          args: [payload.to, payload.amount]
-        })
-      })
+export const constructUserOperation = (payload: SigningPayload): UserOperation | undefined => {
+  const chainId = payload.domain?.chainId as SupportedChainId;
+  switch (payload.primaryType) {
     case Intent.DeployAccount:
       return ({
-        target: ControllerAddresses[Chain.id],
+        target: ControllerAddresses[chainId],
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'deployAccount',
         })
       })
+    case Intent.MarketTransfer:
+      return ({
+        target: ControllerAddresses[chainId],
+        data: encodeFunctionData({
+          abi: ControllerAbi,
+          functionName: 'marketTransfer',
+          args: [payload.message.market, payload.message.amount]
+        })
+      })
+    case Intent.RebalanceConfigChange:
+      return ({
+        target: ControllerAddresses[chainId],
+        data: encodeFunctionData({
+          abi: ControllerAbi,
+          functionName: 'rebalanceConfigs',
+          args: [payload.message.owner, payload.message.group, payload.message.market]
+        })
+      })
+    case Intent.Withdrawal:
+      return ({
+        target: ControllerAddresses[chainId],
+        data: encodeFunctionData({
+          abi: ControllerAbi,
+          functionName: 'withdrawal',
+          args: [payload.message.amount, payload.message.unwrap]
+        })
+      })
+      /*
+      | RelayedAccessUpdateBatchSigningPayload
+      | RelayedGroupCancellationSigningPayload
+      | RelayedNonceCancellationSigningPayload
+      | RelayedSignerUpdateSigningPayload
+      */
     default:
-      console.log("TODO Implement function encoding");
-      break;
+      console.log('TODO Implement function encoding')
+      break
   }
 
   return
