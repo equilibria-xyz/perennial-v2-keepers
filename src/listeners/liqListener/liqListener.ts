@@ -147,7 +147,6 @@ export class LiqListener {
 
     const liqUsers = await this.batchLiquidationSimulation(market, users, commit)
 
-    console.log(`${marketTag}: Liquidation sim took ${Date.now() - now}ms`)
     tracer.dogstatsd.distribution('liquidator.simulation.time', Date.now() - now, {
       chain: Chain.id,
       market: marketTag,
