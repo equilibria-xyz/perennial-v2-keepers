@@ -1,15 +1,5 @@
 import { Hex } from 'viem'
-import {
-  DeployAccountSigningPayload,
-  MarketTransferSigningPayload,
-  RebalanceConfigChangeSigningPayload,
-  RelayedAccessUpdateBatchSigningPayload,
-  RelayedGroupCancellationSigningPayload,
-  RelayedNonceCancellationSigningPayload,
-  RelayedSignerUpdateSigningPayload,
-  RelayedOperatorUpdateSigningPayload,
-  WithdrawalSigningPayload
-} from '@perennial/sdk/dist/constants/eip712'
+import PerennialSDK from '@perennial/sdk'
 
 export type UserOperation = {
   target: Hex,
@@ -23,12 +13,12 @@ export type RelayedSignatures = {
 };
 
 export type SigningPayload =
-  | DeployAccountSigningPayload
-  | MarketTransferSigningPayload
-  | WithdrawalSigningPayload
-  | RebalanceConfigChangeSigningPayload
-  | RelayedAccessUpdateBatchSigningPayload
-  | RelayedGroupCancellationSigningPayload
-  | RelayedNonceCancellationSigningPayload
-  | RelayedSignerUpdateSigningPayload
-  | RelayedOperatorUpdateSigningPayload
+  | PerennialSDK.eip712.DeployAccountSigningPayload
+  | PerennialSDK.eip712.MarketTransferSigningPayload
+  | PerennialSDK.eip712.WithdrawalSigningPayload
+  | PerennialSDK.eip712.RebalanceConfigChangeSigningPayload
+  | PerennialSDK.eip712.RelayedAccessUpdateBatchSigningPayload
+  | PerennialSDK.eip712.RelayedGroupCancellationSigningPayload
+  | PerennialSDK.eip712.RelayedNonceCancellationSigningPayload
+  | PerennialSDK.eip712.RelayedSignerUpdateSigningPayload
+  | PerennialSDK.eip712.RelayedOperatorUpdateSigningPayload

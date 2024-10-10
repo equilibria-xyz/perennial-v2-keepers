@@ -51,7 +51,7 @@
     "precommit": "yarn lint-staged",
     "gen:gql-typings": "graphql-codegen --config graph-codegen.ts",
     "postinstall": "husky install",
-    "test": "vitest"
+    "test": "vitest -- 421614"
   },
   "license": "Apache-2.0",
   "dependencies": {

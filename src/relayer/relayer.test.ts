@@ -15,6 +15,8 @@ import { arbitrumSepolia } from 'viem/chains'
 import { describe, it, expect, beforeEach, assert } from 'vitest'
 
 import { findMissingArgs, parseIntentPayload } from '../utils/relayerUtils.js'
+
+// use this to avoid importing from config since vitest cant pass node arguments
 import { CollateralAccountModule } from '@perennial/sdk/dist/lib/collateralAccounts'
 
 const chain = arbitrumSepolia
@@ -48,7 +50,6 @@ describe('Validates signatures', () => {
   })
 
   it('Validates DeployAccount signature', async () => {
-    console.log('Acc', account.address)
     const args: Parameters<typeof accountModule.build.deployAccount>[0] = {
       maxFee,
       expiry,
@@ -56,7 +57,6 @@ describe('Validates signatures', () => {
     }
 
     const sig = await accountModule.write.deployAccount(args)
-    console.log('Sig', sig)
     expect(!!sig?.signature).toBe(true)
 
     args.overrides = {
