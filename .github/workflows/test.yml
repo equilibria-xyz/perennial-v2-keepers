@@ -1,4 +1,4 @@
-name: Test Relayer
+name: Build and test relayer
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
       - arjun/v2.3
 
 jobs:
-  test:
+  build-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,9 +25,8 @@ jobs:
       - name: Install
         run: yarn
 
-      # Run the build script
-      # - name: Build the project
-      #  run: yarn build
+      - name: Build
+        run: yarn build
 
       - name: Run relayer tests
         run: yarn test
