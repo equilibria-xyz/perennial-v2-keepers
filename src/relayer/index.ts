@@ -4,12 +4,11 @@ import express, { Request, Response } from 'express'
 import { createLightAccount } from '@account-kit/smart-contracts'
 import { alchemy, createAlchemySmartAccountClient, arbitrum, arbitrumSepolia } from '@account-kit/infra'
 import { LocalAccountSigner } from '@aa-sdk/core'
-import { Hex, Hash, SignTypedDataParameters } from 'viem'
+import { Hex, Hash } from 'viem'
 import { Chain } from '../config.js'
 
-import { constructUserOperation, constructRelayedUserOperation, isRelayedIntent, parseIntentPayload } from '../utils/relayerUtils.js'
+import { constructUserOperation, constructRelayedUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
 import { SigningPayload } from './types.js'
-import { privateKeyToAccount } from 'viem/accounts'
 
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
@@ -102,46 +101,6 @@ export async function createRelayer() {
     } catch (e) {
       console.warn(e)
       res.send(JSON.stringify({ success: false, error: `Unable to relay transaction: ${e.message}`}))
-    }
-  })
-
-  // helper used in testing to generate signatures for relayIntent
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  app.post('/genSig', async (req: Request<{ intent: SigningPayload['primaryType'], payload: any }>, res: Response) => {
-    const intent = req.body.intent
-    let payload = req.body.payload
-
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const testAccount = privateKeyToAccount(process.env.VITE_TESTING_PRIVATE_KEY! as Hex)
-
-    payload = {
-      ...payload,
-      chainId: Chain.id
-    }
-
-    try {
-      const signingPayloads = parseIntentPayload(payload, intent)
-      if (!signingPayloads || (signingPayloads as { error: string })?.error) {
-        throw Error((signingPayloads as { error: string }).error)
-      }
-
-      const relayedIntent = isRelayedIntent(intent)
-      let signatures
-      if (relayedIntent) {
-        signatures = Promise.all([
-          await testAccount.signTypedData((signingPayloads as SigningPayload[])[0] as Omit<SignTypedDataParameters, 'account'>),
-          await testAccount.signTypedData((signingPayloads as SigningPayload[])[1] as Omit<SignTypedDataParameters, 'account'>)
-        ])
-      } else {
-        signatures = [
-          await testAccount.signTypedData((signingPayloads as SigningPayload[])[0] as Omit<SignTypedDataParameters, 'account'>)
-        ]
-      }
-
-      console.log('Constructed signature', signatures)
-      res.send(JSON.stringify({ success: true, signatures, payloads: signingPayloads }))
-    } catch (e) {
-      res.send(JSON.stringify({ success: false, error: e.message }))
     }
   })
 
