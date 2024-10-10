@@ -44,7 +44,6 @@
     "build": "yarn build:release",
     "build:watch": "yarn gen:lens-artifact && yarn gen:gql-typings && tsc -w -p tsconfig.json",
     "build:release": "yarn run clean && yarn gen:lens-artifact && yarn gen:gql-typings && tsc -p tsconfig.release.json",
-    "build:tsc": "tsc -p tsconfig.json",
     "lint": "eslint . --ext .ts --ext .mts",
     "test:integration": "OPTIMIZER_ENABLED=true FORK_ENABLED=true FORK_BLOCK_NUMBER=39329793 hardhat test",
     "prettier": "prettier --config .prettierrc --write .",

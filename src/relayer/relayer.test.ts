@@ -34,7 +34,6 @@ const signer: WalletClient = createWalletClient({
   account,
 })
 
-
 let accountModule: CollateralAccountModule
 const maxFee = 0n, expiry = 0n
 describe('Validates signatures', () => {

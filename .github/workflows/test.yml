@@ -20,7 +20,7 @@ jobs:
           node-version: '20.12.2'
           cache: 'yarn'
         env:
-          NPM_TOKEN: secrets.NPM_TOKEN
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Install
         run: |
@@ -28,8 +28,11 @@ jobs:
           yarn
 
       - name: Build
-        run: yarn build:tsc
+        run: yarn build
+        env:
+          ARBITRUM_GRAPH_URL: ${{ secrets.ARBITRUM_GRAPH_URL }}
 
       - name: Run relayer tests
         run: yarn test
-
+        env:
+          VITE_TESTING_PRIVATE_KEY: ${{ secrets.VITE_TESTING_PRIVATE_KEY }}
