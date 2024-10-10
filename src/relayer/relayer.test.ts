@@ -1,5 +1,6 @@
 import { privateKeyToAccount } from 'viem/accounts'
 import {
+    Address,
   Hex,
   PublicClient,
   VerifyTypedDataParameters,
@@ -13,11 +14,11 @@ import {
 import { arbitrumSepolia } from 'viem/chains'
 import { describe, it, expect, beforeEach, assert } from 'vitest'
 
-import { Intent } from './types.js'
 import { findMissingArgs, parseIntentPayload } from '../utils/relayerUtils.js'
-import { CollateralAccountModule } from '@perennial/sdk'
+import { CollateralAccountModule } from '@perennial/sdk/dist/lib/collateralAccounts'
 
 const chain = arbitrumSepolia
+
 const publicClient: PublicClient = createPublicClient({
   chain: chain,
   transport: http()
@@ -38,38 +39,42 @@ describe('Validates signatures', () => {
   beforeEach(() => {
     accountModule = new CollateralAccountModule({
       chainId: chain.id,
-      publicClient: publicClient,
-      walletClient: signer,
+      // types complain due to duplicate package instances
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      publicClient: publicClient as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      walletClient: signer as any,
     })
   })
 
   it('Validates DeployAccount signature', async () => {
-    const args: Parameters<typeof accountModule.build.deployAccount> = {
-      chainId: chain.id,
+    console.log('Acc', account.address)
+    const args: Parameters<typeof accountModule.build.deployAccount>[0] = {
       maxFee,
       expiry,
-      address: account.address,
+      address: account.address as Address,
     }
 
     const sig = await accountModule.write.deployAccount(args)
+    console.log('Sig', sig)
     expect(!!sig?.signature).toBe(true)
 
     args.overrides = {
-      group: sig.deployAccount.action.common.group,
-      nonce: sig.deployAccount.action.common.nonce,
+      group: sig.deployAccount.message.action.common.group,
+      nonce: sig.deployAccount.message.action.common.nonce,
     }
 
-    let signingPayload = parseIntentPayload({ ...args, maxFee: maxFee + 1n }, Intent.DeployAccount)
+    let signingPayload = parseIntentPayload({ ...args, chainId: sig.deployAccount?.domain?.chainId, maxFee: maxFee + 1n }, 'DeployAccount')
     expect(!!signingPayload).toBe(true)
 
-    let valid = await verifyTypedData({
+    let valid = await publicClient.verifyTypedData({
       ...signingPayload,
       address: account.address,
       signature: sig.signature,
     } as VerifyTypedDataParameters)
     expect(valid).toBe(false)
 
-    signingPayload = parseIntentPayload(args, Intent.DeployAccount)
+    signingPayload = parseIntentPayload({ ...args, chainId: sig?.deployAccount?.domain?.chainId }, 'DeployAccount')
     const build = accountModule.build.deployAccount(args)
     assert.deepEqual(signingPayload, build.deployAccount)
 
@@ -94,7 +99,7 @@ describe('Validates signatures', () => {
       market: zeroAddress,
       amount: 1n
     }
-    const args: Parameters<typeof accountModule.build.marketTransfer> = {
+    const args: Parameters<typeof accountModule.build.marketTransfer>[0] = {
       ...defaultArgs,
       ...functionArgs
     }
@@ -103,11 +108,11 @@ describe('Validates signatures', () => {
     expect(!!sig?.signature).toBe(true)
 
     args.overrides = {
-      group: sig.marketTransfer.action.common.group,
-      nonce: sig.marketTransfer.action.common.nonce,
+      group: sig.marketTransfer.message.action.common.group,
+      nonce: sig.marketTransfer.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, Intent.MarketTransfer)
+    const signingPayload = parseIntentPayload(args, 'MarketTransfer')
     expect(!!signingPayload).toBe(true)
 
     const valid = await verifyTypedData({
@@ -132,7 +137,7 @@ describe('Validates signatures', () => {
       configs: [],
       group: 0n
     }
-    const args: Parameters<typeof accountModule.build.rebalanceConfigChange> = {
+    const args: Parameters<typeof accountModule.build.rebalanceConfigChange>[0] = {
       ...defaultArgs,
       ...functionArgs
     }
@@ -141,11 +146,13 @@ describe('Validates signatures', () => {
     expect(!!sig?.signature).toBe(true)
 
     args.overrides = {
-      group: sig.rebalanceConfigChange.action.common.group,
-      nonce: sig.rebalanceConfigChange.action.common.nonce,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      group: (sig.rebalanceConfigChange as any).message.action.common.group,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      nonce: (sig.rebalanceConfigChange as any).message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, Intent.RebalanceConfigChange)
+    const signingPayload = parseIntentPayload(args, 'RebalanceConfigChange')
     expect(!!signingPayload).toBe(true)
 
     const valid = await verifyTypedData({
@@ -168,7 +175,7 @@ describe('Validates signatures', () => {
       amount: 1000000n,
       unwrap: true,
     }
-    const args: Parameters<typeof accountModule.build.withdrawal> = {
+    const args: Parameters<typeof accountModule.build.withdrawal>[0] = {
       ...defaultArgs,
       ...functionArgs
     }
@@ -177,11 +184,11 @@ describe('Validates signatures', () => {
     expect(!!sig?.signature).toBe(true)
 
     args.overrides = {
-      group: sig.withdrawal.action.common.group,
-      nonce: sig.withdrawal.action.common.nonce,
+      group: sig.withdrawal.message.action.common.group,
+      nonce: sig.withdrawal.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, Intent.Withdrawal)
+    const signingPayload = parseIntentPayload(args, 'Withdrawal')
     expect(!!signingPayload).toBe(true)
 
     const valid = await verifyTypedData({
@@ -204,7 +211,7 @@ describe('Validates signatures', () => {
       newOperator: zeroAddress,
       approved: true
     }
-    const args: Parameters<typeof accountModule.build.relayedOperatorUpdate> = {
+    const args: Parameters<typeof accountModule.build.relayedOperatorUpdate>[0] = {
       ...defaultArgs,
       ...functionArgs
     }
@@ -214,11 +221,11 @@ describe('Validates signatures', () => {
     expect(!!sig?.outerSignature).toBe(true)
 
     args.overrides = {
-      group: sig.relayedOperatorUpdate.action.common.group,
-      nonce: sig.relayedOperatorUpdate.action.common.nonce,
+      group: sig.relayedOperatorUpdate.message.action.common.group,
+      nonce: sig.relayedOperatorUpdate.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, Intent.RelayedOperatorUpdate)
+    const signingPayload = parseIntentPayload(args, 'RelayedOperatorUpdate')
     expect(!!signingPayload).toBe(true)
 
     // TODO [Dospore] validate signature
@@ -234,7 +241,7 @@ describe('Validates signatures', () => {
     const functionArgs = {
       groupToCancel: 0n,
     }
-    const args: Parameters<typeof accountModule.build.relayedGroupCancellation> = {
+    const args: Parameters<typeof accountModule.build.relayedGroupCancellation>[0] = {
       ...defaultArgs,
       ...functionArgs
     }
@@ -244,11 +251,11 @@ describe('Validates signatures', () => {
     expect(!!sig?.outerSignature).toBe(true)
 
     args.overrides = {
-      group: sig.relayedGroupCancellation.action.common.group,
-      nonce: sig.relayedGroupCancellation.action.common.nonce,
+      group: sig.relayedGroupCancellation.message.action.common.group,
+      nonce: sig.relayedGroupCancellation.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, Intent.RelayedGroupCancellation)
+    const signingPayload = parseIntentPayload(args, 'RelayedGroupCancellation')
     expect(!!signingPayload).toBe(true)
 
     // TODO [Dospore] validate signature
@@ -265,7 +272,7 @@ describe('Validates signatures', () => {
       nonceToCancel: 0n,
       domain: zeroAddress,
     }
-    const args: Parameters<typeof accountModule.build.relayedNonceCancellation> = {
+    const args: Parameters<typeof accountModule.build.relayedNonceCancellation>[0] = {
       ...defaultArgs,
       ...functionArgs
     }
@@ -275,11 +282,11 @@ describe('Validates signatures', () => {
     expect(!!sig?.outerSignature).toBe(true)
 
     args.overrides = {
-      group: sig.relayedNonceCancellation.action.common.group,
-      nonce: sig.relayedNonceCancellation.action.common.nonce,
+      group: sig.relayedNonceCancellation.message.action.common.group,
+      nonce: sig.relayedNonceCancellation.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, Intent.RelayedNonceCancellation)
+    const signingPayload = parseIntentPayload(args, 'RelayedNonceCancellation')
     expect(!!signingPayload).toBe(true)
 
     // TODO [Dospore] validate signature
@@ -296,7 +303,7 @@ describe('Validates signatures', () => {
       newSigner: zeroAddress,
       approved: true
     }
-    const args: Parameters<typeof accountModule.build.relayedSignerUpdate> = {
+    const args: Parameters<typeof accountModule.build.relayedSignerUpdate>[0] = {
       ...defaultArgs,
       ...functionArgs
     }
@@ -306,11 +313,11 @@ describe('Validates signatures', () => {
     expect(!!sig?.outerSignature).toBe(true)
 
     args.overrides = {
-      group: sig.relayedSignerUpdate.action.common.group,
-      nonce: sig.relayedSignerUpdate.action.common.nonce,
+      group: sig.relayedSignerUpdate.message.action.common.group,
+      nonce: sig.relayedSignerUpdate.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, Intent.RelayedSignerUpdate)
+    const signingPayload = parseIntentPayload(args, 'RelayedSignerUpdate')
     expect(!!signingPayload).toBe(true)
 
     // TODO [Dospore] validate signature

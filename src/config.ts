@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, webSocket, http, Hex, PublicClient } from 'viem'
+import { createPublicClient, createWalletClient, webSocket, http, Hex, PublicClient, Chain as ViemChain } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { SupportedChainId } from './constants/network.js'
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
@@ -38,7 +38,7 @@ export const Chain = chainIdToChainMap[_chain]
 export const IsMainnet = !([arbitrumSepolia.id] as SupportedChainId[]).includes(Chain.id)
 
 export const Client = createPublicClient({
-  chain: Chain,
+  chain: Chain as ViemChain,
   transport: http(NodeUrls[Chain.id]),
   batch: {
     multicall: true,
@@ -46,7 +46,7 @@ export const Client = createPublicClient({
 }) as PublicClient
 
 export const WssClient = createPublicClient({
-  chain: Chain,
+  chain: Chain as ViemChain,
   transport: webSocket(NodeUrls[Chain.id].replace('http', 'ws')),
 })
 
@@ -55,7 +55,7 @@ export const GraphClient = new GraphQLClient(GraphUrls[Chain.id])
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 export const oracleAccount = privateKeyToAccount(process.env.ORACLE_PRIVATE_KEY! as Hex)
 export const oracleSigner = createWalletClient({
-  chain: Chain,
+  chain: Chain as ViemChain,
   transport: http(NodeUrls[Chain.id]),
   account: oracleAccount,
 })
@@ -63,7 +63,7 @@ export const oracleSigner = createWalletClient({
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 export const liquidatorAccount = privateKeyToAccount(process.env.LIQUIDATOR_PRIVATE_KEY! as Hex)
 export const liquidatorSigner = createWalletClient({
-  chain: Chain,
+  chain: Chain as ViemChain,
   transport: http(NodeUrls[Chain.id]),
   account: liquidatorAccount,
 })
@@ -71,7 +71,7 @@ export const liquidatorSigner = createWalletClient({
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 export const orderAccount = privateKeyToAccount(process.env.ORDER_PRIVATE_KEY! as Hex)
 export const orderSigner = createWalletClient({
-  chain: Chain,
+  chain: Chain as ViemChain,
   transport: http(NodeUrls[Chain.id]),
   account: orderAccount,
 })
@@ -79,7 +79,7 @@ export const orderSigner = createWalletClient({
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 export const settlementAccount = privateKeyToAccount(process.env.SETTLEMENT_PRIVATE_KEY! as Hex)
 export const settlementSigner = createWalletClient({
-  chain: Chain,
+  chain: Chain as ViemChain,
   transport: http(NodeUrls[Chain.id]),
   account: settlementAccount,
 })

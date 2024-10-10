@@ -5,11 +5,11 @@ import { createLightAccount } from '@account-kit/smart-contracts'
 import { alchemy, createAlchemySmartAccountClient, arbitrum, arbitrumSepolia } from '@account-kit/infra'
 import { LocalAccountSigner } from '@aa-sdk/core'
 import { Hex, Hash, Address, isAddress, VerifyTypedDataParameters, SignTypedDataParameters } from 'viem'
-import { Chain } from '../config.js'
+import { Chain, Client } from '../config.js'
 
 import { verifyTypedData } from 'viem'
 import { constructUserOperation, constructRelayedUserOperation, isRelayedIntent, parseIntentPayload } from '../utils/relayerUtils.js'
-import { Intent, SigningPayload } from './types.js'
+import { SigningPayload } from './types.js'
 import { privateKeyToAccount } from 'viem/accounts'
 
 const ChainIdToAlchemyChain = {
@@ -43,39 +43,33 @@ export async function createRelayer() {
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
     const {
-      signature,
-      innerSignature,
-      outerSignature,
-      intent,
+      signatures,
       address,
-      payload,
+      signingPayload,
       meta
     } = req.body as {
-      signature: Hex;
-      innerSignature: Hex;
-      outerSignature: Hex;
-      intent: Intent,
+      signatures: Hex[];
       address: Address,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      payload: any,
+      signingPayload: SigningPayload,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      meta?: any
+      meta?: { wait?: boolean }
     }
 
     let error
-    if (!intent || !Intent[intent]) {
-      error = `Invalid intent ${intent}`
+    if (!signingPayload) {
+      error = 'Missing required signature payload'
     } else if (!address || !isAddress(address.toLowerCase())) {
       error = `Invalid address ${address}`
-    } else if (!payload) {
-      error = 'Missing signature payload'
+    } else if (!signatures) {
+      error = 'Missing signatures'
     }
 
-    const relayedIntent = isRelayedIntent(payload.intent)
-    if (!relayedIntent && !signature) {
-      error = 'Missing signature param'
-    } else if (relayedIntent && !(innerSignature && outerSignature)) {
-      error = 'Missing innerSignature and/or outerSignature param'
+    const relayedIntent = isRelayedIntent(signingPayload.primaryType)
+    if (relayedIntent && signatures.length !== 2) {
+      error = 'Missing signature; requires [signature]'
+    } else if (!relayedIntent && signatures.length !== 1) {
+      error = 'Missing signatures; requires [innerSignature, outerSignature]'
     }
 
     if (error) {
@@ -83,20 +77,23 @@ export async function createRelayer() {
       return
     }
 
-    const signingPayload = parseIntentPayload(payload, intent)
-    if ((signingPayload as { error: string }).error) {
-      res.send(JSON.stringify({ success: false, error: `Payload structure invalid: ${(signingPayload as { error: string }).error}` }))
-      return
+    let valid
+    if (relayedIntent) {
+      valid = await Client.verifyTypedData({
+        ...signingPayload,
+        address,
+        signature: signatures[1],
+      } as VerifyTypedDataParameters)
+    } else {
+      valid = await verifyTypedData({
+        ...signingPayload,
+        address,
+        signature: signatures[0],
+      } as VerifyTypedDataParameters)
     }
 
-    const valid = await verifyTypedData({
-      ...signingPayload,
-      address,
-      signature,
-    } as VerifyTypedDataParameters)
-
     if (!valid) {
-      res.send(JSON.stringify({ success: false, error: `${intent} signature invalid`  }))
+      res.send(JSON.stringify({ success: false, error: `Signature payload invalid for address ${address}`  }))
       return
     }
 
@@ -104,11 +101,11 @@ export async function createRelayer() {
       let uo
       if (relayedIntent) {
         uo = constructRelayedUserOperation(signingPayload as SigningPayload, {
-          innerSignature,
-          outerSignature
+          innerSignature: signatures[0],
+          outerSignature: signatures[1]
         })
       } else {
-        uo = constructUserOperation(signingPayload as SigningPayload, signature)
+        uo = constructUserOperation(signingPayload as SigningPayload, signatures[0])
       }
 
       if (!uo) {
@@ -132,7 +129,7 @@ export async function createRelayer() {
       intent,
       payload
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } = req.body as { intent: Intent, payload: any }
+    } = req.body as { intent: SigningPayload['primaryType'], payload: any }
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const testAccount = privateKeyToAccount(process.env.RELAYER_PRIVATE_KEY! as Hex)

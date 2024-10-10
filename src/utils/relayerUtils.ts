@@ -1,6 +1,6 @@
 import { Hex, encodeFunctionData } from 'viem'
 
-import { Intent, UserOperation, SigningPayload, RelayedSignatures } from '../relayer/types.js'
+import { UserOperation, SigningPayload, RelayedSignatures } from '../relayer/types.js'
 
 import {
   ControllerAddresses,
@@ -19,7 +19,7 @@ import {
 export const parseIntentPayload = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: Record<string, any>,
-  intent: Intent
+  intent: SigningPayload['primaryType']
 ): (SigningPayload | { error: string }) => {
   if (
     payload.maxFee === undefined ||
@@ -38,13 +38,13 @@ export const parseIntentPayload = (
   }
 
   switch (intent) {
-    case Intent.DeployAccount:
+    case 'DeployAccount':
       return (
         buildDeployAccountSigningPayload({
           ...defaultArgs,
         }).deployAccount
       )
-    case Intent.MarketTransfer:
+    case 'MarketTransfer':
       if (!payload.market || !payload.amount) {
         return { error: `Missing MarketTransfer args: ${findMissingArgs(payload, ['market', 'amount'])}` }
       }
@@ -56,7 +56,7 @@ export const parseIntentPayload = (
           amount: payload.amount
         }).marketTransfer
       )
-    case Intent.RebalanceConfigChange:
+    case 'RebalanceConfigChange':
       if (
         payload.rebalanceMaxFee === undefined ||
         payload.group === undefined ||
@@ -74,7 +74,7 @@ export const parseIntentPayload = (
           configs: payload.configs
         }).rebalanceConfigChange
       )
-    case Intent.Withdrawal:
+    case 'Withdrawal':
       if (
         payload.amount === undefined ||
         payload.unwrap === undefined
@@ -88,7 +88,7 @@ export const parseIntentPayload = (
           unwrap: payload.unwrap
         }).withdrawal
       )
-    case Intent.RelayedGroupCancellation:
+    case 'RelayedGroupCancellation':
       if (
         payload.groupToCancel === undefined
       ) {
@@ -100,7 +100,7 @@ export const parseIntentPayload = (
           groupToCancel: payload.groupToCancel,
         }).relayedGroupCancellation
       )
-    case Intent.RelayedNonceCancellation:
+    case 'RelayedNonceCancellation':
       if (
         payload.nonceToCancel === undefined
       ) {
@@ -112,7 +112,7 @@ export const parseIntentPayload = (
           nonceToCancel: payload.nonceToCancel,
         }).relayedNonceCancellation
       )
-    case Intent.RelayedOperatorUpdate:
+    case 'RelayedOperatorUpdate':
       if (
         payload.newOperator === undefined ||
         payload.approved === undefined
@@ -126,7 +126,7 @@ export const parseIntentPayload = (
           approved: payload.approved,
         }).relayedOperatorUpdate
       )
-    case Intent.RelayedSignerUpdate:
+    case 'RelayedSignerUpdate':
       if (
         payload.newSigner === undefined ||
         payload.approved === undefined
@@ -152,7 +152,8 @@ export const parseIntentPayload = (
 export const constructUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
   const chainId = payload.domain?.chainId as SupportedChainId
   switch (payload.primaryType) {
-    case Intent.DeployAccount:
+    case 'DeployAccount':
+      console.log('Here', ControllerAddresses[chainId])
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
@@ -161,7 +162,7 @@ export const constructUserOperation = (payload: SigningPayload, signature: Hex):
           args: [payload.message, signature]
         })
       })
-    case Intent.MarketTransfer:
+    case 'MarketTransfer':
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
@@ -170,16 +171,17 @@ export const constructUserOperation = (payload: SigningPayload, signature: Hex):
           args: [payload.message, signature]
         })
       })
-    case Intent.RebalanceConfigChange:
+    case 'RebalanceConfigChange':
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'changeRebalanceConfigWithSignature',
-          args: [payload.message, signature]
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          args: [payload.message as any, signature]
         })
       })
-    case Intent.Withdrawal:
+    case 'Withdrawal':
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
@@ -199,7 +201,7 @@ export const constructUserOperation = (payload: SigningPayload, signature: Hex):
 export const constructRelayedUserOperation = (payload: SigningPayload, signatures: RelayedSignatures): UserOperation | undefined => {
   const chainId = payload.domain?.chainId as SupportedChainId
   switch (payload.primaryType) {
-    case Intent.RelayedGroupCancellation:
+    case 'RelayedGroupCancellation':
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
@@ -208,7 +210,7 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
           args: [payload.message, signatures.innerSignature, signatures.outerSignature]
         })
       })
-    case Intent.RelayedNonceCancellation:
+    case 'RelayedNonceCancellation':
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
@@ -217,7 +219,7 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
           args: [payload.message, signatures.innerSignature, signatures.outerSignature]
         })
       })
-    case Intent.RelayedSignerUpdate:
+    case 'RelayedSignerUpdate':
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
@@ -226,7 +228,7 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
           args: [payload.message, signatures.innerSignature, signatures.outerSignature]
         })
       })
-    case Intent.RelayedOperatorUpdate:
+    case 'RelayedOperatorUpdate':
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
@@ -258,20 +260,18 @@ export const findMissingArgs = (payload: any, requiredArgs: string[]): string =>
   return missing.join(', ')
 }
 
-export const isRelayedIntent = (intent: Intent): boolean => {
+export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean => {
   switch (intent) {
-    case Intent.RelayedNonceCancellation:
-    case Intent.RelayedGroupCancellation:
-    case Intent.RelayedSignerUpdate:
-    case Intent.RelayedOperatorUpdate:
-    case Intent.RelayedAccessUpdateBatch:
+    case 'RelayedNonceCancellation':
+    case 'RelayedGroupCancellation':
+    case 'RelayedSignerUpdate':
+    case 'RelayedOperatorUpdate':
+    case 'RelayedAccessUpdateBatch':
       return true
-    case Intent.DeployAccount:
-    case Intent.MarketTransfer:
-    case Intent.Withdrawal:
-    case Intent.RebalanceConfigChange:
-    case Intent.PlaceOrder:
-    case Intent.CancelOrder:
+    case 'DeployAccount':
+    case 'MarketTransfer':
+    case 'Withdrawal':
+    case 'RebalanceConfigChange':
     default:
       return false
   }
