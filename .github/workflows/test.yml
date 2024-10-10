@@ -24,7 +24,7 @@ jobs:
 
       - name: Install
         run: |
-          echo -e "\n//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
+          echo -e "\n@scope:registry=https://registry.npmjs.org\n//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
           yarn
 
       - name: Build
