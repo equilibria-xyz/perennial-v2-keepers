@@ -23,9 +23,9 @@ jobs:
           NPM_TOKEN: secrets.NPM_TOKEN
 
       - name: Install
-        run: yarn
-        env:
-          NPM_TOKEN: secrets.NPM_TOKEN
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          yarn
 
       - name: Build
         run: yarn build
