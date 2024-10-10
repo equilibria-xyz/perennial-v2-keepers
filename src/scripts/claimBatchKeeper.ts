@@ -1,7 +1,7 @@
-import { Chain, Client, orderSigner } from '../config'
-import { BatchKeeperAbi } from '../constants/abi/BatchKeeper.abi'
-import { BatchKeeperAddresses, DSUAddresses } from '../constants/network'
-import { getMarkets } from '../utils/marketUtils'
+import { Chain, Client, orderSigner } from '../config.js'
+import { BatchKeeperAbi } from '../constants/abi/BatchKeeper.abi.js'
+import { BatchKeeperAddresses, DSUAddresses } from '../constants/network.js'
+import { getMarkets } from '../utils/marketUtils.js'
 
 export default async function ClaimBatchKeeper() {
   const markets = await getMarkets()

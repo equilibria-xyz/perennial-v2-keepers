@@ -1,7 +1,7 @@
 import { Address } from 'viem'
 import { queryAll } from '@perennial/sdk'
-import { gql } from '../../types/gql/gql'
-import { GraphClient } from '../config'
+import { gql } from '../../types/gql/gql.js'
+import { GraphClient } from '../config.js'
 
 export const GraphDefaultPageSize = 1000
 

@@ -1,6 +1,6 @@
 import { UpdateDataRequest, UpdateDataResponse, buildCommitPrice } from '@perennial/sdk'
-import { SDK } from '../config'
-import tracer from '../tracer'
+import { SDK } from '../config.js'
+import tracer from '../tracer.js'
 
 export const buildCommit = buildCommitPrice
 

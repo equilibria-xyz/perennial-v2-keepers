@@ -1,6 +1,10 @@
 /* eslint-disable */
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const lensJsonPath = path.join(__dirname, '../../artifacts/src/contracts/BatchKeeper.sol/BatchKeeper.json')
 const lensJson = JSON.parse(fs.readFileSync(lensJsonPath, 'utf-8'))
