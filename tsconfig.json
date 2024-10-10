@@ -23,5 +23,5 @@
     "resolveJsonModule": true
   },
   "include": ["src/**/*", "test/**/*", "graph-codegen.ts", "hardhat.config.cts"],
-  "exclude": ["types/gql/*", "node_modules"]
+  "exclude": ["types/gql/*"]
 }

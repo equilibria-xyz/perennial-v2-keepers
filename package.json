@@ -62,7 +62,7 @@
     "@perennial/perennial-v2-extensions": "1.3.0-rc0",
     "@perennial/perennial-v2-oracle": "1.3.0-rc0",
     "@perennial/perennial-v2-verifier": "1.3.0-rc0",
-    "@perennial/sdk": "../perennial-v2-sdk-ts/",
+    "@perennial/sdk": "^0.0.2-beta28",
     "@pythnetwork/pyth-evm-js": "^1.20.1",
     "buffer": "^6.0.3",
     "chainlink": "^0.8.2",
@@ -76,13 +76,10 @@
     "hardhat-deploy": "^0.11.37",
     "solc": "^0.8.21",
     "tslib": "~2.5",
-    "viem": "2.20.0"
+    "viem": "^2.21.21"
   },
   "volta": {
     "node": "18.12.1"
-  },
-  "resolutions": {
-    "@perennial/-sdk-ts/**/viem": "2.20.0"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx}": [

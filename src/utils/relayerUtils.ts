@@ -176,7 +176,7 @@ export const constructUserOperation = (payload: SigningPayload, signature: Hex):
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'changeRebalanceConfigWithSignature',
-          args: [payload.message as any, signature]
+          args: [payload.message, signature]
         })
       })
     case Intent.Withdrawal:

@@ -9,7 +9,7 @@ import {
   RelayedSignerUpdateSigningPayload,
   RelayedOperatorUpdateSigningPayload,
   WithdrawalSigningPayload
-} from '@perennial/sdk/dist/constants/eip712/collateralAccount/index.js'
+} from '@perennial/sdk'
 
 export type UserOperation = {
   target: Hex,

@@ -1,18 +1,27 @@
 import { privateKeyToAccount } from 'viem/accounts'
-import { Hex, PublicClient, VerifyTypedDataParameters, WalletClient, createPublicClient, createWalletClient, http, verifyTypedData, zeroAddress } from 'viem'
+import {
+  Hex,
+  PublicClient,
+  VerifyTypedDataParameters,
+  WalletClient,
+  createPublicClient,
+  createWalletClient,
+  http,
+  verifyTypedData,
+  zeroAddress
+} from 'viem'
 import { arbitrumSepolia } from 'viem/chains'
 import { describe, it, expect, beforeEach, assert } from 'vitest'
 
-const chain = arbitrumSepolia
+import { Intent } from './types.js'
+import { findMissingArgs, parseIntentPayload } from '../utils/relayerUtils.js'
+import { CollateralAccountModule } from '@perennial/sdk'
 
+const chain = arbitrumSepolia
 const publicClient: PublicClient = createPublicClient({
   chain: chain,
   transport: http()
 })
-
-import { Intent } from './types.js'
-import { findMissingArgs, parseIntentPayload } from '../utils/relayerUtils.js'
-import { CollateralAccountModule } from '@perennial/sdk/dist/lib/collateralAccounts/index.js'
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const account = privateKeyToAccount(process.env.VITE_TESTING_PRIVATE_KEY! as Hex)

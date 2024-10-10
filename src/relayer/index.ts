@@ -17,9 +17,6 @@ const ChainIdToAlchemyChain = {
   [arbitrumSepolia.id]: arbitrumSepolia,
 }
 
-
-
-
 export async function createRelayer() {
   const app = express()
   app.use(express.json())
