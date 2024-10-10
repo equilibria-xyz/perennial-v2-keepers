@@ -28,7 +28,7 @@ jobs:
           yarn
 
       - name: Build
-        run: yarn build
+        run: yarn build:tsc
 
       - name: Run relayer tests
         run: yarn test
