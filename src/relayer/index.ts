@@ -4,10 +4,9 @@ import express, { Request, Response } from 'express'
 import { createLightAccount } from '@account-kit/smart-contracts'
 import { alchemy, createAlchemySmartAccountClient, arbitrum, arbitrumSepolia } from '@account-kit/infra'
 import { LocalAccountSigner } from '@aa-sdk/core'
-import { Hex, Hash, Address, isAddress, VerifyTypedDataParameters, SignTypedDataParameters } from 'viem'
-import { Chain, Client } from '../config.js'
+import { Hex, Hash, SignTypedDataParameters } from 'viem'
+import { Chain } from '../config.js'
 
-import { verifyTypedData } from 'viem'
 import { constructUserOperation, constructRelayedUserOperation, isRelayedIntent, parseIntentPayload } from '../utils/relayerUtils.js'
 import { SigningPayload } from './types.js'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -44,23 +43,17 @@ export async function createRelayer() {
   app.post('/relayIntent', async (req: Request, res: Response) => {
     const {
       signatures,
-      address,
       signingPayload,
       meta
     } = req.body as {
       signatures: Hex[];
-      address: Address,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       signingPayload: SigningPayload,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       meta?: { wait?: boolean }
     }
 
     let error
     if (!signingPayload) {
       error = 'Missing required signature payload'
-    } else if (!address || !isAddress(address.toLowerCase())) {
-      error = `Invalid address ${address}`
     } else if (!signatures) {
       error = 'Missing signatures'
     }
@@ -74,26 +67,6 @@ export async function createRelayer() {
 
     if (error) {
       res.send(JSON.stringify({ success: false, error }))
-      return
-    }
-
-    let valid
-    if (relayedIntent) {
-      valid = await Client.verifyTypedData({
-        ...signingPayload,
-        address,
-        signature: signatures[1],
-      } as VerifyTypedDataParameters)
-    } else {
-      valid = await verifyTypedData({
-        ...signingPayload,
-        address,
-        signature: signatures[0],
-      } as VerifyTypedDataParameters)
-    }
-
-    if (!valid) {
-      res.send(JSON.stringify({ success: false, error: `Signature payload invalid for address ${address}`  }))
       return
     }
 
