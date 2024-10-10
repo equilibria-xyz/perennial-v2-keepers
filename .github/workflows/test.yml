@@ -15,15 +15,17 @@ jobs:
 
       - name: Set up
         uses: actions/setup-node@v3
+
         with:
           node-version: '20.12.2'
           cache: 'yarn'
-
-      - name: Inject NPM_TOKEN
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+        env:
+          NPM_TOKEN: secrets.NPM_TOKEN
 
       - name: Install
         run: yarn
+        env:
+          NPM_TOKEN: secrets.NPM_TOKEN
 
       - name: Build
         run: yarn build
