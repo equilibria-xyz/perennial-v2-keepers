@@ -18,6 +18,7 @@ import { findMissingArgs, parseIntentPayload } from '../utils/relayerUtils.js'
 
 // use this to avoid importing from config since vitest cant pass node arguments
 import { CollateralAccountModule } from '@perennial/sdk/dist/lib/collateralAccounts'
+import { SigningPayload } from './types.js'
 
 const chain = arbitrumSepolia
 
@@ -63,8 +64,9 @@ describe('Validates signatures', () => {
       nonce: sig.deployAccount.message.action.common.nonce,
     }
 
-    let signingPayload = parseIntentPayload({ ...args, chainId: sig.deployAccount?.domain?.chainId, maxFee: maxFee + 1n }, 'DeployAccount')
-    expect(!!signingPayload).toBe(true)
+    let signingPayloads = parseIntentPayload({ ...args, chainId: sig.deployAccount?.domain?.chainId, maxFee: maxFee + 1n }, 'DeployAccount')
+    expect(!!(signingPayloads as { error: string }).error).toBe(false)
+    let signingPayload = (signingPayloads as SigningPayload[])[0]
 
     let valid = await publicClient.verifyTypedData({
       ...signingPayload,
@@ -73,11 +75,12 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(valid).toBe(false)
 
-    signingPayload = parseIntentPayload({ ...args, chainId: sig?.deployAccount?.domain?.chainId }, 'DeployAccount')
+    signingPayloads = parseIntentPayload({ ...args, chainId: sig?.deployAccount?.domain?.chainId }, 'DeployAccount')
+    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
+    signingPayload = (signingPayloads as SigningPayload[])[0]
     const build = accountModule.build.deployAccount(args)
     assert.deepEqual(signingPayload, build.deployAccount)
 
-    expect(!!signingPayload).toBe(true)
     valid = await verifyTypedData({
       ...signingPayload,
       address: account.address,
@@ -111,8 +114,9 @@ describe('Validates signatures', () => {
       nonce: sig.marketTransfer.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, 'MarketTransfer')
-    expect(!!signingPayload).toBe(true)
+    const signingPayloads = parseIntentPayload(args, 'MarketTransfer')
+    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
+    const signingPayload = (signingPayloads as SigningPayload[])[0]
 
     const valid = await verifyTypedData({
       ...signingPayload,
@@ -151,8 +155,9 @@ describe('Validates signatures', () => {
       nonce: (sig.rebalanceConfigChange as any).message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, 'RebalanceConfigChange')
-    expect(!!signingPayload).toBe(true)
+    const signingPayloads = parseIntentPayload(args, 'RebalanceConfigChange')
+    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
+    const signingPayload = (signingPayloads as SigningPayload[])[0]
 
     const valid = await verifyTypedData({
       ...signingPayload,
@@ -187,8 +192,9 @@ describe('Validates signatures', () => {
       nonce: sig.withdrawal.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, 'Withdrawal')
-    expect(!!signingPayload).toBe(true)
+    const signingPayloads = parseIntentPayload(args, 'Withdrawal')
+    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
+    const signingPayload = (signingPayloads as SigningPayload[])[0]
 
     const valid = await verifyTypedData({
       ...signingPayload,
@@ -224,10 +230,26 @@ describe('Validates signatures', () => {
       nonce: sig.relayedOperatorUpdate.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, 'RelayedOperatorUpdate')
-    expect(!!signingPayload).toBe(true)
+    const signingPayloads = parseIntentPayload(args, 'RelayedOperatorUpdate')
+    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
 
-    // TODO [Dospore] validate signature
+    const innerSigningPayload = (signingPayloads as SigningPayload[])[0]
+    const outerSigningPayload = (signingPayloads as SigningPayload[])[1]
+
+    const innerValid = await verifyTypedData({
+      ...innerSigningPayload,
+      address: account.address,
+      signature: sig.innerSignature,
+    } as VerifyTypedDataParameters)
+    expect(innerValid).toBe(true)
+
+    const outerValid = await verifyTypedData({
+      ...outerSigningPayload,
+      address: account.address,
+      signature: sig.outerSignature,
+    } as VerifyTypedDataParameters)
+    expect(outerValid).toBe(true)
+
   })
 
   it('Validates RelayedGroupCancellation signature', async () => {
@@ -254,10 +276,25 @@ describe('Validates signatures', () => {
       nonce: sig.relayedGroupCancellation.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, 'RelayedGroupCancellation')
-    expect(!!signingPayload).toBe(true)
+    const signingPayloads = parseIntentPayload(args, 'RelayedGroupCancellation')
+    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
 
-    // TODO [Dospore] validate signature
+    const innerSigningPayload = (signingPayloads as SigningPayload[])[0]
+    const outerSigningPayload = (signingPayloads as SigningPayload[])[1]
+
+    const innerValid = await verifyTypedData({
+      ...innerSigningPayload,
+      address: account.address,
+      signature: sig.innerSignature,
+    } as VerifyTypedDataParameters)
+    expect(innerValid).toBe(true)
+
+    const outerValid = await verifyTypedData({
+      ...outerSigningPayload,
+      address: account.address,
+      signature: sig.outerSignature,
+    } as VerifyTypedDataParameters)
+    expect(outerValid).toBe(true)
   })
 
   it('Validates RelayedNonceCancellation signature', async () => {
@@ -285,10 +322,25 @@ describe('Validates signatures', () => {
       nonce: sig.relayedNonceCancellation.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, 'RelayedNonceCancellation')
-    expect(!!signingPayload).toBe(true)
+    const signingPayloads = parseIntentPayload(args, 'RelayedNonceCancellation')
+    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
 
-    // TODO [Dospore] validate signature
+    const innerSigningPayload = (signingPayloads as SigningPayload[])[0]
+    const outerSigningPayload = (signingPayloads as SigningPayload[])[1]
+
+    const innerValid = await verifyTypedData({
+      ...innerSigningPayload,
+      address: account.address,
+      signature: sig.innerSignature,
+    } as VerifyTypedDataParameters)
+    expect(innerValid).toBe(true)
+
+    const outerValid = await verifyTypedData({
+      ...outerSigningPayload,
+      address: account.address,
+      signature: sig.outerSignature,
+    } as VerifyTypedDataParameters)
+    expect(outerValid).toBe(true)
   })
 
   it('Validates RelayedSignerUpdate signature', async () => {
@@ -316,10 +368,25 @@ describe('Validates signatures', () => {
       nonce: sig.relayedSignerUpdate.message.action.common.nonce,
     }
 
-    const signingPayload = parseIntentPayload(args, 'RelayedSignerUpdate')
-    expect(!!signingPayload).toBe(true)
+    const signingPayloads = parseIntentPayload(args, 'RelayedSignerUpdate')
+    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
 
-    // TODO [Dospore] validate signature
+    const innerSigningPayload = (signingPayloads as SigningPayload[])[0]
+    const outerSigningPayload = (signingPayloads as SigningPayload[])[1]
+
+    const innerValid = await verifyTypedData({
+      ...innerSigningPayload,
+      address: account.address,
+      signature: sig.innerSignature,
+    } as VerifyTypedDataParameters)
+    expect(innerValid).toBe(true)
+
+    const outerValid = await verifyTypedData({
+      ...outerSigningPayload,
+      address: account.address,
+      signature: sig.outerSignature,
+    } as VerifyTypedDataParameters)
+    expect(outerValid).toBe(true)
   })
 })
 

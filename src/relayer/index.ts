@@ -16,6 +16,12 @@ const ChainIdToAlchemyChain = {
   [arbitrumSepolia.id]: arbitrumSepolia,
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unreachable code error
+BigInt.prototype.toJSON = function (): number {
+  return this.toString()
+}
+
 export async function createRelayer() {
   const app = express()
   app.use(express.json())
@@ -52,17 +58,20 @@ export async function createRelayer() {
     }
 
     let error
+    let relayedIntent
     if (!signingPayload) {
       error = 'Missing required signature payload'
     } else if (!signatures) {
       error = 'Missing signatures'
-    }
-
-    const relayedIntent = isRelayedIntent(signingPayload.primaryType)
-    if (relayedIntent && signatures.length !== 2) {
-      error = 'Missing signature; requires [signature]'
-    } else if (!relayedIntent && signatures.length !== 1) {
-      error = 'Missing signatures; requires [innerSignature, outerSignature]'
+    } else if (!signingPayload?.primaryType) {
+      error = 'Missing signature payload primaryType'
+    } else if (signingPayload.primaryType) {
+      relayedIntent = isRelayedIntent(signingPayload.primaryType)
+      if (relayedIntent && signatures.length !== 2) {
+        error = 'Missing signature; requires [signature]'
+      } else if (!relayedIntent && signatures.length !== 1) {
+        error = 'Missing signatures; requires [innerSignature, outerSignature]'
+      }
     }
 
     if (error) {
@@ -92,36 +101,55 @@ export async function createRelayer() {
       res.send(JSON.stringify({ success: true, uoHash: hash, txHash }))
     } catch (e) {
       console.warn(e)
-      res.send(JSON.stringify({ success: false, error: 'Unable to relay transaction' }))
+      res.send(JSON.stringify({ success: false, error: `Unable to relay transaction: ${e.message}`}))
     }
   })
 
   // helper used in testing to generate signatures for relayIntent
-  app.post('/genSig', async (req: Request, res: Response) => {
-    const {
-      intent,
-      payload
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } = req.body as { intent: SigningPayload['primaryType'], payload: any }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  app.post('/genSig', async (req: Request<{ intent: SigningPayload['primaryType'], payload: any }>, res: Response) => {
+    const intent = req.body.intent
+    let payload = req.body.payload
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const testAccount = privateKeyToAccount(process.env.RELAYER_PRIVATE_KEY! as Hex)
+    const testAccount = privateKeyToAccount(process.env.VITE_TESTING_PRIVATE_KEY! as Hex)
 
-    // used to generate signature which is then an api input param
-    const signingPayload = parseIntentPayload(payload, intent)
-    if (!signingPayload) {
-      res.send(JSON.stringify({ success: false, error: `${intent} payload structure invalid` }))
-      return
+    payload = {
+      ...payload,
+      chainId: Chain.id
     }
 
-    const signature = await testAccount.signTypedData(signingPayload as Omit<SignTypedDataParameters, 'account'>)
+    try {
+      const signingPayloads = parseIntentPayload(payload, intent)
+      if (!signingPayloads || (signingPayloads as { error: string })?.error) {
+        throw Error((signingPayloads as { error: string }).error)
+      }
 
-    console.log('Constructed signature', signature)
-    res.send(JSON.stringify({ success: false, signature }))
+      const relayedIntent = isRelayedIntent(intent)
+      let signatures
+      if (relayedIntent) {
+        signatures = Promise.all([
+          await testAccount.signTypedData((signingPayloads as SigningPayload[])[0] as Omit<SignTypedDataParameters, 'account'>),
+          await testAccount.signTypedData((signingPayloads as SigningPayload[])[1] as Omit<SignTypedDataParameters, 'account'>)
+        ])
+      } else {
+        signatures = [
+          await testAccount.signTypedData((signingPayloads as SigningPayload[])[0] as Omit<SignTypedDataParameters, 'account'>)
+        ]
+      }
+
+      console.log('Constructed signature', signatures)
+      res.send(JSON.stringify({ success: true, signatures, payloads: signingPayloads }))
+    } catch (e) {
+      res.send(JSON.stringify({ success: false, error: e.message }))
+    }
   })
 
   app.get('/status', async (req: Request, res: Response) => {
     const { hash } = req.query
+    if (!hash) {
+      res.send(JSON.stringify({ success: false, error: `User operation hash (${hash}) invalid` }))
+    }
     const uo = await client.getUserOperationReceipt(hash as Hash)
 
     res.send(JSON.stringify({ success: true, uo }))

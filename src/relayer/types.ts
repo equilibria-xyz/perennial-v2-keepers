@@ -13,10 +13,17 @@ export type RelayedSignatures = {
 };
 
 export type SigningPayload =
+  | PerennialSDK.eip712.CommonSigningPayload
+
   | PerennialSDK.eip712.DeployAccountSigningPayload
   | PerennialSDK.eip712.MarketTransferSigningPayload
   | PerennialSDK.eip712.WithdrawalSigningPayload
   | PerennialSDK.eip712.RebalanceConfigChangeSigningPayload
+  | PerennialSDK.eip712.SignerUpdateSigningPayload
+  | PerennialSDK.eip712.AccessUpdateSigningPayload
+  | PerennialSDK.eip712.GroupCancellationSigningPayload
+  | PerennialSDK.eip712.OperatorUpdateSigningPayload
+
   | PerennialSDK.eip712.RelayedAccessUpdateBatchSigningPayload
   | PerennialSDK.eip712.RelayedGroupCancellationSigningPayload
   | PerennialSDK.eip712.RelayedNonceCancellationSigningPayload
