@@ -10,11 +10,9 @@ const publicClient: PublicClient = createPublicClient({
   transport: http()
 })
 
-import {
-  CollateralAccountModule
-} from '@perennial/sdk/dist/lib/collateralAccounts/index.js'
-import { findMissingArgs, parseIntentPayload } from '../utils/relayerUtils.js'
 import { Intent } from './types.js'
+import { findMissingArgs, parseIntentPayload } from '../utils/relayerUtils.js'
+import { CollateralAccountModule } from '@perennial/sdk/dist/lib/collateralAccounts/index.js'
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const account = privateKeyToAccount(process.env.VITE_TESTING_PRIVATE_KEY! as Hex)

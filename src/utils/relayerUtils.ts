@@ -1,10 +1,10 @@
-import { encodeFunctionData } from 'viem'
+import { Hex, encodeFunctionData } from 'viem'
 
-import { Intent, UserOperation, SigningPayload } from '../relayer/types.js'
+import { Intent, UserOperation, SigningPayload, RelayedSignatures } from '../relayer/types.js'
 
-import { ControllerAddresses } from '@perennial/sdk/dist/constants/contracts.js'
-import { ControllerAbi } from '@perennial/sdk/dist/abi/Controller.abi.js'
 import {
+  ControllerAddresses,
+  ControllerAbi,
   buildWithdrawalSigningPayload,
   buildDeployAccountSigningPayload,
   buildMarketTransferSigningPayload,
@@ -12,10 +12,9 @@ import {
   buildRelayedGroupCancellationSigningPayload,
   buildRelayedNonceCancellationSigningPayload,
   buildRelayedSignerUpdateSigningPayload,
-  buildRelayedOperatorUpdateSigningPayload
-} from '@perennial/sdk/dist/lib/collateralAccounts/intent/index.js'
-
-import { SupportedChainId } from '@perennial/sdk'
+  buildRelayedOperatorUpdateSigningPayload,
+  SupportedChainId
+} from '@perennial/sdk'
 
 export const parseIntentPayload = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -150,7 +149,7 @@ export const parseIntentPayload = (
   }
 }
 
-export const constructUserOperation = (payload: SigningPayload): UserOperation | undefined => {
+export const constructUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
   const chainId = payload.domain?.chainId as SupportedChainId
   switch (payload.primaryType) {
     case Intent.DeployAccount:
@@ -158,7 +157,8 @@ export const constructUserOperation = (payload: SigningPayload): UserOperation |
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
           abi: ControllerAbi,
-          functionName: 'deployAccount',
+          functionName: 'deployAccountWithSignature',
+          args: [payload.message, signature]
         })
       })
     case Intent.MarketTransfer:
@@ -166,8 +166,8 @@ export const constructUserOperation = (payload: SigningPayload): UserOperation |
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
           abi: ControllerAbi,
-          functionName: 'marketTransfer',
-          args: [payload.message.market, payload.message.amount]
+          functionName: 'marketTransferWithSignature',
+          args: [payload.message, signature]
         })
       })
     case Intent.RebalanceConfigChange:
@@ -175,8 +175,8 @@ export const constructUserOperation = (payload: SigningPayload): UserOperation |
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
           abi: ControllerAbi,
-          functionName: 'rebalanceConfigs',
-          args: [payload.message.owner, payload.message.group, payload.message.market]
+          functionName: 'changeRebalanceConfigWithSignature',
+          args: [payload.message as any, signature]
         })
       })
     case Intent.Withdrawal:
@@ -184,52 +184,59 @@ export const constructUserOperation = (payload: SigningPayload): UserOperation |
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
           abi: ControllerAbi,
-          functionName: 'withdrawal',
-          args: [payload.message.amount, payload.message.unwrap]
+          functionName: 'withdrawWithSignature',
+          args: [payload.message, signature]
         })
       })
-    // TODO [Dospore] confirm args
+    default:
+      console.warn(`Unknown intent ${payload.primaryType}`)
+      break
+  }
+
+  return
+}
+
+export const constructRelayedUserOperation = (payload: SigningPayload, signatures: RelayedSignatures): UserOperation | undefined => {
+  const chainId = payload.domain?.chainId as SupportedChainId
+  switch (payload.primaryType) {
     case Intent.RelayedGroupCancellation:
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
           abi: ControllerAbi,
-          functionName: 'groupCancellation',
-          args: [payload.message.groupCancellation.group]
+          functionName: 'relayGroupCancellation',
+          args: [payload.message, signatures.innerSignature, signatures.outerSignature]
         })
       })
-    // TODO [Dospore] confirm args
     case Intent.RelayedNonceCancellation:
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
           abi: ControllerAbi,
-          functionName: 'nonceCancellation',
-          args: [payload.message.nonceCancellation.nonce]
+          functionName: 'relayNonceCancellation',
+          args: [payload.message, signatures.innerSignature, signatures.outerSignature]
         })
       })
-    // TODO [Dospore] confirm args
     case Intent.RelayedSignerUpdate:
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'relaySignerUpdate',
-          args: [payload.message.signerUpdate.access]
+          args: [payload.message, signatures.innerSignature, signatures.outerSignature]
         })
       })
-    // TODO [Dospore] confirm args
     case Intent.RelayedOperatorUpdate:
       return ({
         target: ControllerAddresses[chainId],
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'relayOperatorUpdate',
-          args: [payload.message.operatorUpdate.access]
+          args: [payload.message, signatures.innerSignature, signatures.outerSignature]
         })
       })
     default:
-      console.log('TODO Implement function encoding')
+      console.warn(`Unknown intent ${payload.primaryType}`)
       break
   }
 
@@ -249,4 +256,23 @@ export const findMissingArgs = (payload: any, requiredArgs: string[]): string =>
   }
 
   return missing.join(', ')
+}
+
+export const isRelayedIntent = (intent: Intent): boolean => {
+  switch (intent) {
+    case Intent.RelayedNonceCancellation:
+    case Intent.RelayedGroupCancellation:
+    case Intent.RelayedSignerUpdate:
+    case Intent.RelayedOperatorUpdate:
+    case Intent.RelayedAccessUpdateBatch:
+      return true
+    case Intent.DeployAccount:
+    case Intent.MarketTransfer:
+    case Intent.Withdrawal:
+    case Intent.RebalanceConfigChange:
+    case Intent.PlaceOrder:
+    case Intent.CancelOrder:
+    default:
+      return false
+  }
 }

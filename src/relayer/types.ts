@@ -31,13 +31,18 @@ export enum Intent {
   CancelOrder = 'CancelOrder',
 }
 
+export type RelayedSignatures = {
+  innerSignature: Hex
+  outerSignature: Hex
+};
+
 export type SigningPayload =
   | DeployAccountSigningPayload
   | MarketTransferSigningPayload
+  | WithdrawalSigningPayload
   | RebalanceConfigChangeSigningPayload
   | RelayedAccessUpdateBatchSigningPayload
   | RelayedGroupCancellationSigningPayload
   | RelayedNonceCancellationSigningPayload
   | RelayedSignerUpdateSigningPayload
   | RelayedOperatorUpdateSigningPayload
-  | WithdrawalSigningPayload

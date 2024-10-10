@@ -8,7 +8,7 @@ import { Hex, Hash, Address, isAddress, VerifyTypedDataParameters, SignTypedData
 import { Chain } from '../config.js'
 
 import { verifyTypedData } from 'viem'
-import { constructUserOperation, parseIntentPayload } from '../utils/relayerUtils.js'
+import { constructUserOperation, constructRelayedUserOperation, isRelayedIntent, parseIntentPayload } from '../utils/relayerUtils.js'
 import { Intent, SigningPayload } from './types.js'
 import { privateKeyToAccount } from 'viem/accounts'
 
@@ -47,12 +47,16 @@ export async function createRelayer() {
   app.post('/relayIntent', async (req: Request, res: Response) => {
     const {
       signature,
+      innerSignature,
+      outerSignature,
       intent,
       address,
       payload,
       meta
     } = req.body as {
       signature: Hex;
+      innerSignature: Hex;
+      outerSignature: Hex;
       intent: Intent,
       address: Address,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -68,9 +72,15 @@ export async function createRelayer() {
       error = `Invalid address ${address}`
     } else if (!payload) {
       error = 'Missing signature payload'
-    } else if (!signature) {
-      error = 'Missing signature param'
     }
+
+    const relayedIntent = isRelayedIntent(payload.intent)
+    if (!relayedIntent && !signature) {
+      error = 'Missing signature param'
+    } else if (relayedIntent && !(innerSignature && outerSignature)) {
+      error = 'Missing innerSignature and/or outerSignature param'
+    }
+
     if (error) {
       res.send(JSON.stringify({ success: false, error }))
       return
@@ -94,7 +104,15 @@ export async function createRelayer() {
     }
 
     try {
-      const uo = constructUserOperation(signingPayload as SigningPayload)
+      let uo
+      if (relayedIntent) {
+        uo = constructRelayedUserOperation(signingPayload as SigningPayload, {
+          innerSignature,
+          outerSignature
+        })
+      } else {
+        uo = constructUserOperation(signingPayload as SigningPayload, signature)
+      }
 
       if (!uo) {
         throw Error('Failed to construct user operation')

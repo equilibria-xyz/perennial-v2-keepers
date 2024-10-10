@@ -1,10 +1,15 @@
-require('hardhat-dependency-compiler')
-require('@nomicfoundation/hardhat-verify')
-require('dotenv/config')
+import { HardhatUserConfig } from 'hardhat/config'
+import 'hardhat-dependency-compiler'
+import '@nomicfoundation/hardhat-verify'
+import 'dotenv/config'
+import { NetworkUserConfig } from 'hardhat/types'
 
-const OPTIMIZER_ENABLED = process.env.OPTIMIZER_ENABLED === 'true' || false
+export const OPTIMIZER_ENABLED = process.env.OPTIMIZER_ENABLED === 'true' || false
+type configOverrides = {
+  dependencyPaths?: string[]
+}
 
-function getUrl(networkName) {
+function getUrl(networkName: string): string {
   switch (networkName) {
     case 'arbitrum':
       return process.env.ARBITRUM_NODE_URL ?? ''
@@ -17,7 +22,7 @@ function getUrl(networkName) {
   }
 }
 
-function createNetworkConfig(network) {
+function createNetworkConfig(network: string): NetworkUserConfig {
   const cfg = {
     url: getUrl(network),
   }
@@ -25,7 +30,7 @@ function createNetworkConfig(network) {
   return cfg
 }
 
-function defaultConfig({ dependencyPaths } = {}) {
+function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserConfig {
   return {
     networks: {
       arbitrum: createNetworkConfig('arbitrum'),
@@ -35,9 +40,7 @@ function defaultConfig({ dependencyPaths } = {}) {
         forking: {
           url: process.env.ARBITRUM_GOERLI_NODE_URL || '',
           enabled: process.env.FORK_ENABLED === 'true' || false,
-          blockNumber: process.env.FORK_BLOCK_NUMBER
-            ? parseInt(process.env.FORK_BLOCK_NUMBER)
-            : undefined,
+          blockNumber: process.env.FORK_BLOCK_NUMBER ? parseInt(process.env.FORK_BLOCK_NUMBER) : undefined,
         },
         // chainId: getChainId('hardhat'),
         // allowUnlimitedContractSize: true,
@@ -100,4 +103,4 @@ function defaultConfig({ dependencyPaths } = {}) {
 
 const config = defaultConfig()
 
-module.exports = config
+export default config
