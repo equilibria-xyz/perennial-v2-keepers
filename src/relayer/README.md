@@ -1,0 +1,63 @@
+# Description
+[Perennial Collateral Accounts](https://github.com/equilibria-xyz/perennial-v2/blob/v2.3/packages%2Fperennial-account%2FREADME.md) use intents to improve trading experience. Intents are EIP-712 message payloads submitted to this keeper which are then sponsored through a paymaster, allowing gasless trading. For the initial relese only `Perennial` will run an intent relayer but the protocol design allows for future iterations of distributed relayers profitable through relaying rewards specified in the intent signatures.
+
+
+# Intents
+Supported intents include
+```
+  [
+    `DeployAccount`,
+    `MarketTransfer`,
+    `Withdrawal`,
+    `RebalanceConfigChange`
+
+
+    // Relayed intents
+    `RelayedNonceCancellation`,
+    `RelayedGroupCancellation`,
+    `RelayedSignerUpdate`,
+    `RelayedOperatorUpdate`,
+    `RelayedAccessUpdateBatch`
+  ]
+```
+Relayed intents reward relayers for forwarding transactions.
+
+# Routes
+## `/relayIntent`
+### Args
+```
+    {
+      signature: Hex; // required if not relayed intent
+
+      innerSignature: Hex; // required if relayed intent
+      outerSignature: Hex; // required if relayed intent
+
+      intent: Intent, // required
+      address: Address, // reqiured
+      payload: object, // required
+      meta?: { wait?: boolean } // optional
+    }
+```
+#### Signatures
+If Intent is one of `DeployAccount`, `MarketTransfer`, `Withdrawal`, `RebalanceConfigChange` then only `signature` is required.
+
+If Intent is one of `RelayedNonceCancellation`, `RelayedGroupCancellation`, `RelayedSignerUpdate`, `RelayedOperatorUpdate`, `RelayedAccessUpdateBatch` then both `innerSignature` and `outerSignature` are required.
+
+#### Payload
+Arbitrary argument which includes all required parameters to reconstruct the signature payload. This is used in varifying the signature.
+
+#### Meta
+Use `wait` if you want to wait for the transaction receipt. If `wait` is used then the return type will include the transaction hash.
+
+### Returns
+The user operation hash. Can be passed into `/status` to get the operations receipt
+
+## `/status`
+### Args
+```
+  {
+    hash: Hex; // required
+  }
+```
+### Returns
+The user operation receipt
