@@ -401,7 +401,7 @@ export class MetricsListener {
           staleAfter: m.staleAfter,
         })),
       })
-      const now = nowSeconds()
+      const now = Number(nowSeconds())
       feedPrices.forEach(async (feedData) => {
         feedData.details.forEach(async (price) => {
           const market = this.markets.find((m) => m.feed === price.id)

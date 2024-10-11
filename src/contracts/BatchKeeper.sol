@@ -120,7 +120,6 @@ contract BatchKeeper is Ownable {
     /// @param markets An array of markets to withdraw collateral from
     function withdraw(IMarket[] memory markets) external onlyOwner {
         for (uint256 i = 0; i < markets.length; ++i) {
-            // TODO: move this to settle for v2.3
             markets[i].update(address(this), UFixed6Lib.ZERO, UFixed6Lib.ZERO, UFixed6Lib.ZERO, WITHDRAW_ALL, false);
             markets[i].claimFee(address(this));
         }
