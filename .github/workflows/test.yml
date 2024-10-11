@@ -3,7 +3,8 @@ name: Build and test relayer
 on:
   pull_request:
     branches:
-      - arjun/v2.3
+      - staging
+      - main
 
 jobs:
   build-test:
