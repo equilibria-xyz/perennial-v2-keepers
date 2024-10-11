@@ -13,7 +13,7 @@ import {
   zeroAddress
 } from 'viem'
 import { arbitrumSepolia } from 'viem/chains'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, assert } from 'vitest'
 
 import { constructUserOperation } from '../utils/relayerUtils.js'
 
@@ -21,10 +21,11 @@ import { constructUserOperation } from '../utils/relayerUtils.js'
 import { CollateralAccountModule } from '@perennial/sdk/dist/lib/collateralAccounts'
 import { MarketsModule } from '@perennial/sdk/dist/lib/markets/index.js'
 
-import { ControllerAbi, ControllerAddresses, ManagerAbi, SupportedMarket } from '@perennial/sdk'
+import { ControllerAbi, ControllerAddresses, ManagerAbi, ManagerAddresses, SupportedMarket } from '@perennial/sdk'
 
 const chain = arbitrumSepolia
 const controllerAddress = ControllerAddresses[chain.id]
+const managerAddress = ManagerAddresses[chain.id]
 
 const publicClient: PublicClient = createPublicClient({
   chain: chain,
@@ -273,7 +274,14 @@ describe('Validates signatures', () => {
       price: 1000n,
       delta: 10n,
       maxExecutionFee: 1n,
-      referr: zeroAddress
+      referrer: zeroAddress,
+      isSpent: false,
+      interfaceFee: {
+        amount: 0n,
+        receiver: zeroAddress,
+        fixedFee: false,
+        unwrap: false
+      }
     }
 
     const args: Parameters<typeof marketsModule.build.signed.placeOrder>[0] = {
@@ -288,8 +296,11 @@ describe('Validates signatures', () => {
       group: sig.placeOrder.message.action.common.group,
       nonce: sig.placeOrder.message.action.common.nonce,
     }
+    args.orderId = sig.placeOrder.message.action.orderId
 
     const signingPayload = marketsModule.build.signed.placeOrder(args).placeOrder
+
+    assert.deepEqual(signingPayload, sig.placeOrder)
 
     const valid = await verifyTypedData({
       ...signingPayload,
@@ -301,7 +312,7 @@ describe('Validates signatures', () => {
     const uo = constructUserOperation(signingPayload, [sig.signature])
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string, data: string }
-    expect(target).toBe(controllerAddress)
+    expect(target).toBe(managerAddress)
     expect(data).toBe(
       encodeFunctionData({
         abi: ManagerAbi,
@@ -326,7 +337,6 @@ describe('Validates signatures', () => {
       price: 1000n,
       delta: 10n,
       maxExecutionFee: 1n,
-      referr: zeroAddress,
       orderId: 1n
     }
 
@@ -355,7 +365,7 @@ describe('Validates signatures', () => {
     const uo = constructUserOperation(signingPayload, [sig.signature])
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string, data: string }
-    expect(target).toBe(controllerAddress)
+    expect(target).toBe(managerAddress)
     expect(data).toBe(
       encodeFunctionData({
         abi: ManagerAbi,
