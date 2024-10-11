@@ -7,20 +7,22 @@ import {
   WalletClient,
   createPublicClient,
   createWalletClient,
+  encodeFunctionData,
   http,
   verifyTypedData,
   zeroAddress
 } from 'viem'
 import { arbitrumSepolia } from 'viem/chains'
-import { describe, it, expect, beforeEach, assert } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 
-import { findMissingArgs, parseIntentPayload } from '../utils/relayerUtils.js'
+import { constructUserOperation, findMissingArgs } from '../utils/relayerUtils.js'
 
 // use this to avoid importing from config since vitest cant pass node arguments
 import { CollateralAccountModule } from '@perennial/sdk/dist/lib/collateralAccounts'
-import { SigningPayload } from './types.js'
+import { ControllerAbi, ControllerAddresses } from '@perennial/sdk'
 
 const chain = arbitrumSepolia
+const controllerAddress = ControllerAddresses[chain.id]
 
 const publicClient: PublicClient = createPublicClient({
   chain: chain,
@@ -37,6 +39,7 @@ const signer: WalletClient = createWalletClient({
 
 let accountModule: CollateralAccountModule
 const maxFee = 0n, expiry = 0n
+
 describe('Validates signatures', () => {
   beforeEach(() => {
     accountModule = new CollateralAccountModule({
@@ -64,9 +67,9 @@ describe('Validates signatures', () => {
       nonce: sig.deployAccount.message.action.common.nonce,
     }
 
-    let signingPayloads = parseIntentPayload({ ...args, chainId: sig.deployAccount?.domain?.chainId, maxFee: maxFee + 1n }, 'DeployAccount')
-    expect(!!(signingPayloads as { error: string }).error).toBe(false)
-    let signingPayload = (signingPayloads as SigningPayload[])[0]
+    let signingPayload = accountModule.build.deployAccount(
+      { ...args,  maxFee: maxFee + 1n }
+    ).deployAccount
 
     let valid = await publicClient.verifyTypedData({
       ...signingPayload,
@@ -75,19 +78,27 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(valid).toBe(false)
 
-    signingPayloads = parseIntentPayload({ ...args, chainId: sig?.deployAccount?.domain?.chainId }, 'DeployAccount')
-    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
-    signingPayload = (signingPayloads as SigningPayload[])[0]
-    const build = accountModule.build.deployAccount(args)
-    assert.deepEqual(signingPayload, build.deployAccount)
+    signingPayload = accountModule.build.deployAccount(args).deployAccount
 
     valid = await verifyTypedData({
       ...signingPayload,
       address: account.address,
       signature: sig.signature,
     } as VerifyTypedDataParameters)
-
     expect(valid).toBe(true)
+
+    const uo = constructUserOperation(signingPayload, [sig.signature])
+    expect(!!uo).toBe(true)
+    const { target, data } = uo as { target: string, data: string }
+    expect(target).toBe(controllerAddress)
+
+    expect(data).toBe(
+      encodeFunctionData({
+        abi: ControllerAbi,
+        functionName: 'deployAccountWithSignature',
+        args: [signingPayload.message, sig.signature]
+      })
+    )
   })
 
   it('Validates MarketTransfer signature', async () => {
@@ -114,17 +125,27 @@ describe('Validates signatures', () => {
       nonce: sig.marketTransfer.message.action.common.nonce,
     }
 
-    const signingPayloads = parseIntentPayload(args, 'MarketTransfer')
-    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
-    const signingPayload = (signingPayloads as SigningPayload[])[0]
+    const signingPayload = accountModule.build.marketTransfer(args).marketTransfer
 
     const valid = await verifyTypedData({
       ...signingPayload,
       address: account.address,
       signature: sig.signature,
     } as VerifyTypedDataParameters)
-
     expect(valid).toBe(true)
+
+    const uo = constructUserOperation(signingPayload, [sig.signature])
+    expect(!!uo).toBe(true)
+    const { target, data } = uo as { target: string, data: string }
+    expect(target).toBe(controllerAddress)
+
+    expect(data).toBe(
+      encodeFunctionData({
+        abi: ControllerAbi,
+        functionName: 'marketTransferWithSignature',
+        args: [signingPayload.message, sig.signature]
+      })
+    )
   })
 
   it('Validates RebalanceConfigChange signature', async () => {
@@ -155,9 +176,7 @@ describe('Validates signatures', () => {
       nonce: (sig.rebalanceConfigChange as any).message.action.common.nonce,
     }
 
-    const signingPayloads = parseIntentPayload(args, 'RebalanceConfigChange')
-    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
-    const signingPayload = (signingPayloads as SigningPayload[])[0]
+    const signingPayload = accountModule.build.rebalanceConfigChange(args).rebalanceConfigChange
 
     const valid = await verifyTypedData({
       ...signingPayload,
@@ -166,6 +185,20 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
 
     expect(valid).toBe(true)
+
+    const uo = constructUserOperation(signingPayload, [sig.signature])
+    expect(!!uo).toBe(true)
+    const { target, data } = uo as { target: string, data: string }
+    expect(target).toBe(controllerAddress)
+
+    expect(data).toBe(
+      encodeFunctionData({
+        abi: ControllerAbi,
+        functionName: 'changeRebalanceConfigWithSignature',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        args: [signingPayload.message as any, sig.signature]
+      })
+    )
   })
 
   it('Validates Withdrawal signature', async () => {
@@ -192,9 +225,7 @@ describe('Validates signatures', () => {
       nonce: sig.withdrawal.message.action.common.nonce,
     }
 
-    const signingPayloads = parseIntentPayload(args, 'Withdrawal')
-    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
-    const signingPayload = (signingPayloads as SigningPayload[])[0]
+    const signingPayload = accountModule.build.withdrawal(args).withdrawal
 
     const valid = await verifyTypedData({
       ...signingPayload,
@@ -203,6 +234,17 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(valid).toBe(true)
 
+    const uo = constructUserOperation(signingPayload, [sig.signature])
+    expect(!!uo).toBe(true)
+    const { target, data } = uo as { target: string, data: string }
+    expect(target).toBe(controllerAddress)
+    expect(data).toBe(
+      encodeFunctionData({
+        abi: ControllerAbi,
+        functionName: 'withdrawWithSignature',
+        args: [signingPayload.message, sig.signature]
+      })
+    )
   })
 
   it('Validates RelayedOperatorUpdate signature', async () => {
@@ -230,11 +272,9 @@ describe('Validates signatures', () => {
       nonce: sig.relayedOperatorUpdate.message.action.common.nonce,
     }
 
-    const signingPayloads = parseIntentPayload(args, 'RelayedOperatorUpdate')
-    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
-
-    const innerSigningPayload = (signingPayloads as SigningPayload[])[0]
-    const outerSigningPayload = (signingPayloads as SigningPayload[])[1]
+    const signingPayloads = await accountModule.write.relayedOperatorUpdate(args)
+    const innerSigningPayload = signingPayloads.operatorUpdate
+    const outerSigningPayload = signingPayloads.relayedOperatorUpdate
 
     const innerValid = await verifyTypedData({
       ...innerSigningPayload,
@@ -250,6 +290,18 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(outerValid).toBe(true)
 
+    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
+    expect(!!uo).toBe(true)
+    const { target, data } = uo as { target: string, data: string }
+    expect(target).toBe(controllerAddress)
+
+    expect(data).toBe(
+      encodeFunctionData({
+        abi: ControllerAbi,
+        functionName: 'relayOperatorUpdate',
+        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature]
+      })
+    )
   })
 
   it('Validates RelayedGroupCancellation signature', async () => {
@@ -276,11 +328,9 @@ describe('Validates signatures', () => {
       nonce: sig.relayedGroupCancellation.message.action.common.nonce,
     }
 
-    const signingPayloads = parseIntentPayload(args, 'RelayedGroupCancellation')
-    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
-
-    const innerSigningPayload = (signingPayloads as SigningPayload[])[0]
-    const outerSigningPayload = (signingPayloads as SigningPayload[])[1]
+    const signingPayloads = await accountModule.write.relayedGroupCancellation(args)
+    const innerSigningPayload = signingPayloads.groupCancellation
+    const outerSigningPayload = signingPayloads.relayedGroupCancellation
 
     const innerValid = await verifyTypedData({
       ...innerSigningPayload,
@@ -295,6 +345,19 @@ describe('Validates signatures', () => {
       signature: sig.outerSignature,
     } as VerifyTypedDataParameters)
     expect(outerValid).toBe(true)
+
+    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
+    expect(!!uo).toBe(true)
+    const { target, data } = uo as { target: string, data: string }
+    expect(target).toBe(controllerAddress)
+
+    expect(data).toBe(
+      encodeFunctionData({
+        abi: ControllerAbi,
+        functionName: 'relayGroupCancellation',
+        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature]
+      })
+    )
   })
 
   it('Validates RelayedNonceCancellation signature', async () => {
@@ -322,11 +385,9 @@ describe('Validates signatures', () => {
       nonce: sig.relayedNonceCancellation.message.action.common.nonce,
     }
 
-    const signingPayloads = parseIntentPayload(args, 'RelayedNonceCancellation')
-    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
-
-    const innerSigningPayload = (signingPayloads as SigningPayload[])[0]
-    const outerSigningPayload = (signingPayloads as SigningPayload[])[1]
+    const signingPayloads = await accountModule.write.relayedNonceCancellation(args)
+    const innerSigningPayload = signingPayloads.nonceCancellation
+    const outerSigningPayload = signingPayloads.relayedNonceCancellation
 
     const innerValid = await verifyTypedData({
       ...innerSigningPayload,
@@ -341,6 +402,19 @@ describe('Validates signatures', () => {
       signature: sig.outerSignature,
     } as VerifyTypedDataParameters)
     expect(outerValid).toBe(true)
+
+    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
+    expect(!!uo).toBe(true)
+    const { target, data } = uo as { target: string, data: string }
+    expect(target).toBe(controllerAddress)
+
+    expect(data).toBe(
+      encodeFunctionData({
+        abi: ControllerAbi,
+        functionName: 'relayNonceCancellation',
+        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature]
+      })
+    )
   })
 
   it('Validates RelayedSignerUpdate signature', async () => {
@@ -368,11 +442,9 @@ describe('Validates signatures', () => {
       nonce: sig.relayedSignerUpdate.message.action.common.nonce,
     }
 
-    const signingPayloads = parseIntentPayload(args, 'RelayedSignerUpdate')
-    expect(!!(signingPayloads as { error: 'string' })?.error).toBe(false)
-
-    const innerSigningPayload = (signingPayloads as SigningPayload[])[0]
-    const outerSigningPayload = (signingPayloads as SigningPayload[])[1]
+    const signingPayloads = await accountModule.write.relayedSignerUpdate(args)
+    const innerSigningPayload = signingPayloads.signerUpdate
+    const outerSigningPayload = signingPayloads.relayedSignerUpdate
 
     const innerValid = await verifyTypedData({
       ...innerSigningPayload,
@@ -387,6 +459,20 @@ describe('Validates signatures', () => {
       signature: sig.outerSignature,
     } as VerifyTypedDataParameters)
     expect(outerValid).toBe(true)
+
+    // only pass outer payload
+    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
+    expect(!!uo).toBe(true)
+    const { target, data } = uo as { target: string, data: string }
+    expect(target).toBe(controllerAddress)
+
+    expect(data).toBe(
+      encodeFunctionData({
+        abi: ControllerAbi,
+        functionName: 'relaySignerUpdate',
+        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature]
+      })
+    )
   })
 })
 

@@ -7,7 +7,7 @@ import { LocalAccountSigner } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
 import { Chain } from '../config.js'
 
-import { constructUserOperation, constructRelayedUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
+import { constructUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
 import { SigningPayload } from './types.js'
 
 const ChainIdToAlchemyChain = {
@@ -79,15 +79,7 @@ export async function createRelayer() {
     }
 
     try {
-      let uo
-      if (relayedIntent) {
-        uo = constructRelayedUserOperation(signingPayload as SigningPayload, {
-          innerSignature: signatures[0],
-          outerSignature: signatures[1]
-        })
-      } else {
-        uo = constructUserOperation(signingPayload as SigningPayload, signatures[0])
-      }
+      const uo = constructUserOperation(signingPayload, signatures)
 
       if (!uo) {
         throw Error('Failed to construct user operation')

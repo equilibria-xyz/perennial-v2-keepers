@@ -5,151 +5,10 @@ import { UserOperation, SigningPayload, RelayedSignatures } from '../relayer/typ
 import {
   ControllerAddresses,
   ControllerAbi,
-  buildWithdrawalSigningPayload,
-  buildDeployAccountSigningPayload,
-  buildMarketTransferSigningPayload,
-  buildRebalanceConfigChangeSigningPayload,
-  buildRelayedGroupCancellationSigningPayload,
-  buildRelayedNonceCancellationSigningPayload,
-  buildRelayedSignerUpdateSigningPayload,
-  buildRelayedOperatorUpdateSigningPayload,
   SupportedChainId
 } from '@perennial/sdk'
 
-export const parseIntentPayload = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload: Record<string, any>,
-  intent: SigningPayload['primaryType']
-): (SigningPayload[] | { error: string }) => {
-  if (
-    payload.maxFee === undefined ||
-    payload.expiry === undefined ||
-    payload.address === undefined
-  ) {
-    return { error: `Missing default args: ${findMissingArgs(payload, ['maxFee', 'expiry', 'address'])}` }
-  }
-
-  const defaultArgs = {
-    chainId: payload.chainId,
-    address: payload.address,
-    maxFee: BigInt(payload.maxFee),
-    expiry: BigInt(payload.expiry),
-    overrides: payload.overrides
-  }
-
-  let payloads
-  switch (intent) {
-    case 'DeployAccount':
-      return ([
-        buildDeployAccountSigningPayload({
-          ...defaultArgs,
-        }).deployAccount
-      ])
-    case 'MarketTransfer':
-      if (!payload.market || !payload.amount) {
-        return { error: `Missing MarketTransfer args: ${findMissingArgs(payload, ['market', 'amount'])}` }
-      }
-
-      return ([
-        buildMarketTransferSigningPayload({
-          ...defaultArgs,
-          market: payload.market,
-          amount: payload.amount
-        }).marketTransfer
-      ])
-    case 'RebalanceConfigChange':
-      if (
-        payload.rebalanceMaxFee === undefined ||
-        payload.group === undefined ||
-        payload.markets === undefined ||
-        payload.configs === undefined
-    ) {
-        return { error: `Missing RebalanceConfigChange args: ${findMissingArgs(payload, ['rebalanceMaxFee', 'group', 'markets', 'configs'])}` }
-      }
-      return ([
-        buildRebalanceConfigChangeSigningPayload({
-          ...defaultArgs,
-          rebalanceMaxFee: payload.rebalanceMaxFee,
-          group: payload.group,
-          markets: payload.markets,
-          configs: payload.configs
-        }).rebalanceConfigChange
-      ])
-    case 'Withdrawal':
-      if (
-        payload.amount === undefined ||
-        payload.unwrap === undefined
-      ) {
-        return { error: `Missing Withdrawal args: ${findMissingArgs(payload, ['amount', 'unwrap' ])}` }
-      }
-      return ([
-        buildWithdrawalSigningPayload({
-          ...defaultArgs,
-          amount: payload.amount,
-          unwrap: payload.unwrap
-        }).withdrawal
-      ])
-    case 'RelayedGroupCancellation':
-      if (
-        payload.groupToCancel === undefined
-      ) {
-        return { error: `Missing Withdrawal args: ${findMissingArgs(payload, ['groupToCancel' ])}` }
-      }
-      payloads = buildRelayedGroupCancellationSigningPayload({
-        ...defaultArgs,
-        groupToCancel: payload.groupToCancel,
-      })
-      return ([
-        payloads.groupCancellation,
-        payloads.relayedGroupCancellation,
-      ])
-    case 'RelayedNonceCancellation':
-      if (
-        payload.nonceToCancel === undefined
-      ) {
-        return { error: `Missing Withdrawal args: ${findMissingArgs(payload, ['nonceToCancel' ])}` }
-      }
-      payloads = buildRelayedNonceCancellationSigningPayload({
-        ...defaultArgs,
-        nonceToCancel: payload.nonceToCancel,
-      })
-      return ([ payloads.nonceCancellation, payloads.relayedNonceCancellation ])
-    case 'RelayedOperatorUpdate':
-      if (
-        payload.newOperator === undefined ||
-        payload.approved === undefined
-      ) {
-        return { error: `Missing RelayedOperatorUpdate args: ${findMissingArgs(payload, ['newOperator', 'approved' ])}` }
-      }
-      payloads = buildRelayedOperatorUpdateSigningPayload({
-        ...defaultArgs,
-        newOperator: payload.newOperator,
-        approved: payload.approved,
-      })
-      return ([ payloads.operatorUpdate, payloads.relayedOperatorUpdate])
-    case 'RelayedSignerUpdate':
-      if (
-        payload.newSigner === undefined ||
-        payload.approved === undefined
-      ) {
-        return { error: `Missing RelayedSignerUpdate args: ${findMissingArgs(payload, ['newSigner', 'approved' ])}` }
-      }
-      payloads = buildRelayedSignerUpdateSigningPayload({
-        ...defaultArgs,
-        newSigner: payload.newSigner,
-        approved: payload.approved
-      })
-      return ([payloads.signerUpdate, payloads.relayedSignerUpdate])
-    default:
-      console.log('TODO implement intent')
-      break
-  }
-  return {
-    error: `Unknown intent: ${intent}`
-  }
-}
-
-export const constructUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
+export const constructDirectUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
   const chainId = payload.domain?.chainId as SupportedChainId
   switch (payload.primaryType) {
     case 'DeployAccount':
@@ -198,6 +57,7 @@ export const constructUserOperation = (payload: SigningPayload, signature: Hex):
 }
 
 export const constructRelayedUserOperation = (payload: SigningPayload, signatures: RelayedSignatures): UserOperation | undefined => {
+  const { innerSignature, outerSignature } = signatures
   const chainId = payload.domain?.chainId as SupportedChainId
   switch (payload.primaryType) {
     case 'RelayedGroupCancellation':
@@ -206,7 +66,7 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'relayGroupCancellation',
-          args: [payload.message, signatures.innerSignature, signatures.outerSignature]
+          args: [payload.message, innerSignature, outerSignature]
         })
       })
     case 'RelayedNonceCancellation':
@@ -215,7 +75,7 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'relayNonceCancellation',
-          args: [payload.message, signatures.innerSignature, signatures.outerSignature]
+          args: [payload.message, innerSignature, outerSignature]
         })
       })
     case 'RelayedSignerUpdate':
@@ -224,7 +84,7 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'relaySignerUpdate',
-          args: [payload.message, signatures.innerSignature, signatures.outerSignature]
+          args: [payload.message, innerSignature, outerSignature]
         })
       })
     case 'RelayedOperatorUpdate':
@@ -233,7 +93,7 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'relayOperatorUpdate',
-          args: [payload.message, signatures.innerSignature, signatures.outerSignature]
+          args: [payload.message, innerSignature, outerSignature]
         })
       })
     default:
@@ -242,6 +102,19 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
   }
 
   return
+}
+
+export const constructUserOperation = (signingPayload: SigningPayload, signatures: Hex[]): UserOperation | undefined => {
+  let uo
+  if (isRelayedIntent(signingPayload.primaryType)) {
+    uo = constructRelayedUserOperation(signingPayload as SigningPayload, {
+      innerSignature: signatures[0],
+      outerSignature: signatures[1]
+    })
+  } else {
+    uo = constructDirectUserOperation(signingPayload as SigningPayload, signatures[0])
+  }
+  return uo
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
