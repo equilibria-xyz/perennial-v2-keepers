@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import "@equilibria/perennial-v2/contracts/interfaces/IMarket.sol";
-import "@equilibria/perennial-v2-extensions/contracts/interfaces/IMultiInvoker.sol";
+import "@perennial/perennial-v2/contracts/interfaces/IMarket.sol";
+import "@perennial/perennial-v2-extensions/contracts/interfaces/IMultiInvoker.sol";
 import "@equilibria/root/token/types/Token18.sol";
 import "@equilibria/root/attribute/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -120,9 +120,8 @@ contract BatchKeeper is Ownable {
     /// @param markets An array of markets to withdraw collateral from
     function withdraw(IMarket[] memory markets) external onlyOwner {
         for (uint256 i = 0; i < markets.length; ++i) {
-            // TODO: move this to settle for v2.3
             markets[i].update(address(this), UFixed6Lib.ZERO, UFixed6Lib.ZERO, UFixed6Lib.ZERO, WITHDRAW_ALL, false);
-            markets[i].claimFee();
+            markets[i].claimFee(address(this));
         }
     }
 

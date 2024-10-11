@@ -94,14 +94,15 @@ export class OracleListener {
       const factoryContract = SDK.contracts.getKeeperFactoryContract(this.keeperFactoryAddress)
       const oracleContract = SDK.contracts.getKeeperOracleContract(oracle)
 
-      const [MinDelay, MaxDelay, GracePeriod, nextVersion, global, underlyingId] = await Promise.all([
-        factoryContract.read.validFrom(),
-        factoryContract.read.validTo(),
+      const [factoryParameter, GracePeriod, nextVersion, global, underlyingId] = await Promise.all([
+        factoryContract.read.parameter(),
         oracleContract.read.timeout(),
         oracleContract.read.next(),
         oracleContract.read.global(),
         factoryContract.read.toUnderlyingId([id]),
       ])
+      const MinDelay = factoryParameter.validFrom
+      const MaxDelay = factoryParameter.validTo
 
       const awaitingVersions = Number(global.currentIndex - global.latestIndex)
       const nullCommitmentWithMetrics: CommitmentWithMetrics = {
@@ -133,7 +134,7 @@ export class OracleListener {
       const versionsToCommit = await Promise.all(
         range(global.latestIndex + 1n, global.currentIndex + 1n).map(async (i) => ({
           index: i,
-          version: await oracleContract.read.versions([i]),
+          version: await oracleContract.read.requests([i]),
         })),
       )
 
@@ -144,6 +145,17 @@ export class OracleListener {
         versionsToCommit.map(async ({ version, index }, i) => {
           const vaaQueryTime = Big6Math.max(global.latestVersion, version + MinDelay + windowOffset)
           if (vaaQueryTime > now) throw new Error(`${providerTag}: VAA query time is in the future: ${vaaQueryTime}`)
+
+          // Create a commitment with no data to commit invalid
+          if (now - version > GracePeriod)
+            return {
+              version: versionsToCommit[i].version,
+              data: '0x' as Hex,
+              publishTime: 0n,
+              index: versionsToCommit[i].index,
+              prevVersion: 0n,
+              value: 0n,
+            }
 
           const { data, publishTime, value } = await this.getUpdateDataAtTimestamp(
             vaaQueryTime,
@@ -156,17 +168,6 @@ export class OracleListener {
             },
             providerTag,
           )
-
-          // Create a commitment with no data to commit invalid
-          if (now - version > GracePeriod)
-            return {
-              version: versionsToCommit[i].version,
-              data: '' as Hex,
-              publishTime: 0n,
-              index: versionsToCommit[i].index,
-              prevVersion: 0n,
-              value: 0n,
-            }
 
           if (publishTime - version < MinDelay)
             throw new Error(`${providerTag}: VAA too early: Version: ${version}. Publish Time: ${publishTime}`)
@@ -230,12 +231,7 @@ export class OracleListener {
     return logs.map((l) => ({
       id: l.args.id,
       oracle: l.args.oracle,
-      providerTag: oracleProviderAddressToOracleProviderTag(
-        Chain.id,
-        this.keeperFactoryAddress,
-        l.args.oracle,
-        marketOracles,
-      ),
+      providerTag: oracleProviderAddressToOracleProviderTag(Chain.id, l.args.oracle, marketOracles),
     }))
   }
 

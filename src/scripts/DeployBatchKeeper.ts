@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { BatchKeeperAbi } from '../constants/abi/BatchKeeper.abi'
-import BatchKeeperBytecode from '../../artifacts/src/contracts/contracts/BatchKeeper.sol/BatchKeeper.json'
+import BatchKeeperBytecode from '../../artifacts/src/contracts/BatchKeeper.sol/BatchKeeper.json'
 import { Chain, Client, liquidatorAccount, liquidatorSigner } from '../config.js'
 import { Hex } from 'viem'
 import { MultiInvokerAddresses } from '../constants/network.js'

@@ -17,7 +17,7 @@ export {
 
 export const BatchKeeperAddresses = {
   [arbitrum.id]: getAddress('0x8b4e6f5E1b2Be9c4A9fd4DeE216fDBbDD67b05B6'),
-  [arbitrumSepolia.id]: getAddress('0xdECeC72B6beDe55ED2865A38346BF96Fcc3b4a8F'),
+  [arbitrumSepolia.id]: getAddress('0xb09f3e647eddacc6d92fecc584f3e2c774c8018e'),
 }
 
 export const MaxSimSizes: {

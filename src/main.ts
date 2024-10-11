@@ -8,7 +8,7 @@ import { LiqListener } from './listeners/liqListener/liqListener.js'
 import { SettlementListener } from './listeners/settlementListener/settlementListener.js'
 import ClaimBatchKeeper from './scripts/claimBatchKeeper.js'
 import { OracleListener } from './listeners/oracleListener/oracleListener.js'
-import { CryptexFactoryAddresses, PythFactoryAddresses } from './constants/network.js'
+import { PythFactoryAddresses, CryptexFactoryAddresses } from './constants/network.js'
 import { zeroAddress } from 'viem'
 
 const run = async () => {
@@ -46,11 +46,12 @@ const run = async () => {
     }
     case TaskType.oracle: {
       const pythListener = new OracleListener(PythFactoryAddresses[Chain.id], 'pythOracle')
+      await pythListener.init()
+
       const cryptexListener =
         CryptexFactoryAddresses[Chain.id] !== zeroAddress
           ? new OracleListener(CryptexFactoryAddresses[Chain.id], 'cryptexOracle')
           : undefined
-      await pythListener.init()
       await cryptexListener?.init()
 
       setInterval(
