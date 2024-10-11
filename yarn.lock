@@ -2754,10 +2754,10 @@
     "@chainlink/contracts" "0.3.1"
     "@perennial/perennial-v2-verifier" "1.3.0-rc0"
 
-"@perennial/sdk@0.0.3-alpha.1":
-  version "0.0.3-alpha.1"
-  resolved "https://registry.yarnpkg.com/@perennial/sdk/-/sdk-0.0.3-alpha.1.tgz#0b1f51d612ae4260cda478a495f76ada6798ea35"
-  integrity sha512-HhEQnewpPASDAZthFdItKbNxfQq+46htAs8XTGEAR9LjJ8Ef976cdPplHuw7eH9oYPojHA+r3nSFpN4QrgHiKw==
+"@perennial/sdk@0.0.3-alpha.2":
+  version "0.0.3-alpha.2"
+  resolved "https://registry.yarnpkg.com/@perennial/sdk/-/sdk-0.0.3-alpha.2.tgz#2769ba5f8c5d38cba4db2370e1d72659d76a4ce0"
+  integrity sha512-GtBUGRpoT/1VmpFTGdW1qUfty/CIORBB/rjYAtgmrwVzXjBNiqy9l46Po2bHr0oE0ozhmIMKo3MuJz6yXipqRg==
   dependencies:
     "@microsoft/tsdoc" "^0.14.2"
     "@pythnetwork/hermes-client" "^1.0.4"
@@ -5390,9 +5390,9 @@ camelcase@^6.0.0, camelcase@^6.2.0:
   integrity sha512-Gmy6FhYlCY7uOElZUSbxo2UCDH8owEk996gkbrpsgGtrJLM3J7jGxl9Ic7Qwwj4ivOE5AWZWRMecDdF7hqGjFA==
 
 caniuse-lite@^1.0.30000844, caniuse-lite@^1.0.30001663:
-  version "1.0.30001667"
-  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30001667.tgz#99fc5ea0d9c6e96897a104a8352604378377f949"
-  integrity sha512-7LTwJjcRkzKFmtqGsibMeuXmvFDfZq/nzIjnmgCGzKKRVzjD72selLDK1oPF/Oxzmt4fNcPvTDvGqSDG4tCALw==
+  version "1.0.30001668"
+  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30001668.tgz#98e214455329f54bf7a4d70b49c9794f0fbedbed"
+  integrity sha512-nWLrdxqCdblixUO+27JtGJJE/txpJlyUy5YN1u53wLZkP0emYCo5zgS6QYft7VUYR42LGgi/S5hdLZTrnyIddw==
 
 capital-case@^1.0.4:
   version "1.0.4"
@@ -9903,9 +9903,9 @@ jiti@^2.0.0:
   integrity sha512-EX4oNDwcXSivPrw2qKH2LB5PoFxEvgtv2JgwW0bU858HoLQ+kutSvjLMUqBd0PeJYEinLWhoI9Ol0eYMqj/wNQ==
 
 jose@^5.0.0:
-  version "5.9.3"
-  resolved "https://registry.yarnpkg.com/jose/-/jose-5.9.3.tgz#6eba1ee3f70b42891f0e1883fe0084a46dbbe02c"
-  integrity sha512-egLIoYSpcd+QUF+UHgobt5YzI2Pkw/H39ou9suW687MY6PmCwPmkNV/4TNjn1p2tX5xO3j0d0sq5hiYE24bSlg==
+  version "5.9.4"
+  resolved "https://registry.yarnpkg.com/jose/-/jose-5.9.4.tgz#70cd388f1e651bc23d138533758f287d777ff6ea"
+  integrity sha512-WBBl6au1qg6OHj67yCffCgFR3BADJBXN8MdRvCgJDuMv3driV2nHr7jdGvaKX9IolosAsn+M0XRArqLXUhyJHQ==
 
 js-sdsl@^4.1.4:
   version "4.4.2"
@@ -10662,9 +10662,9 @@ ltgt@~2.1.1:
   integrity sha512-5VjHC5GsENtIi5rbJd+feEpDKhfr7j0odoUR2Uh978g+2p93nd5o34cTjQWohXsPsCZeqoDnIqEf88mPCe0Pfw==
 
 magic-string@^0.30.11:
-  version "0.30.11"
-  resolved "https://registry.yarnpkg.com/magic-string/-/magic-string-0.30.11.tgz#301a6f93b3e8c2cb13ac1a7a673492c0dfd12954"
-  integrity sha512-+Wri9p0QHMy+545hKww7YAu5NyzF8iomPL/RQazugQ9+Ez4Ic3mERMd8ZTX5rfK944j+560ZJi8iAwgak1Ac7A==
+  version "0.30.12"
+  resolved "https://registry.yarnpkg.com/magic-string/-/magic-string-0.30.12.tgz#9eb11c9d072b9bcb4940a5b2c2e1a217e4ee1a60"
+  integrity sha512-Ea8I3sQMVXr8JhN4z+H/d8zwo+tYDgHE9+5G4Wnrwhs0gaK9fXTKx0Tw5Xwsd/bCPTTZNRAdpyzvoeORe9LYpw==
   dependencies:
     "@jridgewell/sourcemap-codec" "^1.5.0"
 
@@ -11124,9 +11124,9 @@ mute-stream@0.0.8:
   integrity sha512-nnbWWOkoWyUsTjKrhgD0dcz22mdkSnpYqbEjIm2nhwhuxlSkpywJmBo8h0ZqJdkp73mb90SssHkN4rsRaBAfAA==
 
 nan@^2.13.2, nan@^2.14.0:
-  version "2.21.0"
-  resolved "https://registry.yarnpkg.com/nan/-/nan-2.21.0.tgz#203ab765a02e6676c8cb92e1cad9503e7976d55b"
-  integrity sha512-MCpOGmdWvAOMi4RWnpxS5G24l7dVMtdSHtV87I3ltjaLdFOTO74HVJ+DfYiAXjxGKsYR/UCmm1rBwhMN7KqS1A==
+  version "2.22.0"
+  resolved "https://registry.yarnpkg.com/nan/-/nan-2.22.0.tgz#31bc433fc33213c97bad36404bb68063de604de3"
+  integrity sha512-nbajikzWTMwsW+eSsNm3QwlOs7het9gGJU5dDZzRTQGk03vyBOauxgI4VakDzE0PtsGTmXPsXTbbjVhRwR5mpw==
 
 nano-json-stream-parser@^0.1.2:
   version "0.1.2"
@@ -14201,9 +14201,9 @@ viem@2.9.9:
     ws "8.13.0"
 
 viem@^2.21.21:
-  version "2.21.21"
-  resolved "https://registry.yarnpkg.com/viem/-/viem-2.21.21.tgz#11a5001fa18c8a47548a4b20ae9ddd8cfb14de3f"
-  integrity sha512-KJPqpAXy8kyZQICx1nURUXqd8aABP9RweAZhfp27MzMPsAAxP450cWPlEffEAUrvsyyj5edVbIcHESE8DYVzFA==
+  version "2.21.22"
+  resolved "https://registry.yarnpkg.com/viem/-/viem-2.21.22.tgz#ad082e241a9dfb1c186eb02b0522b9e911863a5b"
+  integrity sha512-jU+WniqIhwDXfgWWkNX7YqlGqenzTa5roLDNs2cbcUGQXxG8aQt1vlTqeezM8W1kepkaU/jvR2QSq/lGirpzrQ==
   dependencies:
     "@adraffy/ens-normalize" "1.11.0"
     "@noble/curves" "1.6.0"

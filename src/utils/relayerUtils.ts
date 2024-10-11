@@ -148,6 +148,8 @@ export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean 
     case 'MarketTransfer':
     case 'Withdrawal':
     case 'RebalanceConfigChange':
+    case 'PlaceOrderAction':
+    case 'CancelOrderAction':
     default:
       return false
   }
