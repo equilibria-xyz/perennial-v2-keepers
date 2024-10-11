@@ -2730,10 +2730,10 @@
     "@chainlink/contracts" "0.3.1"
     "@perennial/perennial-v2-verifier" "1.3.0-rc0"
 
-"@perennial/sdk@npm:@perennial/sdk-private@0.0.3-alpha.0":
-  version "0.0.3-alpha.0"
-  resolved "https://registry.yarnpkg.com/@perennial/sdk-private/-/sdk-private-0.0.3-alpha.0.tgz#17d223fb3800f4ea6e5b6cdccca6e64741e2a6cc"
-  integrity sha512-uNSkyyS+5q12oIDLvdPgEH+J8ksdG0WPsKsmDhQNGZBYrcCGgox0S0p7d+41cdE95+gMpodRiI5WecryQYKVog==
+"@perennial/sdk@0.0.3-alpha.1":
+  version "0.0.3-alpha.1"
+  resolved "https://registry.yarnpkg.com/@perennial/sdk/-/sdk-0.0.3-alpha.1.tgz#0b1f51d612ae4260cda478a495f76ada6798ea35"
+  integrity sha512-HhEQnewpPASDAZthFdItKbNxfQq+46htAs8XTGEAR9LjJ8Ef976cdPplHuw7eH9oYPojHA+r3nSFpN4QrgHiKw==
   dependencies:
     "@microsoft/tsdoc" "^0.14.2"
     "@pythnetwork/hermes-client" "^1.0.4"
