@@ -5,7 +5,9 @@ import { UserOperation, SigningPayload, RelayedSignatures } from '../relayer/typ
 import {
   ControllerAddresses,
   ControllerAbi,
-  SupportedChainId
+  SupportedChainId,
+  ManagerAddresses,
+  ManagerAbi
 } from '@perennial/sdk'
 
 export const constructDirectUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
@@ -35,8 +37,7 @@ export const constructDirectUserOperation = (payload: SigningPayload, signature:
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'changeRebalanceConfigWithSignature',
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          args: [payload.message as any, signature]
+          args: [payload.message, signature]
         })
       })
     case 'Withdrawal':
@@ -45,6 +46,24 @@ export const constructDirectUserOperation = (payload: SigningPayload, signature:
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'withdrawWithSignature',
+          args: [payload.message, signature]
+        })
+      })
+    case 'PlaceOrderAction':
+      return ({
+        target: ManagerAddresses[chainId],
+        data: encodeFunctionData({
+          abi: ManagerAbi,
+          functionName: 'placeOrderWithSignature',
+          args: [payload.message, signature]
+        })
+      })
+    case 'CancelOrderAction':
+      return ({
+        target: ManagerAddresses[chainId],
+        data: encodeFunctionData({
+          abi: ManagerAbi,
+          functionName: 'cancelOrderWithSignature',
           args: [payload.message, signature]
         })
       })
@@ -115,21 +134,6 @@ export const constructUserOperation = (signingPayload: SigningPayload, signature
     uo = constructDirectUserOperation(signingPayload as SigningPayload, signatures[0])
   }
   return uo
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const findMissingArgs = (payload: any, requiredArgs: string[]): string => {
-  if (!payload) {
-    return requiredArgs.join(', ')
-  }
-  const missing = []
-  for (const arg of requiredArgs) {
-    if (!payload[arg]) {
-      missing.push(arg)
-    }
-  }
-
-  return missing.join(', ')
 }
 
 export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean => {

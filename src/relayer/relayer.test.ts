@@ -15,7 +15,7 @@ import {
 import { arbitrumSepolia } from 'viem/chains'
 import { describe, it, expect, beforeEach } from 'vitest'
 
-import { constructUserOperation, findMissingArgs } from '../utils/relayerUtils.js'
+import { constructUserOperation } from '../utils/relayerUtils.js'
 
 // use this to avoid importing from config since vitest cant pass node arguments
 import { CollateralAccountModule } from '@perennial/sdk/dist/lib/collateralAccounts'
@@ -473,14 +473,5 @@ describe('Validates signatures', () => {
         args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature]
       })
     )
-  })
-})
-
-describe('Finds missing args', () => {
-  it('Finds missing args', () => {
-    expect(findMissingArgs(undefined, ['arg1', 'arg2', 'arg3'])).toBe('arg1, arg2, arg3')
-    expect(findMissingArgs({ arg2: '2' }, ['arg1', 'arg2', 'arg3'])).toBe('arg1, arg3')
-    expect(findMissingArgs({ arg1: '1', arg2: '2' }, ['arg1', 'arg2', 'arg3'])).toBe('arg3')
-    expect(findMissingArgs({ arg1: '1', arg2: '2', arg3: 3 }, ['arg1', 'arg2', 'arg3'])).toBe('')
   })
 })
