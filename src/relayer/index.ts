@@ -60,8 +60,8 @@ export async function createRelayer() {
     let relayedIntent
     if (!signingPayload) {
       error = 'Missing required signature payload'
-    } else if (!signatures) {
-      error = 'Missing signatures'
+    } else if (!signatures || !signatures.length) {
+      error = 'Missing required signatures array'
     } else if (!signingPayload?.primaryType) {
       error = 'Missing signature payload primaryType'
     } else if (signingPayload.primaryType) {
@@ -100,10 +100,15 @@ export async function createRelayer() {
     const { hash } = req.query
     if (!hash) {
       res.send(JSON.stringify({ success: false, error: `User operation hash (${hash}) invalid` }))
+      return
     }
-    const uo = await client.getUserOperationReceipt(hash as Hash)
+    try {
+      const uo = await client.getUserOperationReceipt(hash as Hash)
 
-    res.send(JSON.stringify({ success: true, uo }))
+      res.send(JSON.stringify({ success: true, uo }))
+    } catch (e) {
+      res.send(JSON.stringify({ success: false, hash, error: e.message }))
+    }
   })
 
   return app
