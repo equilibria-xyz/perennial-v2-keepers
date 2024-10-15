@@ -10,6 +10,7 @@ import { Chain } from '../config.js'
 
 import { constructUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
 import { SigningPayload } from './types.js'
+import tracer from '../tracer.js'
 
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
@@ -91,9 +92,17 @@ export async function createRelayer() {
 
       let txHash: Hash | undefined
       if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash })
+
+      tracer.dogstatsd.increment('relayer.transaction.sent', 1, {
+        chain: Chain.id
+      })
       res.send(JSON.stringify({ success: true, uoHash: hash, txHash }))
     } catch (e) {
       console.warn(e)
+
+      tracer.dogstatsd.increment('relayer.transaction.reverted', 1, {
+        chain: Chain.id,
+      })
       res.send(JSON.stringify({ success: false, error: `Unable to relay transaction: ${e.message}`}))
     }
   })
