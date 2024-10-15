@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
+import cors from 'cors'
 
 import { createLightAccount } from '@account-kit/smart-contracts'
 import { alchemy, createAlchemySmartAccountClient, arbitrum, arbitrumSepolia } from '@account-kit/infra'
@@ -24,6 +25,7 @@ BigInt.prototype.toJSON = function (): number {
 export async function createRelayer() {
   const app = express()
   app.use(express.json())
+  app.use(cors())
 
   const alchemyTransport = alchemy({
     apiKey: process.env.RELAYER_API_KEY || '',
