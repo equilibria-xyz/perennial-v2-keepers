@@ -44,18 +44,14 @@ export async function createRelayer() {
     transport: alchemyTransport,
     policyId: process.env.RELAYER_POLICY_ID || '',
     chain,
-    account
+    account,
   })
 
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
-    const {
-      signatures,
-      signingPayload,
-      meta
-    } = req.body as {
-      signatures: Hex[];
-      signingPayload: SigningPayload,
+    const { signatures, signingPayload, meta } = req.body as {
+      signatures: Hex[]
+      signingPayload: SigningPayload
       meta?: { wait?: boolean }
     }
 
@@ -94,7 +90,8 @@ export async function createRelayer() {
       if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash })
 
       tracer.dogstatsd.increment('relayer.transaction.sent', 1, {
-        chain: Chain.id
+        chain: Chain.id,
+        primaryType: signingPayload.primaryType,
       })
       res.send(JSON.stringify({ success: true, uoHash: hash, txHash }))
     } catch (e) {
@@ -102,8 +99,9 @@ export async function createRelayer() {
 
       tracer.dogstatsd.increment('relayer.transaction.reverted', 1, {
         chain: Chain.id,
+        primaryType: signingPayload.primaryType,
       })
-      res.send(JSON.stringify({ success: false, error: `Unable to relay transaction: ${e.message}`}))
+      res.send(JSON.stringify({ success: false, error: `Unable to relay transaction: ${e.message}` }))
     }
   })
 
