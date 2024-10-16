@@ -111,6 +111,7 @@ const run = async () => {
     case TaskType.relayer: {
       const port = process.env.PORT || 3030
       const relayer = await createRelayer()
+
       relayer.listen(port, () => {
         console.log(`Server listening on port ${port}`)
       })

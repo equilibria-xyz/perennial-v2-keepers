@@ -3,14 +3,16 @@ import express, { Request, Response } from 'express'
 import cors from 'cors'
 
 import { createLightAccount } from '@account-kit/smart-contracts'
-import { alchemy, createAlchemySmartAccountClient, arbitrum, arbitrumSepolia } from '@account-kit/infra'
+import { alchemy, createAlchemySmartAccountClient,  arbitrum, arbitrumSepolia } from '@account-kit/infra'
 import { LocalAccountSigner } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
-import { Chain } from '../config.js'
+import { Chain, IsMainnet } from '../config.js'
 
 import { constructUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
 import { SigningPayload } from './types.js'
 import tracer from '../tracer.js'
+import { HermesListener } from '../listeners/hermesListener/hermesListener.js'
+import { PriceServiceConnection } from '@pythnetwork/price-service-client'
 
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
@@ -44,20 +46,43 @@ export async function createRelayer() {
     transport: alchemyTransport,
     policyId: process.env.RELAYER_POLICY_ID || '',
     chain,
-    account
+    account,
   })
+
+  const connection = new PriceServiceConnection('https://hermes.pyth.network')
+  const hermesListener = new HermesListener(connection, [{
+    ticker: 'ETH/USD',
+    id: '0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace'
+  }])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleHermesErr = (err: any) => {
+    // TODO Dospore handle err
+    console.error('Hermes err', err)
+  }
+
+  hermesListener.run().catch(handleHermesErr)
+  setInterval(
+    () => {
+      hermesListener.run().catch(handleHermesErr)
+    },
+    IsMainnet ? HermesListener.PollingInterval : 2 * HermesListener.PollingInterval,
+  )
 
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
     const {
       signatures,
       signingPayload,
-      meta
+      // meta
     } = req.body as {
       signatures: Hex[];
       signingPayload: SigningPayload,
       meta?: { wait?: boolean }
     }
+
+    console.debug('signatures', JSON.stringify(signatures))
+    console.debug('signing', JSON.stringify(signingPayload))
 
     let error
     let relayedIntent
@@ -88,15 +113,33 @@ export async function createRelayer() {
         throw Error('Failed to construct user operation')
       }
 
-      const { hash } = await client.sendUserOperation({ uo })
+      const latestEthPrice: bigint = hermesListener.getLatestPrice('ETH/USD')
 
-      let txHash: Hash | undefined
-      if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash })
+      const userOp = await client.buildUserOperation({ uo })
+
+      const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) // gwei
+      const maxGasCost: bigint = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
+      const maxFeeUsd = (maxGasCost * latestEthPrice / 1_000_000_000n) / 1_000n // 10^6 (latestEthPrice from hermesListener is standardised to 10^9)
+
+      const sigMaxFee = signingPayload.message.action.maxFee
+      if (sigMaxFee < maxFeeUsd ) {
+        throw Error(`Required maxFee (${sigMaxFee}) >= maxFeeUsd (${maxFeeUsd})`)
+      }
+
+      const request = await client.signUserOperation({ uoStruct: userOp })
+      const entryPoint = client.account.getEntryPoint().address
+
+      const uoHash = await client.sendRawUserOperation(request, entryPoint)
+
+      // let txHash: Hash | undefined
+      // if (meta?.wait) {
+        // txHash = await client.waitForUserOperationTransaction({ uoHash })
+      // }
 
       tracer.dogstatsd.increment('relayer.transaction.sent', 1, {
         chain: Chain.id
       })
-      res.send(JSON.stringify({ success: true, uoHash: hash, txHash }))
+      res.send(JSON.stringify({ success: true, uoHash }))
     } catch (e) {
       console.warn(e)
 
