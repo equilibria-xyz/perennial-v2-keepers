@@ -9,6 +9,7 @@ incentivized at the protocol level, rewarding keepers for performing the action.
 1. [Liquidation Keeper](./src/listeners/marketListener/marketUserListener.ts) - Responsible for liquidating undercollateralized positions
 1. [Order Keeper](./src/listeners/orderListener/orderListener.ts) - Responsible for executing executable orders
 1. [Settlement Keeper](./src/listeners/settlementListener/settlementListener.ts) - Responsible for calling per-user settlement callbacks for position updates
+1. [Intent Relayer](./src/relayer/index.ts) - Responsible for forwarding intents to `Controller.sol`. Sponsoring the transaction through Alchemy Account Abstraction
 
 ### Deploying the BatchKeeper Smart Contract
 

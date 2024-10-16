@@ -1,8 +1,8 @@
 import { getAddress, getContract } from 'viem'
-import { MarketDetails, getMarkets } from '../../utils/marketUtils'
-import { Chain, Client, settlementSigner } from '../../config'
-import { Big6Math } from '../../constants/Big6Math'
-import tracer from '../../tracer'
+import { MarketDetails, getMarkets } from '../../utils/marketUtils.js'
+import { Chain, Client, settlementSigner } from '../../config.js'
+import { Big6Math } from '../../constants/Big6Math.js'
+import tracer from '../../tracer.js'
 import { KeeperFactoryAbi, KeeperOracleAbi } from '@perennial/sdk'
 
 export class SettlementListener {

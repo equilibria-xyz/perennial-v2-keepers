@@ -16,3 +16,5 @@ baseMetrics: yarn start 8453 metrics
 baseOrders: yarn start 8453 orders
 
 blastSepoliaOracle: yarn start 168587773 oracle
+
+web: yarn start 421614 relayer
