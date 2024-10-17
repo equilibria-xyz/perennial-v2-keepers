@@ -137,7 +137,8 @@ export async function createRelayer() {
       // }
 
       tracer.dogstatsd.increment('relayer.transaction.sent', 1, {
-        chain: Chain.id
+        chain: Chain.id,
+        primaryType: signingPayload.primaryType,
       })
       res.send(JSON.stringify({ success: true, uoHash }))
     } catch (e) {
@@ -145,8 +146,9 @@ export async function createRelayer() {
 
       tracer.dogstatsd.increment('relayer.transaction.reverted', 1, {
         chain: Chain.id,
+        primaryType: signingPayload.primaryType,
       })
-      res.send(JSON.stringify({ success: false, error: `Unable to relay transaction: ${e.message}`}))
+      res.send(JSON.stringify({ success: false, error: `Unable to relay transaction: ${e.message}` }))
     }
   })
 
