@@ -72,11 +72,9 @@ export async function createRelayer() {
     const {
       signatures,
       signingPayload,
-      // meta
     } = req.body as {
       signatures: Hex[];
       signingPayload: SigningPayload,
-      meta?: { wait?: boolean }
     }
 
     console.debug('signatures', JSON.stringify(signatures))
@@ -111,28 +109,22 @@ export async function createRelayer() {
         throw Error('Failed to construct user operation')
       }
 
-      const latestEthPrice: bigint = ethOracleListener.getLatestPriceInGwei()
+      const latestEthPrice: bigint = ethOracleListener.lastPriceBig6
 
       const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: { multiplier: GAS_LIMIT_MULTIPLIER } } })
-      // const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: 2_000_000n } })
 
       const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) // gwei
-      const maxGasCost: bigint = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
-      const maxFeeUsd = (maxGasCost * latestEthPrice / 1_000_000_000n) / 1_000n // 10^6
+      const maxGasCost = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
+      const maxFeeUsd = (maxGasCost * latestEthPrice) / 1_000_000_000n  // 10^6
 
       const sigMaxFee = signingPayload.message.action.maxFee
       if (sigMaxFee < maxFeeUsd ) {
-        throw Error(`Required maxFee (${sigMaxFee}) >= maxFeeUsd (${maxFeeUsd})`)
+        throw Error(`Estimated fee (${maxFeeUsd}) is greater than maxFee (${sigMaxFee})`)
       }
 
       const request = await client.signUserOperation({ uoStruct: userOp })
       const entryPoint = client.account.getEntryPoint().address
       const uoHash = await client.sendRawUserOperation(request, entryPoint)
-
-      // let txHash: Hash | undefined
-      // if (meta?.wait) {
-        // txHash = await client.waitForUserOperationTransaction({ uoHash })
-      // }
 
       tracer.dogstatsd.increment('relayer.transaction.sent', 1, {
         chain: Chain.id,

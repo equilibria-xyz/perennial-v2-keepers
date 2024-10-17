@@ -10,8 +10,8 @@ export class EthOracleListener {
   public static PollingInterval = 20 * 1000 // 20s
 
   oracleAddress: Address
-  lastPrice: bigint
   decimals: number
+  lastPriceBig6: bigint
 
   async init() {
     const controller = SDK.contracts.getControllerContract()
@@ -34,18 +34,16 @@ export class EthOracleListener {
       functionName: 'latestRoundData'
     })
 
-    this.lastPrice = roundData[1]
-  }
+    const price = roundData[1]
 
-  getLatestPriceInGwei(): bigint {
-    if (!this.lastPrice) {
-      throw Error('Could not find latestPrice for ETH')
-    }
-    const r = 9 - this.decimals
+    const r = 6 - this.decimals
+    let big6Price
     if (r > 0) {
-      return this.lastPrice * BigInt(Math.pow(10, r))
+      big6Price = price * BigInt(Math.pow(10, r))
     } else {
-      return this.lastPrice / BigInt(Math.pow(10, Math.abs(r)))
+      big6Price = price / BigInt(Math.pow(10, Math.abs(r)))
     }
+
+    this.lastPriceBig6 = big6Price
   }
 }
