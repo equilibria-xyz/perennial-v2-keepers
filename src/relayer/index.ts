@@ -113,7 +113,7 @@ export async function createRelayer() {
 
       const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: { multiplier: GAS_LIMIT_MULTIPLIER } } })
 
-      const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) // gwei
+      const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) + BigInt(userOp.preVerificationGasLimit)// gwei
       const maxGasCost = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
       const maxFeeUsd = (maxGasCost * latestEthPrice) / 1_000_000_000n  // 10^6
 
