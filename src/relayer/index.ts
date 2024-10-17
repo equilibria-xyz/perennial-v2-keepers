@@ -13,6 +13,8 @@ import { SigningPayload } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleListener } from '../listeners/ethOracleListener/ethOracleListener.js'
 
+const GAS_LIMIT_MULTIPLIER = process.env.GAS_LIMIT_MULTIPLIER ?? 1.5
+
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
   [arbitrumSepolia.id]: arbitrumSepolia,
@@ -111,7 +113,8 @@ export async function createRelayer() {
 
       const latestEthPrice: bigint = ethOracleListener.getLatestPriceInGwei()
 
-      const userOp = await client.buildUserOperation({ uo })
+      const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: { multiplier: GAS_LIMIT_MULTIPLIER } } })
+      // const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: 2_000_000n } })
 
       const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) // gwei
       const maxGasCost: bigint = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
@@ -124,7 +127,6 @@ export async function createRelayer() {
 
       const request = await client.signUserOperation({ uoStruct: userOp })
       const entryPoint = client.account.getEntryPoint().address
-
       const uoHash = await client.sendRawUserOperation(request, entryPoint)
 
       // let txHash: Hash | undefined
