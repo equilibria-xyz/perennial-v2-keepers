@@ -54,7 +54,7 @@ export class MetricsListener {
     Client.watchContractEvent({
       address: this.marketAddresses,
       abi: MarketAbi,
-      eventName: 'Updated',
+      eventName: 'OrderCreated',
       strict: true,
       poll: true,
       pollingInterval: MetricsListener.PollingInterval,
@@ -63,10 +63,12 @@ export class MetricsListener {
           const marketTag = marketAddressToMarketTag(Chain.id, log.address)
           console.log(
             `${marketTag}: ${log.args.account} position updated. m: ${Big6Math.toFloatString(
-              log.args.newMaker,
-            )}, l: ${Big6Math.toFloatString(log.args.newLong)}, s: ${Big6Math.toFloatString(
-              log.args.newShort,
-            )}, collat: $${Big6Math.toFloatString(log.args.collateral)}, liq: ${log.args.protect}`,
+              log.args.order.makerPos - log.args.order.makerNeg,
+            )}, l: ${Big6Math.toFloatString(
+              log.args.order.longPos - log.args.order.longNeg,
+            )}, s: ${Big6Math.toFloatString(
+              log.args.order.shortPos - log.args.order.shortNeg,
+            )}, collat: $${Big6Math.toFloatString(log.args.order.collateral)}, liq: ${log.args.order.protection}`,
           )
           tracer.dogstatsd.increment('market.update', 1, {
             chain: Chain.id,

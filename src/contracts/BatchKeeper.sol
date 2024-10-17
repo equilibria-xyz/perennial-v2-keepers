@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import "@perennial/perennial-v2/contracts/interfaces/IMarket.sol";
-import "@perennial/perennial-v2-extensions/contracts/interfaces/IMultiInvoker.sol";
+import "@perennial/core/contracts/interfaces/IMarket.sol";
+import "@perennial/extensions/contracts/interfaces/IMultiInvoker.sol";
 import "@equilibria/root/token/types/Token18.sol";
 import "@equilibria/root/attribute/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";

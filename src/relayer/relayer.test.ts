@@ -1,6 +1,6 @@
 import { privateKeyToAccount } from 'viem/accounts'
 import {
-    Address,
+  Address,
   Hex,
   PublicClient,
   VerifyTypedDataParameters,
@@ -10,7 +10,7 @@ import {
   encodeFunctionData,
   http,
   verifyTypedData,
-  zeroAddress
+  zeroAddress,
 } from 'viem'
 import { arbitrumSepolia } from 'viem/chains'
 import { describe, it, expect, beforeEach, assert } from 'vitest'
@@ -29,7 +29,7 @@ const managerAddress = ManagerAddresses[chain.id]
 
 const publicClient: PublicClient = createPublicClient({
   chain: chain,
-  transport: http()
+  transport: http(),
 })
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -41,7 +41,8 @@ const signer: WalletClient = createWalletClient({
 })
 
 let accountModule: CollateralAccountModule, marketsModule: MarketsModule
-const maxFee = 0n, expiry = 0n
+const maxFee = 0n,
+  expiry = 0n
 
 describe('Validates signatures', () => {
   beforeEach(() => {
@@ -63,7 +64,7 @@ describe('Validates signatures', () => {
       walletClient: signer as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       oracleClients: [] as any,
-      supportedMarkets: [] as SupportedMarket[]
+      supportedMarkets: [] as SupportedMarket[],
     })
   })
 
@@ -82,9 +83,7 @@ describe('Validates signatures', () => {
       nonce: sig.deployAccount.message.action.common.nonce,
     }
 
-    let signingPayload = accountModule.build.signed.deployAccount(
-      { ...args,  maxFee: maxFee + 1n }
-    ).deployAccount
+    let signingPayload = accountModule.build.signed.deployAccount({ ...args, maxFee: maxFee + 1n }).deployAccount
 
     let valid = await publicClient.verifyTypedData({
       ...signingPayload,
@@ -104,15 +103,15 @@ describe('Validates signatures', () => {
 
     const uo = constructUserOperation(signingPayload, [sig.signature])
     expect(!!uo).toBe(true)
-    const { target, data } = uo as { target: string, data: string }
+    const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
 
     expect(data).toBe(
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'deployAccountWithSignature',
-        args: [signingPayload.message, sig.signature]
-      })
+        args: [signingPayload.message, sig.signature],
+      }),
     )
   })
 
@@ -125,11 +124,11 @@ describe('Validates signatures', () => {
     }
     const functionArgs = {
       market: zeroAddress,
-      amount: 1n
+      amount: 1n,
     }
     const args: Parameters<typeof accountModule.build.signed.marketTransfer>[0] = {
       ...defaultArgs,
-      ...functionArgs
+      ...functionArgs,
     }
 
     const sig = await accountModule.sign.marketTransfer(args)
@@ -151,15 +150,15 @@ describe('Validates signatures', () => {
 
     const uo = constructUserOperation(signingPayload, [sig.signature])
     expect(!!uo).toBe(true)
-    const { target, data } = uo as { target: string, data: string }
+    const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
 
     expect(data).toBe(
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'marketTransferWithSignature',
-        args: [signingPayload.message, sig.signature]
-      })
+        args: [signingPayload.message, sig.signature],
+      }),
     )
   })
 
@@ -174,11 +173,11 @@ describe('Validates signatures', () => {
       rebalanceMaxFee: 0n,
       markets: [],
       configs: [],
-      group: 0n
+      group: 0n,
     }
     const args: Parameters<typeof accountModule.build.signed.rebalanceConfigChange>[0] = {
       ...defaultArgs,
-      ...functionArgs
+      ...functionArgs,
     }
 
     const sig = await accountModule.sign.rebalanceConfigChange(args)
@@ -201,15 +200,15 @@ describe('Validates signatures', () => {
 
     const uo = constructUserOperation(signingPayload, [sig.signature])
     expect(!!uo).toBe(true)
-    const { target, data } = uo as { target: string, data: string }
+    const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
 
     expect(data).toBe(
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'changeRebalanceConfigWithSignature',
-        args: [signingPayload.message, sig.signature]
-      })
+        args: [signingPayload.message, sig.signature],
+      }),
     )
   })
 
@@ -226,7 +225,7 @@ describe('Validates signatures', () => {
     }
     const args: Parameters<typeof accountModule.build.signed.withdrawal>[0] = {
       ...defaultArgs,
-      ...functionArgs
+      ...functionArgs,
     }
 
     const sig = await accountModule.sign.withdrawal(args)
@@ -248,14 +247,14 @@ describe('Validates signatures', () => {
 
     const uo = constructUserOperation(signingPayload, [sig.signature])
     expect(!!uo).toBe(true)
-    const { target, data } = uo as { target: string, data: string }
+    const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
     expect(data).toBe(
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'withdrawWithSignature',
-        args: [signingPayload.message, sig.signature]
-      })
+        args: [signingPayload.message, sig.signature],
+      }),
     )
   })
 
@@ -280,13 +279,13 @@ describe('Validates signatures', () => {
         amount: 0n,
         receiver: zeroAddress,
         fixedFee: false,
-        unwrap: false
-      }
+        unwrap: false,
+      },
     }
 
     const args: Parameters<typeof marketsModule.build.signed.placeOrder>[0] = {
       ...defaultArgs,
-      ...functionArgs
+      ...functionArgs,
     }
 
     const sig = await marketsModule.sign.placeOrder(args)
@@ -311,14 +310,14 @@ describe('Validates signatures', () => {
 
     const uo = constructUserOperation(signingPayload, [sig.signature])
     expect(!!uo).toBe(true)
-    const { target, data } = uo as { target: string, data: string }
+    const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(managerAddress)
     expect(data).toBe(
       encodeFunctionData({
         abi: ManagerAbi,
         functionName: 'placeOrderWithSignature',
-        args: [signingPayload.message, sig.signature]
-      })
+        args: [signingPayload.message, sig.signature],
+      }),
     )
   })
 
@@ -337,12 +336,12 @@ describe('Validates signatures', () => {
       price: 1000n,
       delta: 10n,
       maxExecutionFee: 1n,
-      orderId: 1n
+      orderId: 1n,
     }
 
     const args: Parameters<typeof marketsModule.build.signed.cancelOrder>[0] = {
       ...defaultArgs,
-      ...functionArgs
+      ...functionArgs,
     }
 
     const sig = await marketsModule.sign.cancelOrder(args)
@@ -364,14 +363,14 @@ describe('Validates signatures', () => {
 
     const uo = constructUserOperation(signingPayload, [sig.signature])
     expect(!!uo).toBe(true)
-    const { target, data } = uo as { target: string, data: string }
+    const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(managerAddress)
     expect(data).toBe(
       encodeFunctionData({
         abi: ManagerAbi,
         functionName: 'cancelOrderWithSignature',
-        args: [signingPayload.message, sig.signature]
-      })
+        args: [signingPayload.message, sig.signature],
+      }),
     )
   })
 
@@ -388,7 +387,7 @@ describe('Validates signatures', () => {
     }
     const args: Parameters<typeof accountModule.build.signed.relayedOperatorUpdate>[0] = {
       ...defaultArgs,
-      ...functionArgs
+      ...functionArgs,
     }
 
     const sig = await accountModule.sign.relayedOperatorUpdate(args)
@@ -420,15 +419,15 @@ describe('Validates signatures', () => {
 
     const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
     expect(!!uo).toBe(true)
-    const { target, data } = uo as { target: string, data: string }
+    const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
 
     expect(data).toBe(
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'relayOperatorUpdate',
-        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature]
-      })
+        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature],
+      }),
     )
   })
 
@@ -444,7 +443,7 @@ describe('Validates signatures', () => {
     }
     const args: Parameters<typeof accountModule.build.signed.relayedGroupCancellation>[0] = {
       ...defaultArgs,
-      ...functionArgs
+      ...functionArgs,
     }
 
     const sig = await accountModule.sign.relayedGroupCancellation(args)
@@ -476,15 +475,15 @@ describe('Validates signatures', () => {
 
     const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
     expect(!!uo).toBe(true)
-    const { target, data } = uo as { target: string, data: string }
+    const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
 
     expect(data).toBe(
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'relayGroupCancellation',
-        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature]
-      })
+        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature],
+      }),
     )
   })
 
@@ -501,7 +500,7 @@ describe('Validates signatures', () => {
     }
     const args: Parameters<typeof accountModule.build.signed.relayedNonceCancellation>[0] = {
       ...defaultArgs,
-      ...functionArgs
+      ...functionArgs,
     }
 
     const sig = await accountModule.sign.relayedNonceCancellation(args)
@@ -533,15 +532,15 @@ describe('Validates signatures', () => {
 
     const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
     expect(!!uo).toBe(true)
-    const { target, data } = uo as { target: string, data: string }
+    const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
 
     expect(data).toBe(
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'relayNonceCancellation',
-        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature]
-      })
+        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature],
+      }),
     )
   })
 
@@ -558,7 +557,7 @@ describe('Validates signatures', () => {
     }
     const args: Parameters<typeof accountModule.build.signed.relayedSignerUpdate>[0] = {
       ...defaultArgs,
-      ...functionArgs
+      ...functionArgs,
     }
 
     const sig = await accountModule.sign.relayedSignerUpdate(args)
@@ -591,15 +590,15 @@ describe('Validates signatures', () => {
     // only pass outer payload
     const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
     expect(!!uo).toBe(true)
-    const { target, data } = uo as { target: string, data: string }
+    const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
 
     expect(data).toBe(
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'relaySignerUpdate',
-        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature]
-      })
+        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature],
+      }),
     )
   })
 })

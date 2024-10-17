@@ -80,7 +80,7 @@ export class LiqListener {
 
     this.unwatchUpdates = Client.watchContractEvent({
       abi: MarketAbi,
-      eventName: 'Updated',
+      eventName: 'OrderCreated',
       strict: true,
       poll: true,
       pollingInterval: LiqListener.PollingInterval,
