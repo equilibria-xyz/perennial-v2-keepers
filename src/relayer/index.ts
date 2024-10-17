@@ -84,7 +84,7 @@ export async function createRelayer() {
         throw Error('Failed to construct user operation')
       }
 
-      const { hash } = await client.sendUserOperation({ uo })
+      const { hash } = await client.sendUserOperation({ uo, overrides: { callGasLimit: 2_000_000 } })
 
       let txHash: Hash | undefined
       if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash })
