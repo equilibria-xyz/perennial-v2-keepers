@@ -3,14 +3,17 @@ import express, { Request, Response } from 'express'
 import cors from 'cors'
 
 import { createLightAccount } from '@account-kit/smart-contracts'
-import { alchemy, createAlchemySmartAccountClient, arbitrum, arbitrumSepolia } from '@account-kit/infra'
+import { alchemy, createAlchemySmartAccountClient,  arbitrum, arbitrumSepolia } from '@account-kit/infra'
 import { LocalAccountSigner } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
-import { Chain } from '../config.js'
+import { Chain, IsMainnet } from '../config.js'
 
 import { constructUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
 import { SigningPayload } from './types.js'
 import tracer from '../tracer.js'
+import { EthOracleListener } from '../listeners/ethOracleListener/ethOracleListener.js'
+
+const GAS_LIMIT_MULTIPLIER = process.env.GAS_LIMIT_MULTIPLIER ?? 1.5
 
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
@@ -47,13 +50,37 @@ export async function createRelayer() {
     account,
   })
 
+  const ethOracleListener = new EthOracleListener()
+  await ethOracleListener.init()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleOracleError = (err: any) => {
+    console.error('Oracle err', err)
+    tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
+      chain: Chain.id,
+    })
+  }
+
+  ethOracleListener.run().catch(handleOracleError)
+  setInterval(
+    () => {
+      ethOracleListener.run().catch(handleOracleError)
+    },
+    IsMainnet ? EthOracleListener.PollingInterval : 2 * EthOracleListener.PollingInterval,
+  )
+
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
-    const { signatures, signingPayload, meta } = req.body as {
-      signatures: Hex[]
-      signingPayload: SigningPayload
-      meta?: { wait?: boolean }
+    const {
+      signatures,
+      signingPayload,
+    } = req.body as {
+      signatures: Hex[];
+      signingPayload: SigningPayload,
     }
+
+    console.debug('signatures', JSON.stringify(signatures))
+    console.debug('signing', JSON.stringify(signingPayload))
 
     let error
     let relayedIntent
@@ -84,16 +111,28 @@ export async function createRelayer() {
         throw Error('Failed to construct user operation')
       }
 
-      const { hash } = await client.sendUserOperation({ uo, overrides: { callGasLimit: 2_000_000 } })
+      const latestEthPrice: bigint = ethOracleListener.lastPriceBig6
 
-      let txHash: Hash | undefined
-      if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash })
+      const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: { multiplier: GAS_LIMIT_MULTIPLIER } } })
+
+      const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) + BigInt(userOp.preVerificationGasLimit)// gwei
+      const maxGasCost = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
+      const maxFeeUsd = (maxGasCost * latestEthPrice) / 1_000_000_000n  // 10^6
+
+      const sigMaxFee = signingPayload.message.action.maxFee
+      if (sigMaxFee < maxFeeUsd ) {
+        throw Error(`Estimated fee (${maxFeeUsd}) is greater than maxFee (${sigMaxFee})`)
+      }
+
+      const request = await client.signUserOperation({ uoStruct: userOp })
+      const entryPoint = client.account.getEntryPoint().address
+      const uoHash = await client.sendRawUserOperation(request, entryPoint)
 
       tracer.dogstatsd.increment('relayer.transaction.sent', 1, {
         chain: Chain.id,
         primaryType: signingPayload.primaryType,
       })
-      res.send(JSON.stringify({ success: true, uoHash: hash, txHash }))
+      res.send(JSON.stringify({ success: true, uoHash }))
     } catch (e) {
       console.warn(e)
 
