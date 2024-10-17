@@ -11,8 +11,7 @@ import { Chain, IsMainnet } from '../config.js'
 import { constructUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
 import { SigningPayload } from './types.js'
 import tracer from '../tracer.js'
-import { HermesListener } from '../listeners/hermesListener/hermesListener.js'
-import { PriceServiceConnection } from '@pythnetwork/price-service-client'
+import { EthOracleListener } from '../listeners/ethOracleListener/ethOracleListener.js'
 
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
@@ -49,24 +48,21 @@ export async function createRelayer() {
     account,
   })
 
-  const connection = new PriceServiceConnection('https://hermes.pyth.network')
-  const hermesListener = new HermesListener(connection, [{
-    ticker: 'ETH/USD',
-    id: '0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace'
-  }])
+  const ethOracleListener = new EthOracleListener()
+  await ethOracleListener.init()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleHermesErr = (err: any) => {
+  const handleOracleError = (err: any) => {
     // TODO Dospore handle err
-    console.error('Hermes err', err)
+    console.error('Oracle err', err)
   }
 
-  hermesListener.run().catch(handleHermesErr)
+  ethOracleListener.run().catch(handleOracleError)
   setInterval(
     () => {
-      hermesListener.run().catch(handleHermesErr)
+      ethOracleListener.run().catch(handleOracleError)
     },
-    IsMainnet ? HermesListener.PollingInterval : 2 * HermesListener.PollingInterval,
+    IsMainnet ? EthOracleListener.PollingInterval : 2 * EthOracleListener.PollingInterval,
   )
 
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
@@ -113,13 +109,13 @@ export async function createRelayer() {
         throw Error('Failed to construct user operation')
       }
 
-      const latestEthPrice: bigint = hermesListener.getLatestPrice('ETH/USD')
+      const latestEthPrice: bigint = ethOracleListener.getLatestPriceInGwei()
 
       const userOp = await client.buildUserOperation({ uo })
 
       const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) // gwei
       const maxGasCost: bigint = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
-      const maxFeeUsd = (maxGasCost * latestEthPrice / 1_000_000_000n) / 1_000n // 10^6 (latestEthPrice from hermesListener is standardised to 10^9)
+      const maxFeeUsd = (maxGasCost * latestEthPrice / 1_000_000_000n) / 1_000n // 10^6
 
       const sigMaxFee = signingPayload.message.action.maxFee
       if (sigMaxFee < maxFeeUsd ) {
