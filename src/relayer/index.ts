@@ -73,9 +73,13 @@ export async function createRelayer() {
     const {
       signatures,
       signingPayload,
+      meta
     } = req.body as {
       signatures: Hex[];
       signingPayload: SigningPayload,
+      meta?: {
+        wait?: boolean
+      }
     }
 
     console.debug('signatures', JSON.stringify(signatures))
@@ -127,11 +131,14 @@ export async function createRelayer() {
       const entryPoint = client.account.getEntryPoint().address
       const uoHash = await client.sendRawUserOperation(request, entryPoint)
 
+      let txHash: Hash | undefined
+      if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
+
       tracer.dogstatsd.increment('relayer.transaction.sent', 1, {
         chain: Chain.id,
         primaryType: signingPayload.primaryType,
       })
-      res.send(JSON.stringify({ success: true, uoHash }))
+      res.send(JSON.stringify({ success: true, uoHash, txHash }))
     } catch (e) {
       console.warn(e)
 
