@@ -8,7 +8,7 @@ const OracleAbi = parseAbi([
 ] as const)
 
 export class EthOracleListener {
-  public static TTL = 20 * 1000 // 20s
+  public static TTL = 10 * 1000 // 10s
 
   oracleAddress: Address
   decimals: number
