@@ -1,5 +1,6 @@
 import { Address, parseAbi } from 'viem'
 import { SDK } from '../../config.js'
+import { Big6Math } from '../../constants/Big6Math.js'
 
 const OracleAbi = parseAbi([
   'function decimals() external view returns (uint8)',
@@ -7,11 +8,14 @@ const OracleAbi = parseAbi([
 ] as const)
 
 export class EthOracleListener {
-  public static PollingInterval = 20 * 1000 // 20s
+  public static TTL = 20 * 1000 // 20s
 
   oracleAddress: Address
   decimals: number
-  lastPriceBig6: bigint
+  lastPrice: {
+    expiry: number,
+    big6: bigint
+  }
 
   async init() {
     const controller = SDK.contracts.getControllerContract()
@@ -27,23 +31,30 @@ export class EthOracleListener {
     this.decimals = decimals
   }
 
-  async run() {
+  async refetch() {
     const roundData = await SDK.publicClient.readContract({
       address: this.oracleAddress,
       abi: OracleAbi,
       functionName: 'latestRoundData'
     })
 
-    const price = roundData[1]
+    const price = BigInt(roundData[1])
 
-    const r = 6 - this.decimals
-    let big6Price
-    if (r > 0) {
-      big6Price = price * BigInt(Math.pow(10, r))
-    } else {
-      big6Price = price / BigInt(Math.pow(10, Math.abs(r)))
+    const r = BigInt(Big6Math.FIXED_DECIMALS - this.decimals)
+    // TODO use fromDecimals when version upgrades > 0.0.3-alpha.8
+    const priceBig6 = r >= 0n ? price * 10n ** r : price / (10n ** (r * -1n))
+
+    this.lastPrice = {
+      expiry: Date.now() + EthOracleListener.TTL,
+      big6: priceBig6
+    }
+  }
+
+  async getLastPriceBig6() {
+    if (!this.lastPrice || Date.now() > this.lastPrice.expiry) {
+      await this.refetch()
     }
 
-    this.lastPriceBig6 = big6Price
+    return this.lastPrice.big6
   }
 }

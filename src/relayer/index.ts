@@ -6,7 +6,7 @@ import { createLightAccount } from '@account-kit/smart-contracts'
 import { alchemy, createAlchemySmartAccountClient,  arbitrum, arbitrumSepolia } from '@account-kit/infra'
 import { LocalAccountSigner } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
-import { Chain, IsMainnet } from '../config.js'
+import { Chain } from '../config.js'
 
 import { constructUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
 import { SigningPayload } from './types.js'
@@ -58,15 +58,9 @@ export async function createRelayer() {
     tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
       chain: Chain.id,
     })
+    // forward on err
+    throw err
   }
-
-  ethOracleListener.run().catch(handleOracleError)
-  setInterval(
-    () => {
-      ethOracleListener.run().catch(handleOracleError)
-    },
-    IsMainnet ? EthOracleListener.PollingInterval : 2 * EthOracleListener.PollingInterval,
-  )
 
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
@@ -114,7 +108,7 @@ export async function createRelayer() {
         throw Error('Failed to construct user operation')
       }
 
-      const latestEthPrice: bigint = ethOracleListener.lastPriceBig6
+      const latestEthPrice: bigint = await ethOracleListener.getLastPriceBig6().catch(handleOracleError)
 
       const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: { multiplier: GAS_LIMIT_MULTIPLIER } } })
 
@@ -130,6 +124,7 @@ export async function createRelayer() {
       const request = await client.signUserOperation({ uoStruct: userOp })
       const entryPoint = client.account.getEntryPoint().address
       const uoHash = await client.sendRawUserOperation(request, entryPoint)
+      console.debug(`Sent userOp: ${uoHash}`)
 
       let txHash: Hash | undefined
       if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
