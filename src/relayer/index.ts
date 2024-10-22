@@ -53,8 +53,7 @@ export async function createRelayer() {
   const ethOracleListener = new EthOracleListener()
   await ethOracleListener.init()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleOracleError = (err: any) => {
+  const handleOracleError = (err: unknown) => {
     console.error('Oracle err', err)
     tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
       chain: Chain.id,

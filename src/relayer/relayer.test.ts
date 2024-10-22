@@ -383,7 +383,7 @@ describe('Validates signatures', () => {
     }
     const functionArgs = {
       operator: zeroAddress,
-      approved: true
+      approved: true,
     }
     const args: Parameters<typeof accountModule.build.signed.relayedOperatorUpdate>[0] = {
       ...defaultArgs,
@@ -553,7 +553,7 @@ describe('Validates signatures', () => {
     }
     const functionArgs = {
       signer: zeroAddress,
-      approved: true
+      approved: true,
     }
     const args: Parameters<typeof accountModule.build.signed.relayedSignerUpdate>[0] = {
       ...defaultArgs,
