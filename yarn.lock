@@ -2756,10 +2756,10 @@
   dependencies:
     "@perennial/core" "1.3.0-rc1"
 
-"@perennial/sdk@0.0.3-alpha.6":
-  version "0.0.3-alpha.6"
-  resolved "https://registry.yarnpkg.com/@perennial/sdk/-/sdk-0.0.3-alpha.6.tgz#b6fb39b6bb0cbd01e4ea58e20cc6247cd8f901b3"
-  integrity sha512-nXDniwflS7D82GwfqO3SNtR/384v/gymX84GLRAOWgB3vy45wl6NX87oFnxVtsOR+GetzGGkOb5tLVMB1V1eUA==
+"@perennial/sdk@0.0.3-alpha.8":
+  version "0.0.3-alpha.8"
+  resolved "https://registry.yarnpkg.com/@perennial/sdk/-/sdk-0.0.3-alpha.8.tgz#bf0ea4f4b89a16fd2bf3a8f8fcab938d8182ad17"
+  integrity sha512-kfcSVJZSXHi2J0AoLbz2FYlS21EcPzmUB5BnCeRkx+YT1JhleKxegBhWBOn/w7dYXClIYRiwD3H43B1mi9S2DQ==
   dependencies:
     "@microsoft/tsdoc" "^0.14.2"
     "@pythnetwork/hermes-client" "^1.0.4"
