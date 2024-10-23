@@ -13,7 +13,7 @@ import {
   zeroAddress,
 } from 'viem'
 import { arbitrumSepolia } from 'viem/chains'
-import { describe, it, expect, beforeEach, assert } from 'vitest'
+import { describe, it, expect, beforeEach, assert, vi } from 'vitest'
 
 import { constructUserOperation } from '../utils/relayerUtils.js'
 
@@ -22,6 +22,10 @@ import { CollateralAccountModule } from '@perennial/sdk/dist/lib/collateralAccou
 import { MarketsModule } from '@perennial/sdk/dist/lib/markets/index.js'
 
 import { ControllerAbi, ControllerAddresses, ManagerAbi, ManagerAddresses, SupportedMarket } from '@perennial/sdk'
+
+
+import { retryUserOpWithIncreasingTip } from '../utils/relayerUtils.js';
+import { UOError } from './types.js'
 
 const chain = arbitrumSepolia
 const controllerAddress = ControllerAddresses[chain.id]
@@ -602,3 +606,41 @@ describe('Validates signatures', () => {
     )
   })
 })
+
+describe('retryUserOpWithIncreasingTip', () => {
+  it('should succeed on first try', async () => {
+    const sendUserOp = vi.fn().mockResolvedValue({ success: true });
+    const result = await retryUserOpWithIncreasingTip(sendUserOp);
+    expect(result).toEqual({ success: true });
+    expect(sendUserOp).toHaveBeenCalledTimes(1);
+    expect(sendUserOp).toHaveBeenCalledWith(1);
+  });
+
+  it('should retry on a retriable error', async () => {
+    const sendUserOp = vi.fn()
+      .mockRejectedValueOnce(new Error(UOError.OracleError))
+      .mockResolvedValueOnce({ success: true });
+
+    const result = await retryUserOpWithIncreasingTip(sendUserOp);
+    expect(result).toEqual({ success: true });
+    expect(sendUserOp).toHaveBeenCalledTimes(2);
+    expect(sendUserOp).toHaveBeenCalledWith(1); // First try
+    expect(sendUserOp).toHaveBeenCalledWith(1.1); // Second try
+  });
+
+  it('should throw on non-retriable error', async () => {
+    const sendUserOp = vi.fn().mockRejectedValue(new Error(UOError.MaxFeeTooLow));
+    await expect(retryUserOpWithIncreasingTip(sendUserOp)).rejects.toThrow(UOError.MaxFeeTooLow);
+    expect(sendUserOp).toHaveBeenCalledTimes(1);
+    expect(sendUserOp).toHaveBeenCalledWith(1);
+  });
+
+  it('should throw after exceeding max retries', async () => {
+    const sendUserOp = vi.fn().mockRejectedValue(new Error('Some retriable error'));
+    await expect(retryUserOpWithIncreasingTip(sendUserOp, { maxRetry: 2 })).rejects.toThrow(UOError.ExceededMaxRetry);
+    expect(sendUserOp).toHaveBeenCalledTimes(3); // Three attempts
+    expect(sendUserOp).toHaveBeenCalledWith(1);
+    expect(sendUserOp).toHaveBeenCalledWith(1.1);
+    expect(sendUserOp).toHaveBeenCalledWith(1.2);
+  });
+});

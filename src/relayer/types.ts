@@ -1,5 +1,22 @@
-import { Hex } from 'viem'
+import { Hex, Hash } from 'viem'
 import PerennialSDK from '@perennial/sdk'
+
+export enum UserOpStatus {
+  Complete = 'complete',
+  Pending = 'pending',
+  Failed = 'failed',
+}
+
+export type UOResult = {
+  uoHash: Hash
+  txHash?: Hash
+}
+export enum UOError {
+  ExceededMaxRetry = 'Exceeded max retry attempts for userOp',
+  MaxFeeTooLow = 'Estimated userOp fee is greater than maxFee. Try increasing maxFee of signature payload',
+  FailedToConstructUO = 'Failed to construct user operation',
+  OracleError = 'Failed to fetch ethPrice from oracle'
+}
 
 export type UserOperation = {
   target: Hex,

@@ -1,6 +1,7 @@
 import { Hex, encodeFunctionData } from 'viem'
+import { Multiplier } from '@aa-sdk/core'
 
-import { UserOperation, SigningPayload, RelayedSignatures } from '../relayer/types.js'
+import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
 
 import {
   ControllerAddresses,
@@ -136,6 +137,26 @@ export const constructUserOperation = (signingPayload: SigningPayload, signature
   return uo
 }
 
+export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: Multiplier) => Promise<UOResult>, options?: { maxRetry?: number }): Promise<UOResult> => {
+  const maxRetry = options?.maxRetry ?? 3;
+  let retry = 0
+  while (retry <= maxRetry) {
+    // increase tip by 10% each time
+    const tipMultiplier = 1 + (0.1 * retry)
+    try {
+      return await sendUserOp(tipMultiplier)
+    } catch (e) {
+      if (e.message === UOError.MaxFeeTooLow) {
+        // forward on error we dont want to retry with a higher fee
+        throw e
+      }
+      retry += 1
+    }
+  }
+
+  throw new Error(UOError.ExceededMaxRetry)
+}
+
 export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean => {
   switch (intent) {
     case 'RelayedNonceCancellation':
@@ -154,3 +175,5 @@ export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean 
       return false
   }
 }
+
+
