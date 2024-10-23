@@ -1,8 +1,14 @@
-import { Hex, getAddress } from 'viem'
-import { queryAll } from '@perennial/sdk'
+import { Hex, WatchContractEventReturnType, getAddress } from 'viem'
+import {
+  MultiInvokerAbi,
+  MultiInvokerAction,
+  MultiInvokerAddresses,
+  queryAll,
+  UpdateDataResponse,
+} from '@perennial/sdk'
 import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUtils.js'
 import { GraphDefaultPageSize } from '../../utils/graphUtils.js'
-import { Chain, Client, GraphClient, orderSigner } from '../../config.js'
+import { Chain, Client, GraphClient, orderSigner, WssClient } from '../../config.js'
 import { BatchKeeperAbi } from '../../constants/abi/BatchKeeper.abi.js'
 import { buildCommit, getUpdateDataForProviderType } from '../../utils/oracleUtils.js'
 import { chunk, notEmpty } from '../../utils/arrayUtils.js'
@@ -14,9 +20,64 @@ export class OrderListener {
   public static PollingInterval = 4000 // 4s
 
   protected markets: MarketDetails[] = []
+  private latestPrices: { market: MarketDetails; price: bigint; priceData: UpdateDataResponse }[] = []
+  private unwatchMultiInvokerMarketOrders: WatchContractEventReturnType | null = null
 
   public async init() {
     this.markets = await getMarkets()
+
+    // Watch for orders
+    this.watchMarketOrders()
+  }
+
+  // Watch for new orders and try to execute them if they are immediately executable (effectively market orders)
+  private watchMarketOrders() {
+    console.log(
+      `Watching market ${this.markets.map((m) => m.metricsTag).join(', ')} for immediately executable orders.`,
+    )
+
+    if (this.unwatchMultiInvokerMarketOrders) this.unwatchMultiInvokerMarketOrders()
+
+    this.unwatchMultiInvokerMarketOrders = WssClient.watchContractEvent({
+      address: MultiInvokerAddresses[Chain.id],
+      abi: MultiInvokerAbi,
+      eventName: 'OrderPlaced',
+      strict: true,
+      onLogs: async (logs) => {
+        for (const marketPrice of this.latestPrices) {
+          const marketOrders = logs.filter((log) => getAddress(log.args.market) === marketPrice.market.market)
+          const executableOrders = marketOrders.filter((log) =>
+            log.args.order.comparison === 1
+              ? marketPrice.price >= log.args.order.price
+              : marketPrice.price <= log.args.order.price,
+          )
+
+          if (!executableOrders.length) continue
+
+          console.log(
+            `Market ${marketPrice.market.metricsTag} - Immediately executable orders: ${executableOrders.length}`,
+          )
+
+          await this.executeOrders({
+            allOrders: executableOrders.map((log) => ({ account: log.args.account, nonce: log.args.nonce })),
+            market: marketPrice.market,
+            commit: buildCommit({
+              keeperFactory: marketPrice.market.providerFactory,
+              version: marketPrice.priceData.version,
+              value: marketPrice.priceData.value,
+              ids: [marketPrice.market.feed],
+              vaa: marketPrice.priceData.updateData,
+              revertOnFailure: false,
+            }),
+            value: marketPrice.priceData.value,
+          })
+        }
+      },
+      onError: (error) => {
+        console.error(`Error watching market triggerorders: ${error.message}. Retrying...`)
+        this.watchMarketOrders()
+      },
+    })
   }
 
   public async run() {
@@ -57,11 +118,11 @@ export class OrderListener {
           }
         }),
       )
-      const transformedPrices = transformedPrices_.filter(notEmpty)
-      const ordersForMarkets = await this.getOrdersForMarkets(transformedPrices)
+      this.latestPrices = transformedPrices_.filter(notEmpty)
+      const ordersForMarkets = await this.getOrdersForMarkets(this.latestPrices)
 
       const executableOrders_ = await Promise.all(
-        transformedPrices.map((transformedPrice) => {
+        this.latestPrices.map((transformedPrice) => {
           return this.tryExecuteOrders({
             market: transformedPrice.market,
             updateData: transformedPrice.priceData.updateData,
@@ -78,37 +139,51 @@ export class OrderListener {
         const { market, orders: allOrders, commit, value } = executableOrders[i]
         console.log(`Market ${market.metricsTag} - Executable orders: ${allOrders.length}`)
 
-        const chunks = chunk(allOrders, 10) // Execute 10 orders at a time
-        for (const orders of chunks) {
-          const { request } = await Client.simulateContract({
-            address: BatchKeeperAddresses[Chain.id],
-            abi: BatchKeeperAbi,
-            functionName: 'tryExecute',
-            args: [market.market, orders.map((o) => o.account), orders.map((o) => o.nonce), [commit]],
-            value,
-            account: orderSigner.account,
-          })
-          const gasEstimate = await Client.estimateContractGas(request)
-          const gas = Big6Math.max(5000000n, gasEstimate * 6n)
-          const hash = await orderSigner.writeContract({ ...request, gas })
-
-          tracer.dogstatsd.increment('orderKeeper.transaction.sent', 1, {
-            chain: Chain.id,
-          })
-          console.log(`Orders execute published. Number: ${orders.length}. Hash: ${hash}`)
-          const receipt = await Client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
-          if (receipt.status === 'success')
-            tracer.dogstatsd.increment('orderKeeper.transaction.success', 1, {
-              chain: Chain.id,
-            })
-          if (receipt.status === 'reverted')
-            tracer.dogstatsd.increment('orderKeeper.transaction.reverted', 1, {
-              chain: Chain.id,
-            })
-        }
+        await this.executeOrders({ allOrders, market, commit, value })
       }
     } catch (e) {
       console.error(`Order Keeper got error: Error ${e.message}`)
+    }
+  }
+
+  private async executeOrders({
+    allOrders,
+    market,
+    commit,
+    value,
+  }: {
+    allOrders: { account: `0x${string}`; nonce: bigint }[]
+    market: MarketDetails
+    commit: MultiInvokerAction
+    value: bigint
+  }) {
+    const chunks = chunk(allOrders, 10) // Execute 10 orders at a time
+    for (const orders of chunks) {
+      const { request } = await Client.simulateContract({
+        address: BatchKeeperAddresses[Chain.id],
+        abi: BatchKeeperAbi,
+        functionName: 'tryExecute',
+        args: [market.market, orders.map((o) => o.account), orders.map((o) => o.nonce), [commit]],
+        value,
+        account: orderSigner.account,
+      })
+      const gasEstimate = await Client.estimateContractGas(request)
+      const gas = Big6Math.max(5000000n, gasEstimate * 6n)
+      const hash = await orderSigner.writeContract({ ...request, gas })
+
+      tracer.dogstatsd.increment('orderKeeper.transaction.sent', 1, {
+        chain: Chain.id,
+      })
+      console.log(`Orders execute published. Number: ${orders.length}. Hash: ${hash}`)
+      const receipt = await Client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
+      if (receipt.status === 'success')
+        tracer.dogstatsd.increment('orderKeeper.transaction.success', 1, {
+          chain: Chain.id,
+        })
+      if (receipt.status === 'reverted')
+        tracer.dogstatsd.increment('orderKeeper.transaction.reverted', 1, {
+          chain: Chain.id,
+        })
     }
   }
 
