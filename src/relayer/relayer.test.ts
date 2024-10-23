@@ -426,7 +426,7 @@ describe('Validates signatures', () => {
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'relayOperatorUpdate',
-        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature],
+        args: [outerSigningPayload.message, sig.outerSignature, sig.innerSignature],
       }),
     )
   })
@@ -482,7 +482,7 @@ describe('Validates signatures', () => {
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'relayGroupCancellation',
-        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature],
+        args: [outerSigningPayload.message, sig.outerSignature, sig.innerSignature],
       }),
     )
   })
@@ -539,7 +539,7 @@ describe('Validates signatures', () => {
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'relayNonceCancellation',
-        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature],
+        args: [outerSigningPayload.message, sig.outerSignature, sig.innerSignature],
       }),
     )
   })
@@ -597,7 +597,7 @@ describe('Validates signatures', () => {
       encodeFunctionData({
         abi: ControllerAbi,
         functionName: 'relaySignerUpdate',
-        args: [outerSigningPayload.message, sig.innerSignature, sig.outerSignature],
+        args: [outerSigningPayload.message, sig.outerSignature, sig.innerSignature],
       }),
     )
   })

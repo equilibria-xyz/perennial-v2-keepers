@@ -85,7 +85,7 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'relayGroupCancellation',
-          args: [payload.message, innerSignature, outerSignature]
+          args: [payload.message, outerSignature, innerSignature]
         })
       })
     case 'RelayedNonceCancellation':
@@ -94,7 +94,7 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'relayNonceCancellation',
-          args: [payload.message, innerSignature, outerSignature]
+          args: [payload.message, outerSignature, innerSignature]
         })
       })
     case 'RelayedSignerUpdate':
@@ -103,7 +103,7 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'relaySignerUpdate',
-          args: [payload.message, innerSignature, outerSignature]
+          args: [payload.message, outerSignature, innerSignature]
         })
       })
     case 'RelayedOperatorUpdate':
@@ -112,7 +112,7 @@ export const constructRelayedUserOperation = (payload: SigningPayload, signature
         data: encodeFunctionData({
           abi: ControllerAbi,
           functionName: 'relayOperatorUpdate',
-          args: [payload.message, innerSignature, outerSignature]
+          args: [payload.message, outerSignature, innerSignature]
         })
       })
     default:
