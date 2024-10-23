@@ -138,7 +138,7 @@ export const constructUserOperation = (signingPayload: SigningPayload, signature
 }
 
 export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: Multiplier) => Promise<UOResult>, options?: { maxRetry?: number }): Promise<UOResult> => {
-  const maxRetry = options?.maxRetry ?? 3;
+  const maxRetry = options?.maxRetry ?? 3
   let retry = 0
   while (retry <= maxRetry) {
     // increase tip by 10% each time
