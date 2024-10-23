@@ -11,7 +11,7 @@ import { Chain } from '../config.js'
 import { constructUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
 import { SigningPayload } from './types.js'
 import tracer from '../tracer.js'
-import { EthOracleListener } from '../listeners/ethOracleListener/ethOracleListener.js'
+import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 
 const GAS_LIMIT_MULTIPLIER = process.env.GAS_LIMIT_MULTIPLIER ?? 1.5
 
@@ -50,7 +50,7 @@ export async function createRelayer() {
     account,
   })
 
-  const ethOracleListener = new EthOracleListener()
+  const ethOracleListener = new EthOracleFetcher()
   await ethOracleListener.init()
 
   const handleOracleError = (err: unknown) => {
@@ -118,6 +118,10 @@ export async function createRelayer() {
 
       const sigMaxFee = signingPayload.message.action.maxFee
       if (sigMaxFee < maxFeeUsd ) {
+        tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
+          chain: Chain.id,
+          primaryType: signingPayload.primaryType,
+        })
         throw Error(`Estimated fee (${maxFeeUsd}) is greater than maxFee (${sigMaxFee})`)
       }
 

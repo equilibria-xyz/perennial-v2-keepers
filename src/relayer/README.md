@@ -38,6 +38,10 @@ Relayed intents reward relayers for forwarding transactions.
     }
 ```
 
+#### Meta
+
+Use `wait` if you want to wait for the transaction receipt. If `wait` is used then the return type will include the transaction hash.
+
 #### Signatures
 
 If Intent is one of `DeployAccount`, `MarketTransfer`, `Withdrawal`, `RebalanceConfigChange` then only one `signature` is required.

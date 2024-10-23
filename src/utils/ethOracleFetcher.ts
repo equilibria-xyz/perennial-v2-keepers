@@ -1,13 +1,13 @@
 import { Address, parseAbi } from 'viem'
-import { SDK } from '../../config.js'
-import { Big6Math } from '../../constants/Big6Math.js'
+import { SDK } from '../config.js'
+import { Big6Math } from '../constants/Big6Math.js'
 
 const OracleAbi = parseAbi([
   'function decimals() external view returns (uint8)',
   'function latestRoundData() external view returns (uint80,int256,uint256,uint256,uint8)'
 ] as const)
 
-export class EthOracleListener {
+export class EthOracleFetcher {
   public static TTL = 10 * 1000 // 10s
 
   oracleAddress: Address
@@ -45,7 +45,7 @@ export class EthOracleListener {
     const priceBig6 = r >= 0n ? price * 10n ** r : price / (10n ** (r * -1n))
 
     this.lastPrice = {
-      expiry: Date.now() + EthOracleListener.TTL,
+      expiry: Date.now() + EthOracleFetcher.TTL,
       big6: priceBig6
     }
   }
