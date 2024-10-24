@@ -119,7 +119,16 @@ export async function createRelayer() {
 
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: Multiplier, shouldWait?: boolean) => {
-          const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: { multiplier: CallGasLimitMultiplier, maxFeePerGas: tipMultiplier, maxPriorityFeePerGas: tipMultiplier } } }).catch(injectUOError(UOError.FailedBuildOperation))
+          const userOp = await client.buildUserOperation({
+              uo,
+              overrides: {
+                callGasLimit: {
+                  multiplier: CallGasLimitMultiplier,
+                  maxFeePerGas: tipMultiplier,
+                  maxPriorityFeePerGas: tipMultiplier
+                }
+              }
+          }).catch(injectUOError(UOError.FailedBuildOperation))
 
           const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
           const sigMaxFee = signingPayload.message.action.maxFee
@@ -132,14 +141,17 @@ export async function createRelayer() {
             throw new Error(UOError.MaxFeeTooLow)
           }
 
-          const request = await client.signUserOperation({ uoStruct: userOp }).catch(injectUOError(UOError.FailedSignOperation))
-          const uoHash = await client.sendRawUserOperation(request, entryPoint).catch(injectUOError(UOError.FailedSendOperation))
+          const request = await client.signUserOperation({ uoStruct: userOp })
+            .catch(injectUOError(UOError.FailedSignOperation))
+          const uoHash = await client.sendRawUserOperation(request, entryPoint)
+            .catch(injectUOError(UOError.FailedSendOperation))
 
           console.debug(`Sent userOp: ${uoHash}`)
 
           let txHash: Hash | undefined
           if (shouldWait) {
-            txHash = await client.waitForUserOperationTransaction({ hash: uoHash }).catch(injectUOError(UOError.FailedWaitForOperation))
+            txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
+              .catch(injectUOError(UOError.FailedWaitForOperation))
             console.debug(`UserOp confirmed: ${txHash}`)
           }
           return ({
