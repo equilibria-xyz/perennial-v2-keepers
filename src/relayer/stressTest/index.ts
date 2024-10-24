@@ -26,7 +26,9 @@ if (
   return this.toString()
 }
 
+console.log("Here");
 const sdks = (privateKeys.split(',') as Hex[]).map((privateKey) => {
+  console.log("Private key", privateKey);
   const walletClient = createWalletClient({
     account: privateKeyToAccount(privateKey),
     chain: arbitrumSepolia,
@@ -62,13 +64,25 @@ const expiry = BigInt(Math.floor(Date.now() / 1000) + 60 * 60)
 const maxFee = Big6Math.fromFloatString('5')
 const unwrap = true
 
-const iterations = 5
+const formatTime = (duration: number) => {
+  const minutes = Math.floor(duration / 60000); // 60,000 ms in a minute
+  const seconds = Math.floor((duration % 60000) / 1000); // 1,000 ms in a second
+  const milliseconds = duration % 1000; // Remaining milliseconds
+
+  return `${minutes}m ${seconds}s ${milliseconds}ms`;
+};
+
+const iterations = 5;
 const run = async () => {
+  const totalStartTime = performance.now();
+  let requestDurations: number[] = [];
+
   let success = 0, numRequests = 0;
 
   const promises = sdks.map(async (sdk) => {
     let iterationCount = 0
     while (iterationCount < iterations) {
+      const requestStartTime = performance.now();
       const { signature, withdrawal } = await sdk.collateralAccounts.sign.withdrawal({
         amount,
         unwrap,
@@ -100,12 +114,23 @@ const run = async () => {
       if (result.success) {
         success++
       }
+      const requestEndTime = performance.now();
+      requestDurations.push(requestEndTime - requestStartTime);
       iterationCount++;
     }
   })
 
   await Promise.all(promises);
-  console.log(`Passed ${success} out of ${numRequests}`)
+
+  const totalEndTime = performance.now();
+  const totalTime = totalEndTime - totalStartTime;
+  const maxTime = Math.max(...requestDurations);
+  const minTime = Math.min(...requestDurations);
+  console.log(`Handled ${numRequests} requests from ${sdks.length} accounts in parallel`)
+  console.log(`Total time to handle: ${formatTime(totalTime)}`)
+  console.log(`Quickest confirmed request: ${formatTime(minTime)}`)
+  console.log(`Slowest confirmed request: ${formatTime(maxTime)}`)
+  console.log(`${success}/${numRequests} (${(success/numRequests) * 100}%) succeeded`)
 }
 
 run()
