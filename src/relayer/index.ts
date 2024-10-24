@@ -4,7 +4,7 @@ import cors from 'cors'
 
 import { createLightAccount } from '@account-kit/smart-contracts'
 import { alchemy, createAlchemySmartAccountClient,  arbitrum, arbitrumSepolia } from '@account-kit/infra'
-import { LocalAccountSigner, Multiplier } from '@aa-sdk/core'
+import { LocalAccountSigner } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
 import { Chain } from '../config.js'
 import {
@@ -112,15 +112,20 @@ export async function createRelayer() {
       const entryPoint = client.account.getEntryPoint().address
 
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
-        async (tipMultiplier: Multiplier, shouldWait?: boolean) => {
+        async (tipMultiplier: number, shouldWait?: boolean) => {
           const userOp = await client.buildUserOperation({
               uo,
               overrides: {
                 callGasLimit: {
                   multiplier: CallGasLimitMultiplier,
-                  maxFeePerGas: tipMultiplier,
-                  maxPriorityFeePerGas: tipMultiplier
-                }
+                },
+                maxFeePerGas: {
+                  multiplier: tipMultiplier
+                },
+                maxPriorityFeePerGas: {
+                  multiplier: tipMultiplier
+                },
+                nonceKey: BigInt(signingPayload.message.action.common.signer)
               }
           }).catch(injectUOError(UOError.FailedBuildOperation))
 

@@ -1,7 +1,8 @@
 import { Hex, encodeFunctionData } from 'viem'
-import { Multiplier, UserOperationStruct } from '@aa-sdk/core'
+import { UserOperationStruct } from '@aa-sdk/core'
 
 import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
+import { BaseTipMultiplier } from '../constants/relayer.js'
 
 import {
   ControllerAddresses,
@@ -137,13 +138,13 @@ export const constructUserOperation = (signingPayload: SigningPayload, signature
   return uo
 }
 
-const RetryOnErrors = [UOError.FailedWaitForOperation, UOError.FailedSendOperation]
-export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: Multiplier, shouldWait?: boolean) => Promise<UOResult>, options?: { maxRetry?: number, shouldWait?: boolean }): Promise<UOResult> => {
+const RetryOnErrors = [UOError.FailedWaitForOperation, UOError.FailedSendOperation, UOError.FailedBuildOperation]
+export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: number, shouldWait?: boolean) => Promise<UOResult>, options?: { maxRetry?: number, shouldWait?: boolean }): Promise<UOResult> => {
   const maxRetry = options?.maxRetry ?? 3
   let retry = 0
   while (retry <= maxRetry) {
     // increase tip by 10% each time
-    const tipMultiplier = 1 + (0.1 * retry)
+    const tipMultiplier = BaseTipMultiplier + (0.1 * retry)
     try {
       console.debug(`Attempting to send userOp (${retry})`)
       return await sendUserOp(tipMultiplier, options?.shouldWait)
