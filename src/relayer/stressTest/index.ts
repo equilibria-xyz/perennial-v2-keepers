@@ -26,9 +26,7 @@ if (
   return this.toString()
 }
 
-console.log("Here");
 const sdks = (privateKeys.split(',') as Hex[]).map((privateKey) => {
-  console.log("Private key", privateKey);
   const walletClient = createWalletClient({
     account: privateKeyToAccount(privateKey),
     chain: arbitrumSepolia,

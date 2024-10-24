@@ -2,7 +2,7 @@ import { Hex, encodeFunctionData } from 'viem'
 import { UserOperationStruct } from '@aa-sdk/core'
 
 import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
-import { BaseTipMultiplier } from '../constants/relayer'
+import { BaseTipMultiplier } from '../constants/relayer.js'
 
 import {
   ControllerAddresses,
