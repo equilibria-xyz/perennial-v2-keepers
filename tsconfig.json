@@ -23,5 +23,5 @@
     "resolveJsonModule": true
   },
   "include": ["src/**/*", "test/**/*", "graph-codegen.ts", "hardhat.config.cts"],
-  "exclude": ["types/gql/*"]
+  "exclude": ["types/gql/*", "src/relayer/stressTest/*"]
 }
