@@ -6,7 +6,6 @@ import {
   Client,
   GraphClient,
   orderAccount,
-  liquidatorSigner,
   settlementAccount,
   SDK,
 } from '../../config.js'
@@ -27,7 +26,7 @@ import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUti
 import { getVaults } from '../../utils/vaultUtils.js'
 import { nowSeconds } from '../../utils/timeUtils.js'
 import { getUpdateDataForProviderType } from '../../utils/oracleUtils.js'
-import { calcNotional, pythMarketOpen, OracleFactoryAbi, MultiInvokerAbi, MarketAbi } from '@perennial/sdk'
+import { calcNotional, pythMarketOpen, MultiInvokerAbi, MarketAbi } from '@perennial/sdk'
 
 const Balances = ['ETH', 'USDC', 'DSU']
 const ERC20Abi = parseAbi(['function balanceOf(address owner) view returns (uint256)'] as const)
@@ -55,7 +54,7 @@ export class MetricsListener {
     Client.watchContractEvent({
       address: this.marketAddresses,
       abi: MarketAbi,
-      eventName: 'Updated',
+      eventName: 'OrderCreated',
       strict: true,
       poll: true,
       pollingInterval: MetricsListener.PollingInterval,
@@ -64,10 +63,12 @@ export class MetricsListener {
           const marketTag = marketAddressToMarketTag(Chain.id, log.address)
           console.log(
             `${marketTag}: ${log.args.account} position updated. m: ${Big6Math.toFloatString(
-              log.args.newMaker,
-            )}, l: ${Big6Math.toFloatString(log.args.newLong)}, s: ${Big6Math.toFloatString(
-              log.args.newShort,
-            )}, collat: $${Big6Math.toFloatString(log.args.collateral)}, liq: ${log.args.protect}`,
+              log.args.order.makerPos - log.args.order.makerNeg,
+            )}, l: ${Big6Math.toFloatString(
+              log.args.order.longPos - log.args.order.longNeg,
+            )}, s: ${Big6Math.toFloatString(
+              log.args.order.shortPos - log.args.order.shortNeg,
+            )}, collat: $${Big6Math.toFloatString(log.args.order.collateral)}, liq: ${log.args.order.protection}`,
           )
           tracer.dogstatsd.increment('market.update', 1, {
             chain: Chain.id,
@@ -259,11 +260,6 @@ export class MetricsListener {
         market: marketTag,
       })
 
-      tracer.dogstatsd.gauge('market.global.donation', Number(formatUnits(global.donation, 6)), {
-        chain: Chain.id,
-        market: marketTag,
-      })
-
       tracer.dogstatsd.gauge(
         'market.global.makerOI',
         Number(formatUnits(calcNotional(position.maker, global.latestPrice), 6)),
@@ -407,12 +403,12 @@ export class MetricsListener {
           staleAfter: m.staleAfter,
         })),
       })
-      const now = nowSeconds()
+      const now = Number(nowSeconds())
       feedPrices.forEach(async (feedData) => {
         feedData.details.forEach(async (price) => {
           const market = this.markets.find((m) => m.feed === price.id)
           if (!market) return
-          const isOpen = market.providerType === 'pyth' ? await pythMarketOpen(price.id) : true
+          const isOpen = market.providerType === 'PythFactory' ? await pythMarketOpen(price.id) : true
           const publishTime = isOpen ? price.publishTime : now // If market is closed, use current time
           tracer.dogstatsd.gauge('offchainPrice.delay', now - publishTime, {
             chain: Chain.id,
@@ -438,14 +434,14 @@ export class MetricsListener {
 
   public async onUpkeepInterval() {
     // Perform Oracle Fee Upkeep from LiqAddress
-    const globals = await Promise.all(
+    /* const globals = await Promise.all(
       this.marketAddresses.map(async (m) => ({
         marketAddress: m,
         global: await Client.readContract({ address: m, abi: MarketAbi, functionName: 'global' }),
       })),
-    )
-
-    for (const global of globals) {
+    ) */
+    // TODO: is this needed in v2.3?
+    /* for (const global of globals) {
       if (global.global.oracleFee > Big6Math.fromFloatString('500')) {
         const hash = await liquidatorSigner.writeContract({
           chain: Chain,
@@ -457,8 +453,7 @@ export class MetricsListener {
 
         await Client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
       }
-    }
-
+    } */
     // TODO: OracleKeeper DSU -> USDC -> ETH Swap
   }
 }

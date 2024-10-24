@@ -1,2 +1,3 @@
 /**/*.js
 types/gql
+hardhat.config.cjs

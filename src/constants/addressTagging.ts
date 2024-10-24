@@ -1,7 +1,7 @@
 import { Address, getAddress } from 'viem'
 import { SupportedChainId } from './network.js'
 import { arbitrum } from 'viem/chains'
-import { addressToMarket, oracleProviderTypeForFactoryAddress, SupportedMarket } from '@perennial/sdk'
+import { addressToMarket, SupportedMarket } from '@perennial/sdk'
 import { SDK } from '../config.js'
 
 export function marketAddressToMarketTag(chainId: SupportedChainId, market_: string) {
@@ -32,11 +32,14 @@ export function vaultAddressToVaultTag(chainId: SupportedChainId, vault_: string
 
 export function oracleProviderAddressToOracleProviderTag(
   chainId: SupportedChainId,
-  keeperFactory: Address,
   keeperOracle: Address,
   marketOracles: Awaited<ReturnType<typeof SDK.markets.read.marketOracles>>,
 ) {
-  const providerType = oracleProviderTypeForFactoryAddress({ chainId, factory: keeperFactory })
-  const oracleData = Object.values(marketOracles).find((oracle) => oracle.providerAddress === keeperOracle)
+  const oracleData = Object.values(marketOracles).find((oracle) => oracle.subOracleAddress === keeperOracle)
+  const providerTypeRaw = oracleData?.subOracleFactoryType
+  const providerType =
+    providerTypeRaw && providerTypeRaw !== 'unknown'
+      ? providerTypeRaw.replace('Factory', '').toLowerCase()
+      : providerTypeRaw
   return `${providerType}-${oracleData ? marketAddressToMarketTag(chainId, oracleData.marketAddress) : keeperOracle}`
 }

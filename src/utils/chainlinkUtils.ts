@@ -1,7 +1,7 @@
 import axios from 'axios'
 import * as crypto from 'crypto'
 import { URLSearchParams } from 'url'
-import { ChainlinkConfig } from '../config'
+import { ChainlinkConfig } from '../config.js'
 
 interface SingleReport {
   feedID: string

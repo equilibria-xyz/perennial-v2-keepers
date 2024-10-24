@@ -1,8 +1,8 @@
 import { getAddress, getContract } from 'viem'
-import { MarketDetails, getMarkets } from '../../utils/marketUtils'
-import { Chain, Client, settlementSigner } from '../../config'
-import { Big6Math } from '../../constants/Big6Math'
-import tracer from '../../tracer'
+import { MarketDetails, getMarkets } from '../../utils/marketUtils.js'
+import { Chain, Client, settlementSigner } from '../../config.js'
+import { Big6Math } from '../../constants/Big6Math.js'
+import tracer from '../../tracer.js'
 import { KeeperFactoryAbi, KeeperOracleAbi } from '@perennial/sdk'
 
 export class SettlementListener {
@@ -71,7 +71,7 @@ export class SettlementListener {
       abi: KeeperFactoryAbi,
       client: Client,
     })
-    const callbacks = await keeperOracle.read.localCallbacks([version, market.market])
+    const callbacks = await keeperOracle.read.localCallbacks([version])
     if (callbacks.length === 0) {
       console.log(`No callbacks for market ${market.metricsTag} and version ${version}`)
       return
@@ -80,7 +80,7 @@ export class SettlementListener {
     const sendCallbackTx = async () => {
       try {
         const { request } = await keeperOracleFactory.simulate.settle(
-          [[market.feed], [market.market], [version], [SettlementListener.MaxCount]],
+          [[market.feed], [version], [SettlementListener.MaxCount]],
           { account: settlementSigner.account },
         )
 

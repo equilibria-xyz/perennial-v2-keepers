@@ -1,8 +1,12 @@
 /* eslint-disable */
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url';
 
-const lensJsonPath = path.join(__dirname, '../../artifacts/src/contracts/contracts/BatchKeeper.sol/BatchKeeper.json')
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const lensJsonPath = path.join(__dirname, '../../artifacts/src/contracts/BatchKeeper.sol/BatchKeeper.json')
 const lensJson = JSON.parse(fs.readFileSync(lensJsonPath, 'utf-8'))
 const tsCode = `export const BatchKeeperAbi = ${JSON.stringify(lensJson.abi)} as const;`
 const tsFilePath = path.join(__dirname, '../constants/abi/BatchKeeper.abi.ts')

@@ -49,7 +49,7 @@ function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserCo
     solidity: {
       compilers: [
         {
-          version: '0.8.19',
+          version: '0.8.24',
           settings: {
             optimizer: {
               enabled: OPTIMIZER_ENABLED,
@@ -96,13 +96,11 @@ function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserCo
       paths: dependencyPaths || [],
     },
     paths: {
-      sources: 'src/contracts',
+      sources: 'src',
     },
   }
 }
 
-const config = defaultConfig({
-  dependencyPaths: ['@equilibria/perennial-v2/contracts/interfaces/IMarket.sol'],
-})
+const config = defaultConfig()
 
 export default config

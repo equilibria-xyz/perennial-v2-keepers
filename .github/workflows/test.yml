@@ -1,0 +1,39 @@
+name: Build and test relayer
+
+on:
+  pull_request:
+    branches:
+      - staging
+      - main
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up
+        uses: actions/setup-node@v3
+
+        with:
+          node-version: '20.12.2'
+          cache: 'yarn'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Install
+        run: |
+          echo -e "\n@scope:registry=https://registry.npmjs.org\n//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
+          yarn
+
+      - name: Build
+        run: yarn build
+        env:
+          ARBITRUM_GRAPH_URL: ${{ secrets.ARBITRUM_GRAPH_URL }}
+
+      - name: Run relayer tests
+        run: yarn test
+        env:
+          VITE_TESTING_PRIVATE_KEY: ${{ secrets.VITE_TESTING_PRIVATE_KEY }}

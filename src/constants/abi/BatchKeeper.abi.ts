@@ -11,6 +11,7 @@ export const BatchKeeperAbi = [
   },
   { inputs: [], name: 'InitializableNotInitializingError', type: 'error' },
   { inputs: [], name: 'InitializableZeroVersionError', type: 'error' },
+  { inputs: [], name: 'OwnableAlreadyInitializedError', type: 'error' },
   {
     inputs: [{ internalType: 'address', name: 'sender', type: 'address' }],
     name: 'OwnableNotOwnerError',

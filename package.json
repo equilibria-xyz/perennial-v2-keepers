@@ -6,11 +6,13 @@
     "node": ">= 20 <21",
     "yarn": "1.x"
   },
+  "type": "module",
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.0",
     "@graphql-codegen/client-preset": "^4.1.0",
     "@nomicfoundation/hardhat-verify": "^2.0.3",
     "@types/chai": "^4.3.6",
+    "@types/express": "^5.0.0",
     "@types/jest": "~29.5",
     "@types/mocha": "^10.0.1",
     "@types/node": "~18",
@@ -29,7 +31,10 @@
     "rimraf": "~5.0",
     "ts-api-utils": "~0.0.44",
     "ts-jest": "~29.1",
-    "typescript": "5.4.3"
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.1",
+    "typescript": "5.4.3",
+    "vitest": "^2.1.2"
   },
   "scripts": {
     "compile": "OPTIMIZER_ENABLED=true hardhat compile",
@@ -42,32 +47,38 @@
     "lint": "eslint . --ext .ts --ext .mts",
     "test:integration": "OPTIMIZER_ENABLED=true FORK_ENABLED=true FORK_BLOCK_NUMBER=39329793 hardhat test",
     "prettier": "prettier --config .prettierrc --write .",
-    "gen:lens-artifact": "yarn compile && ts-node src/scripts/lensAbiCopy.ts && prettier --write src/constants/abi/*",
+    "gen:lens-artifact": "yarn compile && tsx --tsconfig ./tsconfig.release.json src/scripts/lensAbiCopy.ts && prettier --write src/constants/abi/*",
     "precommit": "yarn lint-staged",
     "gen:gql-typings": "graphql-codegen --config graph-codegen.ts",
-    "postinstall": "husky install"
+    "postinstall": "husky install",
+    "test": "vitest"
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@equilibria/perennial-v2": "1.2.0-rc3",
-    "@equilibria/perennial-v2-extensions": "1.2.0-rc0",
-    "@equilibria/perennial-v2-oracle": "1.2.0-rc0",
-    "@equilibria/root": "2.2.0",
-    "@perennial/sdk": "0.0.2-beta28",
+    "@account-kit/infra": "^4.0.0-beta.8",
+    "@account-kit/smart-contracts": "^4.0.0-beta.8",
+    "@equilibria/root": "2.3.0-rc8",
+    "@perennial/core": "1.3.0-rc1",
+    "@perennial/extensions": "1.3.0-rc1",
+    "@perennial/oracle": "1.3.0-rc2",
+    "@perennial/verifier": "1.3.0-rc1",
+    "@perennial/sdk": "0.0.3-alpha.9",
     "@pythnetwork/pyth-evm-js": "^1.20.1",
+    "@types/cors": "^2.8.17",
     "buffer": "^6.0.3",
     "chainlink": "^0.8.2",
+    "cors": "^2.8.5",
     "date-fns": "^2.30.0",
     "dd-trace": "^4.13.1",
     "dotenv": "^16.3.1",
+    "express": "^4.21.0",
     "graphql": "^16.8.0",
     "graphql-request": "^6.1.0",
     "hardhat": "^2.17.3",
     "hardhat-deploy": "^0.11.37",
     "solc": "^0.8.21",
-    "ts-node": "^10.9.1",
     "tslib": "~2.5",
-    "viem": "2.9.9"
+    "viem": "^2.21.21"
   },
   "volta": {
     "node": "18.12.1"
