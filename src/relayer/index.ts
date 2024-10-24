@@ -100,12 +100,12 @@ export async function createRelayer() {
       }
 
       const latestEthPrice: bigint = await ethOracleFetcher.getLastPriceBig6()
-      .catch((e) => {
-        tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
-          chain: Chain.id,
+        .catch((e) => {
+          tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
+            chain: Chain.id,
+          })
+          return injectUOError(UOError.OracleError)(e)
         })
-        return injectUOError(UOError.OracleError)(e)
-      })
       const entryPoint = client.account.getEntryPoint().address
 
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
