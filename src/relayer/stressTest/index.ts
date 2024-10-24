@@ -68,6 +68,7 @@ const run = async () => {
 
   const promises = sdks.map(async (sdk) => {
     let iterationCount = 0
+    let results = [];
     while (iterationCount < iterations) {
       const requestStartTime = performance.now();
       const { signature, withdrawal } = await sdk.collateralAccounts.sign.withdrawal({
@@ -80,7 +81,7 @@ const run = async () => {
       })
       console.log(`Generated signature: ${signature} for ${withdrawal.message.action.common.signer}`)
       numRequests++;
-      const result = await fetch(`${relayerBackendUrl}/relayIntent`, {
+      const result = fetch(`${relayerBackendUrl}/relayIntent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,17 +95,21 @@ const run = async () => {
         }),
       })
       .then((res) => res.json())
+      .then((res) => {
+        console.log("Got", result)
+        if (res.success) {
+          success++
+        }
+        const requestEndTime = performance.now();
+        requestDurations.push(requestEndTime - requestStartTime);
+      })
       .catch((_e) => {
         console.log('Request failed')
       })
-      console.log("Got", result)
-      if (result.success) {
-        success++
-      }
-      const requestEndTime = performance.now();
-      requestDurations.push(requestEndTime - requestStartTime);
       iterationCount++;
+      results.push(result)
     }
+    return Promise.all(results)
   })
 
   await Promise.all(promises);
