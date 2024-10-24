@@ -431,29 +431,4 @@ export class MetricsListener {
 
     console.log('Metrics Updated')
   }
-
-  public async onUpkeepInterval() {
-    // Perform Oracle Fee Upkeep from LiqAddress
-    /* const globals = await Promise.all(
-      this.marketAddresses.map(async (m) => ({
-        marketAddress: m,
-        global: await Client.readContract({ address: m, abi: MarketAbi, functionName: 'global' }),
-      })),
-    ) */
-    // TODO: is this needed in v2.3?
-    /* for (const global of globals) {
-      if (global.global.oracleFee > Big6Math.fromFloatString('500')) {
-        const hash = await liquidatorSigner.writeContract({
-          chain: Chain,
-          address: OracleFactoryAddresses[Chain.id],
-          abi: OracleFactoryAbi,
-          functionName: 'fund',
-          args: [global.marketAddress],
-        })
-
-        await Client.waitForTransactionReceipt({ hash, timeout: 1000 * 5 })
-      }
-    } */
-    // TODO: OracleKeeper DSU -> USDC -> ETH Swap
-  }
 }

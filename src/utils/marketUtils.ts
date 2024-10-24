@@ -1,8 +1,8 @@
-import { Address, Hex, PublicClient, getAbiItem, parseAbi, zeroAddress } from 'viem'
+import { Address, PublicClient, getAbiItem, zeroAddress } from 'viem'
 import { MarketFactoryAddresses, SupportedChainId } from '../constants/network.js'
 import { marketAddressToMarketTag } from '../constants/addressTagging.js'
 import { Chain, Client, SDK } from '../config.js'
-import { FactoryAbi, PayoffAbi, KeeperFactoryAbi } from '@perennial/sdk'
+import { FactoryAbi, PayoffAbi } from '@perennial/sdk'
 
 export type MarketDetails = Awaited<ReturnType<typeof getMarkets>>[number]
 export async function getMarkets() {
@@ -19,17 +19,9 @@ export async function getMarkets() {
     ])
 
     // Oracle -> KeeperOracle
-    const [current] = await Client.readContract({
-      address: oracle,
-      abi: parseAbi(['function global() view returns (uint128,uint128)'] as const),
-      functionName: 'global',
-    })
-    const [keeperOracle] = await Client.readContract({
-      address: oracle,
-      abi: parseAbi(['function oracles(uint256) view returns ((address, uint96))'] as const),
-      functionName: 'oracles',
-      args: [current],
-    })
+    const oracleContract = SDK.contracts.getOracleContract(oracle)
+    const [current] = await oracleContract.read.global()
+    const [keeperOracle] = await oracleContract.read.oracles([current])
 
     // KeeperOracle -> Feed
     const keeperOracleContract = SDK.contracts.getKeeperOracleContract(keeperOracle)
@@ -39,10 +31,7 @@ export async function getMarkets() {
     ])
 
     const providerFactoryContract = SDK.contracts.getKeeperFactoryContract(providerFactory)
-
-    const feed = await getFeedIdForProvider({ providerFactory, keeperOracle })
-    if (!feed) throw new Error(`No feed found for ${keeperOracle}`)
-
+    const feed = await providerFactoryContract.read.ids([keeperOracle])
     const [providerParameter, underlyingId, underlyingPayoff, providerType] = await Promise.all([
       providerFactoryContract.read.parameter(),
       providerFactoryContract.read.toUnderlyingId([feed]),
@@ -57,8 +46,8 @@ export async function getMarkets() {
       providerFactory,
       payoff: underlyingPayoff.provider,
       payoffDecimals: BigInt(underlyingPayoff.decimals),
-      feed: feed as Hex,
-      underlyingId: underlyingId as Hex,
+      feed,
+      underlyingId,
       token,
       timeout,
       validFrom: providerParameter.validFrom,
@@ -69,7 +58,7 @@ export async function getMarkets() {
     }
   })
 
-  return Promise.all(marketsWithOracle)
+  return await Promise.all(marketsWithOracle)
 }
 
 // Price is expected to be in 18 decimals, returns a 6 decimal transformed price
@@ -107,22 +96,4 @@ async function getMarketAddresses({ client, chainId }: { client: PublicClient; c
   })
 
   return logs.map((l) => l.args.instance)
-}
-
-// TODO: In v2.3 we can get this directly from the contract
-async function getFeedIdForProvider({
-  providerFactory,
-  keeperOracle,
-}: {
-  providerFactory: Address
-  keeperOracle: Address
-}) {
-  const feedEvents = await Client.getLogs({
-    address: providerFactory,
-    event: getAbiItem({ abi: KeeperFactoryAbi, name: 'OracleCreated' }),
-    args: { oracle: keeperOracle },
-    fromBlock: 0n,
-    toBlock: 'latest',
-  })
-  return feedEvents.at(0)?.args.id
 }

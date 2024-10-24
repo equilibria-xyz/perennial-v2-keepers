@@ -99,13 +99,6 @@ const run = async () => {
         },
         IsMainnet ? MetricsListener.PollingInterval : 5 * MetricsListener.PollingInterval,
       )
-      console.log('Starting Upkeep Listener')
-      setInterval(
-        () => {
-          metricsListener.onUpkeepInterval()
-        },
-        IsMainnet ? MetricsListener.UpkeepInterval : 5 * MetricsListener.UpkeepInterval,
-      )
       break
     }
     case TaskType.relayer: {
