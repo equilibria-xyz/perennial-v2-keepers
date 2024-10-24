@@ -8,7 +8,7 @@ import { LocalAccountSigner, Multiplier } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
 import { Chain } from '../config.js'
 
-import { constructUserOperation, isRelayedIntent, retryUserOpWithIncreasingTip } from '../utils/relayerUtils.js'
+import { calcOpMaxFeeUsd, constructUserOperation, isRelayedIntent, retryUserOpWithIncreasingTip } from '../utils/relayerUtils.js'
 import { SigningPayload, UserOpStatus, UOError } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
@@ -108,14 +108,13 @@ export async function createRelayer() {
       }
 
       const latestEthPrice: bigint = await ethOracleListener.getLastPriceBig6().catch(handleOracleError)
+      const entryPoint = client.account.getEntryPoint().address
 
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
-        async (tipMultiplier: Multiplier) => {
+        async (tipMultiplier: Multiplier, shouldWait?: boolean) => {
           const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: { multiplier: CallGasLimitMultiplier, maxFeePerGas: tipMultiplier, maxPriorityFeePerGas: tipMultiplier } } })
-          const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) + BigInt(userOp.preVerificationGas) // gwei
-          const maxGasCost = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
-          const maxFeeUsd = (maxGasCost * latestEthPrice) / 1_000_000_000n  // 10^6
 
+          const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
           const sigMaxFee = signingPayload.message.action.maxFee
           if (sigMaxFee < maxFeeUsd ) {
             // this error will not retry
@@ -127,17 +126,13 @@ export async function createRelayer() {
           }
 
           const request = await client.signUserOperation({ uoStruct: userOp })
-          const entryPoint = client.account.getEntryPoint().address
           const uoHash = await client.sendRawUserOperation(request, entryPoint)
 
           console.debug(`Sent userOp: ${uoHash}`)
 
           let txHash: Hash | undefined
-          if (meta?.wait) {
-            const retry = 0
-            while (retry < 3) {
-              txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
-            }
+          if (shouldWait) {
+            txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
             console.debug(`UserOp confirmed: ${txHash}`)
           }
           return ({
@@ -145,7 +140,8 @@ export async function createRelayer() {
             txHash
           })
         }, {
-          maxRetry: 3
+          maxRetry: 3,
+          shouldWait: meta?.wait
         }
       )
 

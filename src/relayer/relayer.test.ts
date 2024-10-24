@@ -48,6 +48,13 @@ let accountModule: CollateralAccountModule, marketsModule: MarketsModule
 const maxFee = 0n,
   expiry = 0n
 
+const mockSendUO = async (_tipMultiplier: number, shouldWait?: boolean) => {
+  const uoHash = 'uoHash'
+  let txHash
+  if (shouldWait) { txHash = 'txHash' }
+  return { uoHash, txHash }
+}
+
 describe('Validates signatures', () => {
   beforeEach(() => {
     accountModule = new CollateralAccountModule({
@@ -613,7 +620,7 @@ describe('retryUserOpWithIncreasingTip', () => {
     const result = await retryUserOpWithIncreasingTip(sendUserOp)
     expect(result).toEqual({ success: true })
     expect(sendUserOp).toHaveBeenCalledTimes(1)
-    expect(sendUserOp).toHaveBeenCalledWith(1)
+    expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
   })
 
   it('should retry on a retriable error', async () => {
@@ -624,23 +631,39 @@ describe('retryUserOpWithIncreasingTip', () => {
     const result = await retryUserOpWithIncreasingTip(sendUserOp)
     expect(result).toEqual({ success: true })
     expect(sendUserOp).toHaveBeenCalledTimes(2)
-    expect(sendUserOp).toHaveBeenCalledWith(1) // First try
-    expect(sendUserOp).toHaveBeenCalledWith(1.1) // Second try
+    expect(sendUserOp).toHaveBeenCalledWith(1, undefined) // First try
+    expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined) // Second try
   })
 
   it('should throw on non-retriable error', async () => {
     const sendUserOp = vi.fn().mockRejectedValue(new Error(UOError.MaxFeeTooLow))
     await expect(retryUserOpWithIncreasingTip(sendUserOp)).rejects.toThrow(UOError.MaxFeeTooLow)
     expect(sendUserOp).toHaveBeenCalledTimes(1)
-    expect(sendUserOp).toHaveBeenCalledWith(1)
+    expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
   })
 
   it('should throw after exceeding max retries', async () => {
-    const sendUserOp = vi.fn().mockRejectedValue(new Error('Some retriable error'))
+    const sendUserOp = vi.fn().mockRejectedValue(new Error(UOError.OracleError))
     await expect(retryUserOpWithIncreasingTip(sendUserOp, { maxRetry: 2 })).rejects.toThrow(UOError.ExceededMaxRetry)
-    expect(sendUserOp).toHaveBeenCalledTimes(3) // Three attempts
-    expect(sendUserOp).toHaveBeenCalledWith(1)
-    expect(sendUserOp).toHaveBeenCalledWith(1.1)
-    expect(sendUserOp).toHaveBeenCalledWith(1.2)
+    expect(sendUserOp).toHaveBeenCalledTimes(3)
+    expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
+    expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined)
+    expect(sendUserOp).toHaveBeenCalledWith(1.2, undefined)
+  })
+
+  it('should have txHash if waited', async () => {
+    const sendUserOp = vi.fn().mockImplementation(mockSendUO)
+    const result = await retryUserOpWithIncreasingTip(sendUserOp, { shouldWait: true })
+    expect(result).toEqual({ uoHash: 'uoHash', txHash: 'txHash' })
+    expect(sendUserOp).toHaveBeenCalledTimes(1)
+    expect(sendUserOp).toHaveBeenCalledWith(1, true)
+  })
+
+  it('should not have txHash if waited', async () => {
+    const sendUserOp = vi.fn().mockImplementation(mockSendUO)
+    const result = await retryUserOpWithIncreasingTip(sendUserOp)
+    expect(result).toEqual({ uoHash: 'uoHash' })
+    expect(sendUserOp).toHaveBeenCalledTimes(1)
+    expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
   })
 })

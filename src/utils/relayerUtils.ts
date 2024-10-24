@@ -1,5 +1,5 @@
 import { Hex, encodeFunctionData } from 'viem'
-import { Multiplier } from '@aa-sdk/core'
+import { Multiplier, UserOperationStruct } from '@aa-sdk/core'
 
 import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
 
@@ -137,14 +137,14 @@ export const constructUserOperation = (signingPayload: SigningPayload, signature
   return uo
 }
 
-export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: Multiplier) => Promise<UOResult>, options?: { maxRetry?: number }): Promise<UOResult> => {
+export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: Multiplier, shouldWait?: boolean) => Promise<UOResult>, options?: { maxRetry?: number, shouldWait?: boolean }): Promise<UOResult> => {
   const maxRetry = options?.maxRetry ?? 3
   let retry = 0
   while (retry <= maxRetry) {
     // increase tip by 10% each time
     const tipMultiplier = 1 + (0.1 * retry)
     try {
-      return await sendUserOp(tipMultiplier)
+      return await sendUserOp(tipMultiplier, options?.shouldWait)
     } catch (e) {
       if (e.message === UOError.MaxFeeTooLow) {
         // forward on error we dont want to retry with a higher fee
@@ -155,6 +155,13 @@ export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: M
   }
 
   throw new Error(UOError.ExceededMaxRetry)
+}
+
+export const calcOpMaxFeeUsd = (userOp: UserOperationStruct, latestEthPrice: bigint) => {
+  const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) + BigInt(userOp.preVerificationGas) // gwei
+  const maxGasCost = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
+  const maxFeeUsd = (maxGasCost * latestEthPrice) / 1_000_000_000n  // 10^6
+  return maxFeeUsd
 }
 
 export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean => {
