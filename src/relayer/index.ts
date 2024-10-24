@@ -76,9 +76,6 @@ export async function createRelayer() {
       }
     }
 
-    console.debug('signatures', JSON.stringify(signatures))
-    console.debug('signing', JSON.stringify(signingPayload))
-
     let error
     let relayedIntent
     if (!signingPayload) {
@@ -128,7 +125,7 @@ export async function createRelayer() {
       const request = await client.signUserOperation({ uoStruct: userOp })
       const entryPoint = client.account.getEntryPoint().address
       const uoHash = await client.sendRawUserOperation(request, entryPoint)
-      console.debug(`Sent userOp: ${uoHash}`)
+      console.log(`Sent userOp: ${uoHash}`)
 
       let txHash: Hash | undefined
       if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
