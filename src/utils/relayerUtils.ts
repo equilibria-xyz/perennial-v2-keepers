@@ -186,4 +186,9 @@ export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean 
   }
 }
 
-
+export const injectUOError = (uoError: UOError): ((e: unknown) => never) => {
+  return (e: unknown) => {
+    console.debug('UserOp.Failed', e)
+    throw new Error(uoError)
+  }
+}

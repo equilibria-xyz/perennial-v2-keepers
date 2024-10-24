@@ -7,8 +7,13 @@ import { alchemy, createAlchemySmartAccountClient,  arbitrum, arbitrumSepolia } 
 import { LocalAccountSigner, Multiplier } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
 import { Chain } from '../config.js'
-
-import { calcOpMaxFeeUsd, constructUserOperation, isRelayedIntent, retryUserOpWithIncreasingTip } from '../utils/relayerUtils.js'
+import {
+  calcOpMaxFeeUsd,
+  constructUserOperation,
+  isRelayedIntent,
+  retryUserOpWithIncreasingTip,
+  injectUOError
+} from '../utils/relayerUtils.js'
 import { SigningPayload, UserOpStatus, UOError } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
@@ -23,13 +28,6 @@ const ChainIdToAlchemyChain = {
 // @ts-ignore: Unreachable code error
 BigInt.prototype.toJSON = function (): number {
   return this.toString()
-}
-
-const injectUOError = (uoError: UOError): ((e: unknown) => never) => {
-  return (e: unknown) => {
-    console.debug('UserOp.Failed', e)
-    throw new Error(uoError)
-  }
 }
 
 export async function createRelayer() {
@@ -58,15 +56,6 @@ export async function createRelayer() {
 
   const ethOracleListener = new EthOracleFetcher()
   await ethOracleListener.init()
-
-  const handleOracleError = (err: unknown) => {
-    console.error('Oracle err', err)
-    tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
-      chain: Chain.id,
-    })
-    // forward on err
-    throw new Error(UOError.OracleError)
-  }
 
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
@@ -109,12 +98,17 @@ export async function createRelayer() {
 
     try {
       const uo = constructUserOperation(signingPayload, signatures)
-
       if (!uo) {
         throw new Error(UOError.FailedToConstructUO)
       }
 
-      const latestEthPrice: bigint = await ethOracleListener.getLastPriceBig6().catch(handleOracleError)
+      const latestEthPrice: bigint = await ethOracleListener.getLastPriceBig6()
+      .catch((e) => {
+        tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
+          chain: Chain.id,
+        })
+        return injectUOError(UOError.OracleError)(e)
+      })
       const entryPoint = client.account.getEntryPoint().address
 
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
@@ -147,6 +141,11 @@ export async function createRelayer() {
             .catch(injectUOError(UOError.FailedSendOperation))
 
           console.debug(`Sent userOp: ${uoHash}`)
+          tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
+            chain: Chain.id,
+            primaryType: signingPayload.primaryType,
+            tipMultiplier
+          })
 
           let txHash: Hash | undefined
           if (shouldWait) {
@@ -164,10 +163,6 @@ export async function createRelayer() {
         }
       )
 
-      tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
-        chain: Chain.id,
-        primaryType: signingPayload.primaryType,
-      })
       const status = txHash ? UserOpStatus.Complete: UserOpStatus.Pending
       res.send(JSON.stringify({ success: true, status, uoHash, txHash }))
     } catch (e) {
