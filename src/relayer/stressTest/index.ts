@@ -46,17 +46,6 @@ const sdks = (privateKeys.split(',') as Hex[]).map((privateKey) => {
   return sdk
 })
 
-
-/*
-const controller = sdk.contracts.getControllerContract()
-// The account sending the transaction can be different from the one that the collateral account is deployed for
-const { request } = await controller.simulate.withdrawWithSignature([withdrawal.message, signature], {
-  account: walletClient.account,
-})
-const txHash = await walletClient.writeContract(request)
-console.log('Transaction sent:', txHash)
-*/
-
 const amount = Big6Math.fromFloatString('0.001')
 const expiry = BigInt(Math.floor(Date.now() / 1000) + 60 * 60)
 const maxFee = Big6Math.fromFloatString('5')
