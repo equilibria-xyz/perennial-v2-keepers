@@ -625,25 +625,35 @@ describe('retryUserOpWithIncreasingTip', () => {
 
   it('should retry on a retriable error', async () => {
     const sendUserOp = vi.fn()
-      .mockRejectedValueOnce(new Error(UOError.OracleError))
+      .mockRejectedValueOnce(new Error(UOError.FailedWaitForOperation))
+      .mockRejectedValueOnce(new Error(UOError.FailedSendOperation))
       .mockResolvedValueOnce({ success: true })
 
     const result = await retryUserOpWithIncreasingTip(sendUserOp)
     expect(result).toEqual({ success: true })
-    expect(sendUserOp).toHaveBeenCalledTimes(2)
-    expect(sendUserOp).toHaveBeenCalledWith(1, undefined) // First try
-    expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined) // Second try
+    expect(sendUserOp).toHaveBeenCalledTimes(3)
+    expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
+    expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined)
+    expect(sendUserOp).toHaveBeenCalledWith(1.2, undefined)
   })
 
   it('should throw on non-retriable error', async () => {
-    const sendUserOp = vi.fn().mockRejectedValue(new Error(UOError.MaxFeeTooLow))
-    await expect(retryUserOpWithIncreasingTip(sendUserOp)).rejects.toThrow(UOError.MaxFeeTooLow)
-    expect(sendUserOp).toHaveBeenCalledTimes(1)
-    expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
+    const errorTypes = [
+      UOError.MaxFeeTooLow,
+      UOError.FailedBuildOperation,
+      UOError.FailedSignOperation
+    ]
+
+    errorTypes.forEach((errorType) => {
+      const sendUserOp = vi.fn().mockRejectedValue(new Error(errorType))
+      expect(retryUserOpWithIncreasingTip(sendUserOp)).rejects.toThrow(errorType)
+      expect(sendUserOp).toHaveBeenCalledTimes(1)
+      expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
+    })
   })
 
   it('should throw after exceeding max retries', async () => {
-    const sendUserOp = vi.fn().mockRejectedValue(new Error(UOError.OracleError))
+    const sendUserOp = vi.fn().mockRejectedValue(new Error(UOError.FailedWaitForOperation))
     await expect(retryUserOpWithIncreasingTip(sendUserOp, { maxRetry: 2 })).rejects.toThrow(UOError.ExceededMaxRetry)
     expect(sendUserOp).toHaveBeenCalledTimes(3)
     expect(sendUserOp).toHaveBeenCalledWith(1, undefined)

@@ -12,6 +12,10 @@ export type UOResult = {
   txHash?: Hash
 }
 export enum UOError {
+  FailedBuildOperation = 'Failed to build uo',
+  FailedSignOperation = 'Failed to sign uo',
+  FailedSendOperation = 'Failed to send raw uo',
+  FailedWaitForOperation = 'Failed to wait for uo',
   ExceededMaxRetry = 'Exceeded max retry attempts for userOp',
   MaxFeeTooLow = 'Estimated userOp fee is greater than maxFee. Try increasing maxFee of signature payload',
   FailedToConstructUO = 'Failed to construct user operation',

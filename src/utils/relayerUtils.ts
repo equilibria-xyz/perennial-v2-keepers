@@ -137,6 +137,7 @@ export const constructUserOperation = (signingPayload: SigningPayload, signature
   return uo
 }
 
+const RetryOnErrors = [UOError.FailedWaitForOperation, UOError.FailedSendOperation]
 export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: Multiplier, shouldWait?: boolean) => Promise<UOResult>, options?: { maxRetry?: number, shouldWait?: boolean }): Promise<UOResult> => {
   const maxRetry = options?.maxRetry ?? 3
   let retry = 0
@@ -144,12 +145,14 @@ export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: M
     // increase tip by 10% each time
     const tipMultiplier = 1 + (0.1 * retry)
     try {
+      console.debug(`Attempting to send userOp (${retry})`)
       return await sendUserOp(tipMultiplier, options?.shouldWait)
     } catch (e) {
-      if (e.message === UOError.MaxFeeTooLow) {
+      if (!RetryOnErrors.includes(e.message)) {
         // forward on error we dont want to retry with a higher fee
         throw e
       }
+      console.debug(`Failed to send userOp: ${e.message}`)
       retry += 1
     }
   }
