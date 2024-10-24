@@ -39,6 +39,11 @@ Relayed intents reward relayers for forwarding transactions.
 ```
 
 #### Meta
+```
+    {
+      wait?: boolean, // if the return value should wait for the confirmed txnHash
+    }
+```
 
 Use `wait` if you want to wait for the transaction receipt. If `wait` is used then the return type will include the transaction hash.
 

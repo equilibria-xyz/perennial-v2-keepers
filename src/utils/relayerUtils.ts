@@ -2,7 +2,7 @@ import { Hex, encodeFunctionData } from 'viem'
 import { UserOperationStruct } from '@aa-sdk/core'
 
 import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
-import { BaseTipMultiplier } from '../constants/relayer.js'
+import { BaseTipMultiplier, TipPercentageIncrease } from '../constants/relayer.js'
 
 import {
   ControllerAddresses,
@@ -143,8 +143,8 @@ export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: n
   const maxRetry = options?.maxRetry ?? 3
   let retry = 0
   while (retry <= maxRetry) {
-    // increase tip by 10% each time
-    const tipMultiplier = BaseTipMultiplier + (0.1 * retry)
+    // increase tip, alchemy throws if its more than 4 decimals https://github.com/alchemyplatform/aa-sdk/blob/main/aa-sdk/core/src/utils/schema.ts#L34
+    const tipMultiplier = parseFloat((BaseTipMultiplier + (TipPercentageIncrease * retry)).toFixed(4))
     try {
       console.debug(`Attempting to send userOp (${retry})`)
       return await sendUserOp(tipMultiplier, options?.shouldWait)
