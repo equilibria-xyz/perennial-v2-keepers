@@ -146,14 +146,12 @@ export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: n
     // increase tip, alchemy throws if its more than 4 decimals https://github.com/alchemyplatform/aa-sdk/blob/main/aa-sdk/core/src/utils/schema.ts#L34
     const tipMultiplier = parseFloat((BaseTipMultiplier + (TipPercentageIncrease * retry)).toFixed(4))
     try {
-      console.debug(`Attempting to send userOp (${retry})`)
       return await sendUserOp(tipMultiplier, options?.shouldWait)
     } catch (e) {
       if (!RetryOnErrors.includes(e.message)) {
         // forward on error we dont want to retry with a higher fee
         throw e
       }
-      console.debug(`Failed to send userOp: ${e.message}`)
       retry += 1
     }
   }
@@ -189,7 +187,7 @@ export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean 
 
 export const injectUOError = (uoError: UOError): ((e: unknown) => never) => {
   return (e: unknown) => {
-    console.debug('UserOp.Failed', e)
+    console.error('UserOp.Failed', e)
     throw new Error(uoError)
   }
 }

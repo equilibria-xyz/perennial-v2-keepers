@@ -54,8 +54,8 @@ export async function createRelayer() {
     account,
   })
 
-  const ethOracleListener = new EthOracleFetcher()
-  await ethOracleListener.init()
+  const ethOracleFetcher = new EthOracleFetcher()
+  await ethOracleFetcher.init()
 
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
@@ -70,9 +70,6 @@ export async function createRelayer() {
         wait?: boolean
       }
     }
-
-    console.debug('signatures', JSON.stringify(signatures))
-    console.debug('signing', JSON.stringify(signingPayload))
 
     let error
     let relayedIntent
@@ -102,7 +99,7 @@ export async function createRelayer() {
         throw new Error(UOError.FailedToConstructUO)
       }
 
-      const latestEthPrice: bigint = await ethOracleListener.getLastPriceBig6()
+      const latestEthPrice: bigint = await ethOracleFetcher.getLastPriceBig6()
       .catch((e) => {
         tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
           chain: Chain.id,
@@ -125,6 +122,7 @@ export async function createRelayer() {
                 maxPriorityFeePerGas: {
                   multiplier: tipMultiplier
                 },
+                // this is important for parellelization of user ops
                 nonceKey: BigInt(signingPayload.message.action.common.signer)
               }
           }).catch(injectUOError(UOError.FailedBuildOperation))
@@ -145,7 +143,7 @@ export async function createRelayer() {
           const uoHash = await client.sendRawUserOperation(request, entryPoint)
             .catch(injectUOError(UOError.FailedSendOperation))
 
-          console.debug(`Sent userOp: ${uoHash}`)
+          console.log(`Sent userOp: ${uoHash}`)
           tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
             chain: Chain.id,
             primaryType: signingPayload.primaryType,
@@ -156,7 +154,7 @@ export async function createRelayer() {
           if (shouldWait) {
             txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
               .catch(injectUOError(UOError.FailedWaitForOperation))
-            console.debug(`UserOp confirmed: ${txHash}`)
+            console.log(`UserOp confirmed: ${txHash}`)
           }
           return ({
             uoHash,
