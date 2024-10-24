@@ -7,13 +7,17 @@ import { alchemy, createAlchemySmartAccountClient,  arbitrum, arbitrumSepolia } 
 import { LocalAccountSigner } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
 import { Chain } from '../config.js'
-
-import { constructUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
-import { SigningPayload } from './types.js'
+import {
+  calcOpMaxFeeUsd,
+  constructUserOperation,
+  isRelayedIntent,
+  retryUserOpWithIncreasingTip,
+  injectUOError
+} from '../utils/relayerUtils.js'
+import { SigningPayload, UserOpStatus, UOError } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
-
-const GAS_LIMIT_MULTIPLIER = process.env.GAS_LIMIT_MULTIPLIER ?? 1.5
+import { CallGasLimitMultiplier, MaxRetries } from '../constants/relayer.js'
 
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
@@ -50,17 +54,8 @@ export async function createRelayer() {
     account,
   })
 
-  const ethOracleListener = new EthOracleFetcher()
-  await ethOracleListener.init()
-
-  const handleOracleError = (err: unknown) => {
-    console.error('Oracle err', err)
-    tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
-      chain: Chain.id,
-    })
-    // forward on err
-    throw err
-  }
+  const ethOracleFetcher = new EthOracleFetcher()
+  await ethOracleFetcher.init()
 
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
@@ -100,49 +95,86 @@ export async function createRelayer() {
 
     try {
       const uo = constructUserOperation(signingPayload, signatures)
-
       if (!uo) {
-        throw Error('Failed to construct user operation')
+        throw new Error(UOError.FailedToConstructUO)
       }
 
-      const latestEthPrice: bigint = await ethOracleListener.getLastPriceBig6().catch(handleOracleError)
-
-      const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: { multiplier: GAS_LIMIT_MULTIPLIER } } })
-
-      const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) + BigInt(userOp.preVerificationGas) // gwei
-      const maxGasCost = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
-      const maxFeeUsd = (maxGasCost * latestEthPrice) / 1_000_000_000n  // 10^6
-
-      const sigMaxFee = signingPayload.message.action.maxFee
-      if (sigMaxFee < maxFeeUsd ) {
-        tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
-          chain: Chain.id,
-          primaryType: signingPayload.primaryType,
+      const latestEthPrice: bigint = await ethOracleFetcher.getLastPriceBig6()
+        .catch((e) => {
+          tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
+            chain: Chain.id,
+          })
+          return injectUOError(UOError.OracleError)(e)
         })
-        throw Error(`Estimated fee (${maxFeeUsd}) is greater than maxFee (${sigMaxFee})`)
-      }
-
-      const request = await client.signUserOperation({ uoStruct: userOp })
       const entryPoint = client.account.getEntryPoint().address
-      const uoHash = await client.sendRawUserOperation(request, entryPoint)
-      console.log(`Sent userOp: ${uoHash}`)
 
-      let txHash: Hash | undefined
-      if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
+      const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
+        async (tipMultiplier: number, shouldWait?: boolean) => {
+          const userOp = await client.buildUserOperation({
+              uo,
+              overrides: {
+                callGasLimit: {
+                  multiplier: CallGasLimitMultiplier,
+                },
+                maxFeePerGas: {
+                  multiplier: tipMultiplier
+                },
+                maxPriorityFeePerGas: {
+                  multiplier: tipMultiplier
+                },
+                // this is important for parellelization of user ops
+                nonceKey: BigInt(signingPayload.message.action.common.signer)
+              }
+          }).catch(injectUOError(UOError.FailedBuildOperation))
 
-      tracer.dogstatsd.increment('relayer.transaction.sent', 1, {
-        chain: Chain.id,
-        primaryType: signingPayload.primaryType,
-      })
-      res.send(JSON.stringify({ success: true, uoHash, txHash }))
+          const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
+          const sigMaxFee = signingPayload.message.action.maxFee
+          if (sigMaxFee < maxFeeUsd ) {
+            // this error will not retry
+            tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
+              chain: Chain.id,
+              primaryType: signingPayload.primaryType,
+            })
+            throw new Error(UOError.MaxFeeTooLow)
+          }
+
+          const request = await client.signUserOperation({ uoStruct: userOp })
+            .catch(injectUOError(UOError.FailedSignOperation))
+          const uoHash = await client.sendRawUserOperation(request, entryPoint)
+            .catch(injectUOError(UOError.FailedSendOperation))
+
+          console.log(`Sent userOp: ${uoHash}`)
+          tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
+            chain: Chain.id,
+            primaryType: signingPayload.primaryType,
+            tipMultiplier
+          })
+
+          let txHash: Hash | undefined
+          if (shouldWait) {
+            txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
+              .catch(injectUOError(UOError.FailedWaitForOperation))
+            console.log(`UserOp confirmed: ${txHash}`)
+          }
+          return ({
+            uoHash,
+            txHash
+          })
+        }, {
+          maxRetry: MaxRetries,
+          shouldWait: meta?.wait
+        }
+      )
+
+      const status = txHash ? UserOpStatus.Complete: UserOpStatus.Pending
+      res.send(JSON.stringify({ success: true, status, uoHash, txHash }))
     } catch (e) {
       console.warn(e)
-
-      tracer.dogstatsd.increment('relayer.transaction.reverted', 1, {
+      tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
         primaryType: signingPayload.primaryType,
       })
-      res.send(JSON.stringify({ success: false, error: `Unable to relay transaction: ${e.message}` }))
+      res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}` }))
     }
   })
 
