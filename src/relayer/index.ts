@@ -6,9 +6,9 @@ import { createLightAccount } from '@account-kit/smart-contracts'
 import { alchemy, createAlchemySmartAccountClient,  arbitrum, arbitrumSepolia } from '@account-kit/infra'
 import { LocalAccountSigner } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
-import { Chain } from '../config.js'
+import { Chain, SDK } from '../config.js'
 
-import { constructUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
+import { constructUserOperation, isRelayedIntent, requiresPriceCommit, buildPriceCommit } from '../utils/relayerUtils.js'
 import { SigningPayload } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
@@ -99,15 +99,22 @@ export async function createRelayer() {
     }
 
     try {
-      const uo = constructUserOperation(signingPayload, signatures)
+      const uo_ = constructUserOperation(signingPayload, signatures)
 
-      if (!uo) {
+      if (!uo_) {
         throw Error('Failed to construct user operation')
       }
 
+      const uos = []
+      if (requiresPriceCommit(signingPayload)) {
+        const priceCommitment = await buildPriceCommit(SDK, Chain.id, signingPayload)
+        uos.push(priceCommitment)
+      }
+      uos.push(uo_)
+
       const latestEthPrice: bigint = await ethOracleListener.getLastPriceBig6().catch(handleOracleError)
 
-      const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: { multiplier: GAS_LIMIT_MULTIPLIER } } })
+      const userOp = await client.buildUserOperation({ uo: uos, overrides: { callGasLimit: { multiplier: GAS_LIMIT_MULTIPLIER } } })
 
       const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) + BigInt(userOp.preVerificationGas) // gwei
       const maxGasCost = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
