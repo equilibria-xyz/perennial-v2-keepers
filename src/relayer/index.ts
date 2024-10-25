@@ -140,7 +140,6 @@ export async function createRelayer() {
 
       let txHash: Hash | undefined
       if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
-      console.log(`Confirmed userOp: ${txHash}`)
 
       tracer.dogstatsd.increment('relayer.transaction.sent', 1, {
         chain: Chain.id,
