@@ -13,7 +13,7 @@ import { SigningPayload } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 
-const GAS_LIMIT_MULTIPLIER = 1
+const GAS_LIMIT_MULTIPLIER = process.env.GAS_LIMIT_MULTIPLIER ?? 1.5
 
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
