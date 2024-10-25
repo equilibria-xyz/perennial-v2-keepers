@@ -40,7 +40,7 @@ export async function createRelayer() {
     chain,
     transport: alchemyTransport,
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex)
+    signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex),
   })
 
   const client = createAlchemySmartAccountClient({
