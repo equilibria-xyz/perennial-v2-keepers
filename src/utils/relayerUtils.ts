@@ -185,11 +185,11 @@ export const buildPriceCommit = async (
     throw new Error ('Failed to send price commitment')
   }
   const market = addressToMarket(chainId, marketAddress)
-  const commitment = await sdk.oracles.read.oracleCommitmentsLatest({
+  const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
     markets: [market],
   })
 
-  const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment[0], revertOnFailure: false })
+  const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })
 
   return ({
     target: priceCommitment.to,
