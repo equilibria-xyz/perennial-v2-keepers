@@ -1,14 +1,17 @@
-import { Hex, encodeFunctionData } from 'viem'
+import { Hex, encodeFunctionData, Address } from 'viem'
 
 import { UserOperation, SigningPayload, RelayedSignatures } from '../relayer/types.js'
 
-import {
+import PerennialSDK, {
   ControllerAddresses,
   ControllerAbi,
   SupportedChainId,
   ManagerAddresses,
-  ManagerAbi
+  ManagerAbi,
+  addressToMarket,
 } from '@perennial/sdk'
+
+import { PlaceOrderSigningPayload, WithdrawalSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 
 export const constructDirectUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
   const chainId = payload.domain?.chainId as SupportedChainId
@@ -154,3 +157,35 @@ export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean 
       return false
   }
 }
+
+export const requiresPriceCommit = (intent: SigningPayload): intent is (PlaceOrderSigningPayload | WithdrawalSigningPayload) => {
+  return (
+    intent.primaryType === 'Withdrawal' ||
+    intent.primaryType === 'PlaceOrderAction'
+  )
+}
+
+const getMarketAddressFromIntent = (intent: SigningPayload): Address | undefined => {
+  switch (intent.primaryType) {
+    case 'PlaceOrderAction':
+      return intent.message.action.market
+  }
+  return
+}
+
+export const buildPriceCommit = async (
+  sdk: InstanceType<typeof PerennialSDK.default>,
+  chainId: SupportedChainId,
+  intent: PlaceOrderSigningPayload | WithdrawalSigningPayload,
+): Promise<ReturnType<typeof sdk.oracles.build.commitPrice>> => {
+  const marketAddress = getMarketAddressFromIntent(intent)
+  if (!marketAddress) {
+    throw new Error ('Failed to send price commitment')
+  }
+  const market = addressToMarket(chainId, marketAddress)
+  const commitment = await sdk.oracles.read.oracleCommitmentsLatest({
+    markets: [market],
+  })
+  return sdk.oracles.build.commitPrice({ ...commitment[0], revertOnFailure: true })
+}
+

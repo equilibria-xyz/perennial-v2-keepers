@@ -6,14 +6,14 @@ import { createLightAccount } from '@account-kit/smart-contracts'
 import { alchemy, createAlchemySmartAccountClient,  arbitrum, arbitrumSepolia } from '@account-kit/infra'
 import { LocalAccountSigner } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
-import { Chain } from '../config.js'
+import { Chain, SDK } from '../config.js'
 
-import { constructUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
+import { constructUserOperation, isRelayedIntent, requiresPriceCommit, buildPriceCommit } from '../utils/relayerUtils.js'
 import { SigningPayload } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 
-const GAS_LIMIT_MULTIPLIER = process.env.GAS_LIMIT_MULTIPLIER ?? 1.5
+const GAS_LIMIT_MULTIPLIER = 1
 
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
@@ -36,11 +36,12 @@ export async function createRelayer() {
   })
 
   const chain = ChainIdToAlchemyChain[Chain.id]
+  const signer = LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex)
   const account = await createLightAccount({
     chain,
     transport: alchemyTransport,
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex),
+    signer
   })
 
   const client = createAlchemySmartAccountClient({
@@ -92,22 +93,37 @@ export async function createRelayer() {
         error = 'Missing signatures; requires [innerSignature, outerSignature]'
       }
     }
-
+;
     if (error) {
       res.send(JSON.stringify({ success: false, error }))
       return
     }
 
     try {
-      const uo = constructUserOperation(signingPayload, signatures)
+      const uo_ = constructUserOperation(signingPayload, signatures)
 
-      if (!uo) {
+      if (!uo_) {
         throw Error('Failed to construct user operation')
       }
 
+      const uos = []
+      if (requiresPriceCommit(signingPayload)) {
+        const priceCommitment = await buildPriceCommit(SDK, Chain.id, signingPayload)
+        uos.push({
+          target: priceCommitment.to,
+          data: priceCommitment.data,
+          value: priceCommitment.value
+        })
+        tracer.dogstatsd.increment('relayer.priceCommit.sent', 1, {
+          chain: Chain.id,
+          primaryType: signingPayload.primaryType,
+        })
+      }
+      uos.push(uo_)
+
       const latestEthPrice: bigint = await ethOracleListener.getLastPriceBig6().catch(handleOracleError)
 
-      const userOp = await client.buildUserOperation({ uo, overrides: { callGasLimit: { multiplier: GAS_LIMIT_MULTIPLIER } } })
+      const userOp = await client.buildUserOperation({ uo: uos, overrides: { callGasLimit: { multiplier: GAS_LIMIT_MULTIPLIER } } })
 
       const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) + BigInt(userOp.preVerificationGas) // gwei
       const maxGasCost = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
@@ -129,6 +145,7 @@ export async function createRelayer() {
 
       let txHash: Hash | undefined
       if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
+      console.log(`Confirmed userOp: ${txHash}`)
 
       tracer.dogstatsd.increment('relayer.transaction.sent', 1, {
         chain: Chain.id,
