@@ -11,7 +11,7 @@ import PerennialSDK, {
   addressToMarket,
 } from '@perennial/sdk'
 
-import { PlaceOrderSigningPayload, WithdrawalSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
+import { MarketTransferSigningPayload, PlaceOrderSigningPayload, WithdrawalSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 
 export const constructDirectUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
   const chainId = payload.domain?.chainId as SupportedChainId
@@ -158,9 +158,9 @@ export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean 
   }
 }
 
-export const requiresPriceCommit = (intent: SigningPayload): intent is (PlaceOrderSigningPayload | WithdrawalSigningPayload) => {
+export const requiresPriceCommit = (intent: SigningPayload): intent is (PlaceOrderSigningPayload | MarketTransferSigningPayload) => {
   return (
-    intent.primaryType === 'Withdrawal' ||
+    (intent.primaryType === 'MarketTransfer' && intent.message.amount < 0n) ||
     intent.primaryType === 'PlaceOrderAction'
   )
 }
@@ -169,6 +169,8 @@ const getMarketAddressFromIntent = (intent: SigningPayload): Address | undefined
   switch (intent.primaryType) {
     case 'PlaceOrderAction':
       return intent.message.action.market
+    case 'MarketTransfer':
+      return intent.message.action.common.domain
   }
   return
 }
@@ -187,7 +189,7 @@ export const buildPriceCommit = async (
     markets: [market],
   })
 
-  const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment[0], revertOnFailure: true })
+  const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment[0], revertOnFailure: false })
 
   return ({
     target: priceCommitment.to,
