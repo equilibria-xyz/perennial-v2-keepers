@@ -109,10 +109,6 @@ export async function createRelayer() {
       if (requiresPriceCommit(signingPayload)) {
         const priceCommitment = await buildPriceCommit(SDK, Chain.id, signingPayload)
         uos.push(priceCommitment)
-        tracer.dogstatsd.increment('relayer.priceCommit.sent', 1, {
-          chain: Chain.id,
-          primaryType: signingPayload.primaryType,
-        })
       }
       uos.push(uo_)
 
