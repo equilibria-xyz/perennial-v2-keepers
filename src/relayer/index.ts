@@ -92,7 +92,7 @@ export async function createRelayer() {
         error = 'Missing signatures; requires [innerSignature, outerSignature]'
       }
     }
-;
+
     if (error) {
       res.send(JSON.stringify({ success: false, error }))
       return

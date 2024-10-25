@@ -11,7 +11,7 @@ import PerennialSDK, {
   addressToMarket,
 } from '@perennial/sdk'
 
-import { MarketTransferSigningPayload, PlaceOrderSigningPayload, WithdrawalSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
+import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 
 export const constructDirectUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
   const chainId = payload.domain?.chainId as SupportedChainId
@@ -178,7 +178,7 @@ const getMarketAddressFromIntent = (intent: SigningPayload): Address | undefined
 export const buildPriceCommit = async (
   sdk: InstanceType<typeof PerennialSDK.default>,
   chainId: SupportedChainId,
-  intent: PlaceOrderSigningPayload | WithdrawalSigningPayload,
+  intent: PlaceOrderSigningPayload | MarketTransferSigningPayload,
 ): Promise<{ target: Hex, data: Hex, value: bigint }> => {
   const marketAddress = getMarketAddressFromIntent(intent)
   if (!marketAddress) {
