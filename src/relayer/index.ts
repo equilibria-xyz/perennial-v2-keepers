@@ -36,12 +36,11 @@ export async function createRelayer() {
   })
 
   const chain = ChainIdToAlchemyChain[Chain.id]
-  const signer = LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex)
   const account = await createLightAccount({
     chain,
     transport: alchemyTransport,
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    signer
+    signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex)
   })
 
   const client = createAlchemySmartAccountClient({
@@ -109,11 +108,7 @@ export async function createRelayer() {
       const uos = []
       if (requiresPriceCommit(signingPayload)) {
         const priceCommitment = await buildPriceCommit(SDK, Chain.id, signingPayload)
-        uos.push({
-          target: priceCommitment.to,
-          data: priceCommitment.data,
-          value: priceCommitment.value
-        })
+        uos.push(priceCommitment)
         tracer.dogstatsd.increment('relayer.priceCommit.sent', 1, {
           chain: Chain.id,
           primaryType: signingPayload.primaryType,

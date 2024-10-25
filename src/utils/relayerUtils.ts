@@ -177,7 +177,7 @@ export const buildPriceCommit = async (
   sdk: InstanceType<typeof PerennialSDK.default>,
   chainId: SupportedChainId,
   intent: PlaceOrderSigningPayload | WithdrawalSigningPayload,
-): Promise<ReturnType<typeof sdk.oracles.build.commitPrice>> => {
+): Promise<{ target: Hex, data: Hex, value: bigint }> => {
   const marketAddress = getMarketAddressFromIntent(intent)
   if (!marketAddress) {
     throw new Error ('Failed to send price commitment')
@@ -186,6 +186,13 @@ export const buildPriceCommit = async (
   const commitment = await sdk.oracles.read.oracleCommitmentsLatest({
     markets: [market],
   })
-  return sdk.oracles.build.commitPrice({ ...commitment[0], revertOnFailure: true })
+
+  const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment[0], revertOnFailure: true })
+
+  return ({
+    target: priceCommitment.to,
+    data: priceCommitment.data,
+    value: priceCommitment.value
+  })
 }
 
