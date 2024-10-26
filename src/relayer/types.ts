@@ -19,7 +19,8 @@ export enum UOError {
   ExceededMaxRetry = 'Exceeded max retry attempts for userOp',
   MaxFeeTooLow = 'Estimated userOp fee is greater than maxFee. Try increasing maxFee of signature payload',
   FailedToConstructUO = 'Failed to construct user operation',
-  OracleError = 'Failed to fetch ethPrice from oracle'
+  OracleError = 'Failed to fetch ethPrice from oracle',
+  FailedPriceCommit = 'Failed to build price commitment'
 }
 
 export type UserOperation = {

@@ -70,6 +70,7 @@ export async function createRelayer() {
       signingPayload: SigningPayload,
       meta?: {
         wait?: boolean
+        maxRetries?: number
       }
     }
 
@@ -172,7 +173,7 @@ export async function createRelayer() {
             txHash
           })
         }, {
-          maxRetry: MaxRetries,
+          maxRetry: meta?.maxRetries ?? MaxRetries,
           shouldWait: meta?.wait
         }
       )

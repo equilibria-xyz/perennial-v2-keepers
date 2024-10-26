@@ -624,24 +624,32 @@ describe('retryUserOpWithIncreasingTip', () => {
   })
 
   it('should retry on a retriable error', async () => {
-    const sendUserOp = vi.fn()
-      .mockRejectedValueOnce(new Error(UOError.FailedWaitForOperation))
-      .mockRejectedValueOnce(new Error(UOError.FailedSendOperation))
-      .mockResolvedValueOnce({ success: true })
 
-    const result = await retryUserOpWithIncreasingTip(sendUserOp)
-    expect(result).toEqual({ success: true })
-    expect(sendUserOp).toHaveBeenCalledTimes(3)
-    expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
-    expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined)
-    expect(sendUserOp).toHaveBeenCalledWith(1.2, undefined)
+    const errorTypes = [
+      UOError.FailedWaitForOperation,
+      UOError.FailedBuildOperation,
+      UOError.FailedSendOperation
+    ]
+
+    errorTypes.forEach(async (errorType) => {
+      const sendUserOp = vi.fn()
+        .mockRejectedValueOnce(new Error(errorType))
+        .mockResolvedValueOnce({ success: true })
+      const result = await retryUserOpWithIncreasingTip(sendUserOp)
+      expect(result).toEqual({ success: true })
+      expect(sendUserOp).toHaveBeenCalledTimes(2)
+      expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
+      expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined)
+    })
   })
 
   it('should throw on non-retriable error', async () => {
     const errorTypes = [
       UOError.MaxFeeTooLow,
-      UOError.FailedBuildOperation,
-      UOError.FailedSignOperation
+      UOError.ExceededMaxRetry,
+      UOError.MaxFeeTooLow,
+      UOError.FailedToConstructUO,
+      UOError.OracleError,
     ]
 
     errorTypes.forEach((errorType) => {

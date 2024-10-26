@@ -219,7 +219,7 @@ export const buildPriceCommit = async (
 ): Promise<{ target: Hex, data: Hex, value: bigint }> => {
   const marketAddress = getMarketAddressFromIntent(intent)
   if (!marketAddress) {
-    throw new Error ('Failed to send price commitment')
+    throw new Error (UOError.FailedPriceCommit)
   }
   const market = addressToMarket(chainId, marketAddress)
   const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
