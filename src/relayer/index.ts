@@ -19,7 +19,7 @@ import {
 import { SigningPayload, UserOpStatus, UOError } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
-import { CallGasLimitMultiplier, MaxRetries } from '../constants/relayer.js'
+import { CallGasLimitMultiplier } from '../constants/relayer.js'
 
 const ChainIdToAlchemyChain = {
   [arbitrum.id]: arbitrum,
@@ -173,7 +173,7 @@ export async function createRelayer() {
             txHash
           })
         }, {
-          maxRetry: meta?.maxRetries ?? MaxRetries,
+          maxRetry: meta?.maxRetries,
           shouldWait: meta?.wait
         }
       )

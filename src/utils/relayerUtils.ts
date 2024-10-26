@@ -2,7 +2,7 @@ import { Hex, encodeFunctionData, Address } from 'viem'
 import { UserOperationStruct } from '@aa-sdk/core'
 
 import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
-import { BaseTipMultiplier, TipPercentageIncrease } from '../constants/relayer.js'
+import { BaseTipMultiplier, MaxRetries, TipPercentageIncrease } from '../constants/relayer.js'
 
 import PerennialSDK, {
   ControllerAddresses,
@@ -142,12 +142,23 @@ export const constructUserOperation = (signingPayload: SigningPayload, signature
 }
 
 const RetryOnErrors = [UOError.FailedWaitForOperation, UOError.FailedSendOperation, UOError.FailedBuildOperation]
-export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: number, shouldWait?: boolean) => Promise<UOResult>, options?: { maxRetry?: number, shouldWait?: boolean }): Promise<UOResult> => {
-  const maxRetry = options?.maxRetry ?? 3
+export const retryUserOpWithIncreasingTip =
+  async (
+    sendUserOp: (tipMultiplier: number, shouldWait?: boolean) => Promise<UOResult>,
+    options?: {
+      maxRetry?: number,
+      shouldWait?: boolean,
+      baseTipMultiplier?: number,
+      tipPercentageIncrease?: number,
+    }
+  ): Promise<UOResult> => {
+  const maxRetry = options?.maxRetry ?? MaxRetries
+  const baseTipMultiplier = options?.baseTipMultiplier ?? BaseTipMultiplier
+  const tipPercentageIncrease = options?.tipPercentageIncrease ?? TipPercentageIncrease
   let retry = 0
   while (retry <= maxRetry) {
     // increase tip, alchemy throws if its more than 4 decimals https://github.com/alchemyplatform/aa-sdk/blob/main/aa-sdk/core/src/utils/schema.ts#L34
-    const tipMultiplier = parseFloat((BaseTipMultiplier + (TipPercentageIncrease * retry)).toFixed(4))
+    const tipMultiplier = parseFloat((baseTipMultiplier + (tipPercentageIncrease * retry)).toFixed(4))
     try {
       return await sendUserOp(tipMultiplier, options?.shouldWait)
     } catch (e) {
