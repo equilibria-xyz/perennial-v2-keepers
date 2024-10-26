@@ -4,15 +4,17 @@ import cors from 'cors'
 
 import { createLightAccount } from '@account-kit/smart-contracts'
 import { alchemy, createAlchemySmartAccountClient,  arbitrum, arbitrumSepolia } from '@account-kit/infra'
-import { LocalAccountSigner } from '@aa-sdk/core'
+import { LocalAccountSigner, BatchUserOperationCallData } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
-import { Chain } from '../config.js'
+import { Chain, SDK } from '../config.js'
 import {
   calcOpMaxFeeUsd,
   constructUserOperation,
   isRelayedIntent,
   retryUserOpWithIncreasingTip,
-  injectUOError
+  injectUOError,
+  requiresPriceCommit,
+  buildPriceCommit
 } from '../utils/relayerUtils.js'
 import { SigningPayload, UserOpStatus, UOError } from './types.js'
 import tracer from '../tracer.js'
@@ -94,10 +96,19 @@ export async function createRelayer() {
     }
 
     try {
-      const uo = constructUserOperation(signingPayload, signatures)
-      if (!uo) {
-        throw new Error(UOError.FailedToConstructUO)
+
+      const uo_ = constructUserOperation(signingPayload, signatures)
+
+      if (!uo_) {
+        throw Error('Failed to construct user operation')
       }
+
+      const uos: BatchUserOperationCallData = []
+      if (requiresPriceCommit(signingPayload)) {
+        const priceCommitment = await buildPriceCommit(SDK, Chain.id, signingPayload)
+        uos.push(priceCommitment)
+      }
+      uos.push(uo_)
 
       const latestEthPrice: bigint = await ethOracleFetcher.getLastPriceBig6()
         .catch((e) => {
@@ -111,7 +122,7 @@ export async function createRelayer() {
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
           const userOp = await client.buildUserOperation({
-              uo,
+              uo: uos,
               overrides: {
                 callGasLimit: {
                   multiplier: CallGasLimitMultiplier,
