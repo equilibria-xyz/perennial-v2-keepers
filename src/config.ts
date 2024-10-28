@@ -84,6 +84,14 @@ export const settlementSigner = createWalletClient({
   account: settlementAccount,
 })
 
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+export const relayerAccount = privateKeyToAccount(process.env.RELAYER_PRIVATE_KEY! as Hex)
+export const relayerSigner = createWalletClient({
+  chain: Chain as ViemChain,
+  transport: http(NodeUrls[Chain.id]),
+  account: relayerAccount,
+})
+
 const PythUrls = [
   process.env.PYTH_HERMES_URL,
   ...(process.env.PYTH_HERMES_FALLBACK_URLS ?? '')
@@ -110,6 +118,7 @@ export enum TaskType {
   'deploy',
   'claim',
   'relayer',
+  'relayerStake'
 }
 
 const _task = process.argv[3]
