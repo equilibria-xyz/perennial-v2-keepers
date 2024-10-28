@@ -20,7 +20,8 @@ export enum UOError {
   MaxFeeTooLow = 'Estimated userOp fee is greater than maxFee. Try increasing maxFee of signature payload',
   FailedToConstructUO = 'Failed to construct user operation',
   OracleError = 'Failed to fetch ethPrice from oracle',
-  FailedPriceCommit = 'Failed to build price commitment'
+  FailedPriceCommit = 'Failed to build price commitment',
+  MarketAddressNotFound = 'Market address not found'
 }
 
 export type UserOperation = {

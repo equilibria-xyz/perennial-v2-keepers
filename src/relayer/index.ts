@@ -101,7 +101,7 @@ export async function createRelayer() {
       const uo_ = constructUserOperation(signingPayload, signatures)
 
       if (!uo_) {
-        throw Error('Failed to construct user operation')
+        throw Error(UOError.FailedToConstructUO)
       }
 
       const uos: BatchUserOperationCallData = []

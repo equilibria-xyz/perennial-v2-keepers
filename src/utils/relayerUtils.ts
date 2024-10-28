@@ -218,7 +218,7 @@ const getMarketAddressFromIntent = (intent: SigningPayload): Address | undefined
     case 'PlaceOrderAction':
       return intent.message.action.market
     case 'MarketTransfer':
-      return intent.message.action.common.domain
+      return intent.message.market
   }
   return
 }
@@ -230,7 +230,7 @@ export const buildPriceCommit = async (
 ): Promise<{ target: Hex, data: Hex, value: bigint }> => {
   const marketAddress = getMarketAddressFromIntent(intent)
   if (!marketAddress) {
-    throw new Error (UOError.FailedPriceCommit)
+    throw new Error (UOError.MarketAddressNotFound)
   }
   const market = addressToMarket(chainId, marketAddress)
   const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
