@@ -13,7 +13,7 @@ import {
   zeroAddress,
 } from 'viem'
 import { arbitrumSepolia } from 'viem/chains'
-import { describe, it, expect, beforeEach, assert } from 'vitest'
+import { describe, it, expect, beforeEach, assert, vi } from 'vitest'
 
 import { constructUserOperation } from '../utils/relayerUtils.js'
 
@@ -22,6 +22,10 @@ import { CollateralAccountModule } from '@perennial/sdk/dist/lib/collateralAccou
 import { MarketsModule } from '@perennial/sdk/dist/lib/markets/index.js'
 
 import { ControllerAbi, ControllerAddresses, ManagerAbi, ManagerAddresses, SupportedMarket } from '@perennial/sdk'
+
+
+import { retryUserOpWithIncreasingTip } from '../utils/relayerUtils.js'
+import { UOError } from './types.js'
 
 const chain = arbitrumSepolia
 const controllerAddress = ControllerAddresses[chain.id]
@@ -43,6 +47,13 @@ const signer: WalletClient = createWalletClient({
 let accountModule: CollateralAccountModule, marketsModule: MarketsModule
 const maxFee = 0n,
   expiry = 0n
+
+const mockSendUO = async (_tipMultiplier: number, shouldWait?: boolean) => {
+  const uoHash = 'uoHash'
+  let txHash
+  if (shouldWait) { txHash = 'txHash' }
+  return { uoHash, txHash }
+}
 
 describe('Validates signatures', () => {
   beforeEach(() => {
@@ -600,5 +611,82 @@ describe('Validates signatures', () => {
         args: [outerSigningPayload.message, sig.outerSignature, sig.innerSignature],
       }),
     )
+  })
+})
+
+const options = {
+  baseTipMultiplier: 1,
+  tipPercentageIncrease: 0.1
+}
+
+describe('retryUserOpWithIncreasingTip', () => {
+  it('should succeed on first try', async () => {
+    const sendUserOp = vi.fn().mockResolvedValue({ success: true })
+    const result = await retryUserOpWithIncreasingTip(sendUserOp, options)
+    expect(result).toEqual({ success: true })
+    expect(sendUserOp).toHaveBeenCalledTimes(1)
+    expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
+  })
+
+  it('should retry on a retriable error', async () => {
+
+    const errorTypes = [
+      UOError.FailedWaitForOperation,
+      UOError.FailedBuildOperation,
+      UOError.FailedSendOperation
+    ]
+
+    errorTypes.forEach(async (errorType) => {
+      const sendUserOp = vi.fn()
+        .mockRejectedValueOnce(new Error(errorType))
+        .mockResolvedValueOnce({ success: true })
+      const result = await retryUserOpWithIncreasingTip(sendUserOp, options)
+      expect(result).toEqual({ success: true })
+      expect(sendUserOp).toHaveBeenCalledTimes(2)
+      expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
+      expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined)
+    })
+  })
+
+  it('should throw on non-retriable error', async () => {
+    const errorTypes = [
+      UOError.MaxFeeTooLow,
+      UOError.ExceededMaxRetry,
+      UOError.MaxFeeTooLow,
+      UOError.FailedToConstructUO,
+      UOError.OracleError,
+    ]
+
+    errorTypes.forEach((errorType) => {
+      const sendUserOp = vi.fn().mockRejectedValue(new Error(errorType))
+      expect(retryUserOpWithIncreasingTip(sendUserOp, options)).rejects.toThrow(errorType)
+      expect(sendUserOp).toHaveBeenCalledTimes(1)
+      expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
+    })
+  })
+
+  it('should throw after exceeding max retries', async () => {
+    const sendUserOp = vi.fn().mockRejectedValue(new Error(UOError.FailedWaitForOperation))
+    await expect(retryUserOpWithIncreasingTip(sendUserOp, { ...options, maxRetry: 2 })).rejects.toThrow(UOError.ExceededMaxRetry)
+    expect(sendUserOp).toHaveBeenCalledTimes(3)
+    expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
+    expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined)
+    expect(sendUserOp).toHaveBeenCalledWith(1.2, undefined)
+  })
+
+  it('should have txHash if waited', async () => {
+    const sendUserOp = vi.fn().mockImplementation(mockSendUO)
+    const result = await retryUserOpWithIncreasingTip(sendUserOp, { ...options, shouldWait: true })
+    expect(result).toEqual({ uoHash: 'uoHash', txHash: 'txHash' })
+    expect(sendUserOp).toHaveBeenCalledTimes(1)
+    expect(sendUserOp).toHaveBeenCalledWith(1, true)
+  })
+
+  it('should not have txHash if waited', async () => {
+    const sendUserOp = vi.fn().mockImplementation(mockSendUO)
+    const result = await retryUserOpWithIncreasingTip(sendUserOp, options)
+    expect(result).toEqual({ uoHash: 'uoHash' })
+    expect(sendUserOp).toHaveBeenCalledTimes(1)
+    expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
   })
 })

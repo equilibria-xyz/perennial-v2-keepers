@@ -1,6 +1,8 @@
 import { Hex, encodeFunctionData, Address } from 'viem'
+import { UserOperationStruct } from '@aa-sdk/core'
 
-import { UserOperation, SigningPayload, RelayedSignatures } from '../relayer/types.js'
+import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
+import { BaseTipMultiplier, MaxRetries, TipPercentageIncrease } from '../constants/relayer.js'
 
 import PerennialSDK, {
   ControllerAddresses,
@@ -139,6 +141,45 @@ export const constructUserOperation = (signingPayload: SigningPayload, signature
   return uo
 }
 
+const RetryOnErrors = [UOError.FailedWaitForOperation, UOError.FailedSendOperation, UOError.FailedBuildOperation]
+export const retryUserOpWithIncreasingTip =
+  async (
+    sendUserOp: (tipMultiplier: number, shouldWait?: boolean) => Promise<UOResult>,
+    options?: {
+      maxRetry?: number,
+      shouldWait?: boolean,
+      baseTipMultiplier?: number,
+      tipPercentageIncrease?: number,
+    }
+  ): Promise<UOResult> => {
+  const maxRetry = options?.maxRetry ?? MaxRetries
+  const baseTipMultiplier = options?.baseTipMultiplier ?? BaseTipMultiplier
+  const tipPercentageIncrease = options?.tipPercentageIncrease ?? TipPercentageIncrease
+  let retry = 0
+  while (retry <= maxRetry) {
+    // increase tip, alchemy throws if its more than 4 decimals https://github.com/alchemyplatform/aa-sdk/blob/main/aa-sdk/core/src/utils/schema.ts#L34
+    const tipMultiplier = parseFloat((baseTipMultiplier + (tipPercentageIncrease * retry)).toFixed(4))
+    try {
+      return await sendUserOp(tipMultiplier, options?.shouldWait)
+    } catch (e) {
+      if (!RetryOnErrors.includes(e.message)) {
+        // forward on error we dont want to retry with a higher fee
+        throw e
+      }
+      retry += 1
+    }
+  }
+
+  throw new Error(UOError.ExceededMaxRetry)
+}
+
+export const calcOpMaxFeeUsd = (userOp: UserOperationStruct, latestEthPrice: bigint) => {
+  const opGasLimit = BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) + BigInt(userOp.preVerificationGas) // gwei
+  const maxGasCost = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
+  const maxFeeUsd = (maxGasCost * latestEthPrice) / 1_000_000_000n  // 10^6
+  return maxFeeUsd
+}
+
 export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean => {
   switch (intent) {
     case 'RelayedNonceCancellation':
@@ -158,6 +199,13 @@ export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean 
   }
 }
 
+export const injectUOError = (uoError: UOError): ((e: unknown) => never) => {
+  return (e: unknown) => {
+    console.error('UserOp.Failed', e)
+    throw new Error(uoError)
+  }
+}
+
 export const requiresPriceCommit = (intent: SigningPayload): intent is (PlaceOrderSigningPayload | MarketTransferSigningPayload) => {
   return (
     (intent.primaryType === 'MarketTransfer' && intent.message.amount < 0n) ||
@@ -170,7 +218,7 @@ const getMarketAddressFromIntent = (intent: SigningPayload): Address | undefined
     case 'PlaceOrderAction':
       return intent.message.action.market
     case 'MarketTransfer':
-      return intent.message.action.common.domain
+      return intent.message.market
   }
   return
 }
@@ -182,7 +230,7 @@ export const buildPriceCommit = async (
 ): Promise<{ target: Hex, data: Hex, value: bigint }> => {
   const marketAddress = getMarketAddressFromIntent(intent)
   if (!marketAddress) {
-    throw new Error ('Failed to send price commitment')
+    throw new Error (UOError.MarketAddressNotFound)
   }
   const market = addressToMarket(chainId, marketAddress)
   const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
@@ -197,4 +245,3 @@ export const buildPriceCommit = async (
     value: priceCommitment.value
   })
 }
-
