@@ -3,8 +3,7 @@ import { EntryPointAbi } from '../constants/abi/EntryPoint.abi.js'
 import { relayerAccount, relayerSmartClient } from '../config.js'
 
 const args = process.argv.slice(2)
-// const OneDaySecs = 60 * 60 * 24;
-const OneDaySecs = 60
+const OneDaySecs = 60 * 60 * 24;
 
 type Action = 'stake' | 'unstake' | 'withdraw'
 const isValidAction = (action: unknown): action is Action => (action === 'stake' || action === 'unstake' || action === 'withdraw')
