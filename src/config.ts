@@ -6,6 +6,9 @@ import { GraphQLClient } from 'graphql-request'
 import { arbitrum, arbitrumSepolia } from 'viem/chains'
 import { notEmpty } from './utils/arrayUtils.js'
 import PerennialSDK, { chainIdToChainMap, SupportedChainIds } from '@perennial/sdk'
+import { alchemy, createAlchemySmartAccountClient, arbitrum as alchemyArbitrum, arbitrumSepolia as alchemyArbitrumSepolia } from '@account-kit/infra'
+import { LocalAccountSigner } from '@aa-sdk/core'
+import { createLightAccount } from '@account-kit/smart-contracts'
 
 export const NodeUrls: {
   [key in SupportedChainId]: string
@@ -84,13 +87,27 @@ export const settlementSigner = createWalletClient({
   account: settlementAccount,
 })
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-export const relayerAccount = privateKeyToAccount(process.env.RELAYER_PRIVATE_KEY! as Hex)
-export const relayerSigner = createWalletClient({
-  chain: Chain as ViemChain,
-  transport: http(NodeUrls[Chain.id]),
+const alchemyChain = {
+  [arbitrum.id]: alchemyArbitrum,
+  [arbitrumSepolia.id]: alchemyArbitrumSepolia,
+}[Chain.id]
+const alchemyTransport = alchemy({
+  apiKey: process.env.RELAYER_API_KEY || '',
+})
+export const relayerAccount = await createLightAccount({
+  chain: alchemyChain,
+  transport: alchemyTransport,
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex)
+})
+
+export const relayerSmartClient = createAlchemySmartAccountClient({
+  transport: alchemyTransport,
+  policyId: process.env.RELAYER_POLICY_ID || '',
+  chain: alchemyChain,
   account: relayerAccount,
 })
+
 
 const PythUrls = [
   process.env.PYTH_HERMES_URL,
