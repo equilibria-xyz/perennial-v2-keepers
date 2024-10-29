@@ -35,12 +35,17 @@ Relayed intents reward relayers for forwarding transactions.
     {
       signatures: Hex[]; // required
       signingPayload: SigningPayload, // required
+      meta?: {
+        wait?: boolean // optional
+        maxRetries?: number // optional
+      } // optional
     }
 ```
 
 #### Meta
 
-Use `wait` if you want to wait for the transaction receipt. If `wait` is used then the return type will include the transaction hash.
+- `wait` if you want to wait for the transaction receipt. If `wait` is used then the return type will include the transaction hash.
+- `maxRetries` controls how many times the relayer will try to relay the userOp
 
 #### Signatures
 
