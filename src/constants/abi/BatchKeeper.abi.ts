@@ -1,6 +1,9 @@
 export const BatchKeeperAbi = [
   {
-    inputs: [{ internalType: 'contract IMultiInvoker', name: 'invoker_', type: 'address' }],
+    inputs: [
+      { internalType: 'contract IMultiInvoker', name: 'invoker_', type: 'address' },
+      { internalType: 'contract IManager', name: 'manager_', type: 'address' },
+    ],
     stateMutability: 'nonpayable',
     type: 'constructor',
   },
@@ -64,6 +67,20 @@ export const BatchKeeperAbi = [
   },
   {
     inputs: [],
+    name: 'invoker',
+    outputs: [{ internalType: 'contract IMultiInvoker', name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'manager',
+    outputs: [{ internalType: 'contract IManager', name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
     name: 'owner',
     outputs: [{ internalType: 'address', name: '', type: 'address' }],
     stateMutability: 'view',
@@ -79,6 +96,7 @@ export const BatchKeeperAbi = [
   {
     inputs: [
       { internalType: 'contract IMarket', name: 'market', type: 'address' },
+      { internalType: 'address[]', name: 'sources', type: 'address[]' },
       { internalType: 'address[]', name: 'accounts', type: 'address[]' },
       { internalType: 'uint256[]', name: 'nonces', type: 'uint256[]' },
       {
@@ -95,6 +113,7 @@ export const BatchKeeperAbi = [
     outputs: [
       {
         components: [
+          { internalType: 'address', name: 'source', type: 'address' },
           { internalType: 'address', name: 'account', type: 'address' },
           { internalType: 'uint256', name: 'nonce', type: 'uint256' },
           {
