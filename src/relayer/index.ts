@@ -1,12 +1,9 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-
-import { createLightAccount } from '@account-kit/smart-contracts'
-import { alchemy, createAlchemySmartAccountClient,  arbitrum, arbitrumSepolia } from '@account-kit/infra'
-import { LocalAccountSigner, BatchUserOperationCallData } from '@aa-sdk/core'
+import { BatchUserOperationCallData } from '@aa-sdk/core'
 import { Hex, Hash } from 'viem'
-import { Chain, SDK } from '../config.js'
+import { Chain, SDK, relayerSmartClient } from '../config.js'
 import {
   calcOpMaxFeeUsd,
   constructUserOperation,
@@ -21,11 +18,6 @@ import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
 
-const ChainIdToAlchemyChain = {
-  [arbitrum.id]: arbitrum,
-  [arbitrumSepolia.id]: arbitrumSepolia,
-}
-
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
 BigInt.prototype.toJSON = function (): number {
@@ -36,25 +28,6 @@ export async function createRelayer() {
   const app = express()
   app.use(express.json())
   app.use(cors())
-
-  const alchemyTransport = alchemy({
-    apiKey: process.env.RELAYER_API_KEY || '',
-  })
-
-  const chain = ChainIdToAlchemyChain[Chain.id]
-  const account = await createLightAccount({
-    chain,
-    transport: alchemyTransport,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex),
-  })
-
-  const client = createAlchemySmartAccountClient({
-    transport: alchemyTransport,
-    policyId: process.env.RELAYER_POLICY_ID || '',
-    chain,
-    account,
-  })
 
   const ethOracleFetcher = new EthOracleFetcher()
   await ethOracleFetcher.init()
@@ -118,11 +91,11 @@ export async function createRelayer() {
           })
           return injectUOError(UOError.OracleError)(e)
         })
-      const entryPoint = client.account.getEntryPoint().address
+      const entryPoint = relayerSmartClient.account.getEntryPoint().address
 
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
-          const userOp = await client.buildUserOperation({
+          const userOp = await relayerSmartClient.buildUserOperation({
               uo: uos,
               overrides: {
                 callGasLimit: {
@@ -150,9 +123,9 @@ export async function createRelayer() {
             throw new Error(UOError.MaxFeeTooLow)
           }
 
-          const request = await client.signUserOperation({ uoStruct: userOp })
+          const request = await relayerSmartClient.signUserOperation({ uoStruct: userOp })
             .catch(injectUOError(UOError.FailedSignOperation))
-          const uoHash = await client.sendRawUserOperation(request, entryPoint)
+          const uoHash = await relayerSmartClient.sendRawUserOperation(request, entryPoint)
             .catch(injectUOError(UOError.FailedSendOperation))
 
           console.log(`Sent userOp: ${uoHash}`)
@@ -164,7 +137,7 @@ export async function createRelayer() {
 
           let txHash: Hash | undefined
           if (shouldWait) {
-            txHash = await client.waitForUserOperationTransaction({ hash: uoHash })
+            txHash = await relayerSmartClient.waitForUserOperationTransaction({ hash: uoHash })
               .catch(injectUOError(UOError.FailedWaitForOperation))
             console.log(`UserOp confirmed: ${txHash}`)
           }
@@ -197,7 +170,7 @@ export async function createRelayer() {
       return
     }
     try {
-      const uo = await client.getUserOperationReceipt(hash as Hash)
+      const uo = await relayerSmartClient.getUserOperationReceipt(hash as Hash)
 
       res.send(JSON.stringify({ success: true, uo }))
     } catch (e) {
