@@ -1,6 +1,11 @@
 import { Hex, Hash } from 'viem'
 import PerennialSDK from '@perennial/sdk'
 
+export type IntentBundle = {
+  signatures: Hex[];
+  signingPayload: SigningPayload,
+}[]
+
 export enum UserOpStatus {
   Complete = 'complete',
   Pending = 'pending',

@@ -16,7 +16,7 @@ import {
   requiresPriceCommit,
   buildPriceCommit
 } from '../utils/relayerUtils.js'
-import { SigningPayload, UserOpStatus, UOError } from './types.js'
+import { UserOpStatus, UOError, IntentBundle, UserOperation } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
@@ -31,6 +31,8 @@ const ChainIdToAlchemyChain = {
 BigInt.prototype.toJSON = function (): number {
   return this.toString()
 }
+
+const isBatchOperationCallData = (bundle: (UserOperation | undefined)[]): bundle is BatchUserOperationCallData => (!bundle.some((intent): intent is undefined => intent === undefined))
 
 export async function createRelayer() {
   const app = express()
@@ -62,54 +64,58 @@ export async function createRelayer() {
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
     const {
-      signatures,
-      signingPayload,
+      intents,
       meta
     } = req.body as {
-      signatures: Hex[];
-      signingPayload: SigningPayload,
+      intents: IntentBundle
       meta?: {
         wait?: boolean
         maxRetries?: number
       }
     }
 
-    let error
-    let relayedIntent
-    if (!signingPayload) {
-      error = 'Missing required signature payload'
-    } else if (!signatures || !signatures.length) {
-      error = 'Missing required signatures array'
-    } else if (!signingPayload?.primaryType) {
-      error = 'Missing signature payload primaryType'
-    } else if (signingPayload.primaryType) {
-      relayedIntent = isRelayedIntent(signingPayload.primaryType)
-      if (relayedIntent && signatures.length !== 2) {
-        error = 'Missing signature; requires [signature]'
-      } else if (!relayedIntent && signatures.length !== 1) {
-        error = 'Missing signatures; requires [innerSignature, outerSignature]'
-      }
-    }
-
-    if (error) {
-      res.send(JSON.stringify({ success: false, error }))
+    if (!intents.length) {
+      res.send(JSON.stringify({ success: false, error: 'Missing intents' }))
       return
+    }
+    for (const { signatures, signingPayload } of intents) {
+      let error
+      let relayedIntent
+      if (!signingPayload) {
+        error = 'Missing required signature payload'
+      } else if (!signatures || !signatures.length) {
+        error = 'Missing required signatures array'
+      } else if (!signingPayload?.primaryType) {
+        error = 'Missing signature payload primaryType'
+      } else if (signingPayload.primaryType) {
+        relayedIntent = isRelayedIntent(signingPayload.primaryType)
+        if (relayedIntent && signatures.length !== 2) {
+          error = 'Missing signature; requires [signature]'
+        } else if (!relayedIntent && signatures.length !== 1) {
+          error = 'Missing signatures; requires [innerSignature, outerSignature]'
+        }
+      }
+      if (error) {
+        res.send(JSON.stringify({ success: false, error }))
+        return
+      }
     }
 
     try {
 
-      const uo_ = constructUserOperation(signingPayload, signatures)
-
-      if (!uo_) {
+      const intentBundle = intents.map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures))
+      if (!isBatchOperationCallData(intentBundle)) {
         throw Error(UOError.FailedToConstructUO)
       }
 
-      const uos: BatchUserOperationCallData = []
-      if (requiresPriceCommit(signingPayload)) {
-        const priceCommitment = await buildPriceCommit(SDK, Chain.id, signingPayload)
-        uos.push(priceCommitment)
+      const priceCommitsBundle: BatchUserOperationCallData = []
+      for (const { signingPayload } of intents) {
+        if (requiresPriceCommit(signingPayload)) {
+          const priceCommitment = await buildPriceCommit(SDK, Chain.id, signingPayload)
+          priceCommitsBundle.push(priceCommitment)
+        }
       }
-      uos.push(uo_)
+      const uos = priceCommitsBundle.concat(intentBundle)
 
       const latestEthPrice: bigint = await ethOracleFetcher.getLastPriceBig6()
         .catch((e) => {
@@ -135,17 +141,17 @@ export async function createRelayer() {
                   multiplier: tipMultiplier
                 },
                 // this is important for parellelization of user ops
-                nonceKey: BigInt(signingPayload.message.action.common.signer)
+                nonceKey: BigInt(intents[0].signingPayload.message.action.common.signer)
               }
           }).catch(injectUOError(UOError.FailedBuildOperation))
 
           const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
-          const sigMaxFee = signingPayload.message.action.maxFee
+          const sigMaxFee = intents.reduce((o, { signingPayload }) => o + signingPayload.message.action.maxFee, 0n)
           if (sigMaxFee < maxFeeUsd ) {
             // this error will not retry
             tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
               chain: Chain.id,
-              primaryType: signingPayload.primaryType,
+              primaryType: intents[0].signingPayload.primaryType,
             })
             throw new Error(UOError.MaxFeeTooLow)
           }
@@ -156,10 +162,12 @@ export async function createRelayer() {
             .catch(injectUOError(UOError.FailedSendOperation))
 
           console.log(`Sent userOp: ${uoHash}`)
-          tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
-            chain: Chain.id,
-            primaryType: signingPayload.primaryType,
-            tipMultiplier
+          intents.forEach(({ signingPayload }) => {
+            tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
+              chain: Chain.id,
+              primaryType: signingPayload.primaryType,
+              tipMultiplier
+            })
           })
 
           let txHash: Hash | undefined
