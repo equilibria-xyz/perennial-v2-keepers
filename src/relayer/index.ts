@@ -12,7 +12,8 @@ import {
   injectUOError,
   requiresPriceCommit,
   buildPriceCommit,
-  isBatchOperationCallData
+  isBatchOperationCallData,
+  payloadCanBeBundled
 } from '../utils/relayerUtils.js'
 import { UserOpStatus, UOError, IntentBundle } from './types.js'
 import tracer from '../tracer.js'
@@ -51,6 +52,19 @@ export async function createRelayer() {
       return
     }
 
+    const firstPayload = intents[0].signingPayload
+    const primaryType = firstPayload.primaryType
+    if (
+      intents.length > 1 &&
+      !(
+        payloadCanBeBundled(firstPayload) &&
+        intents.every((intent) => intent.signingPayload.primaryType === primaryType)
+      )
+    ) {
+      res.send(JSON.stringify({ success: false, error: 'Invalid intent bundle' }))
+      return
+    }
+
     for (const { signatures, signingPayload } of intents) {
       let error
       let relayedIntent
@@ -74,6 +88,7 @@ export async function createRelayer() {
       }
     }
 
+    const intentTypes = intents.map(({ signingPayload }) => signingPayload.primaryType).join(',')
     try {
 
       const intentBundle = intents.map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures))
@@ -86,6 +101,7 @@ export async function createRelayer() {
         if (requiresPriceCommit(signingPayload)) {
           const priceCommitment = await buildPriceCommit(SDK, Chain.id, signingPayload)
           priceCommitsBundle.push(priceCommitment)
+          break
         }
       }
       const uos = priceCommitsBundle.concat(intentBundle)
@@ -99,10 +115,8 @@ export async function createRelayer() {
         })
       const entryPoint = relayerSmartClient.account.getEntryPoint().address
 
-      const intentTypes = intents.map(({ signingPayload }) => signingPayload.primaryType).join(',')
       // TODO if signer is different between intents does this matter?
       const nonceKey = BigInt(intents[0].signingPayload.message.action.common.signer)
-
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
           const userOp = await relayerSmartClient.buildUserOperation({
@@ -167,7 +181,7 @@ export async function createRelayer() {
       console.warn(e)
       tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
-        primaryType: signingPayload.primaryType,
+        primaryType: intentTypes
       })
       res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}` }))
     }

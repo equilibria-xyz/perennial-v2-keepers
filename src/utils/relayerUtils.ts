@@ -215,6 +215,11 @@ export const requiresPriceCommit = (intent: SigningPayload): intent is (PlaceOrd
 
 export const isBatchOperationCallData = (bundle: (UserOperation | undefined)[]): bundle is BatchUserOperationCallData => (!bundle.some((intent): intent is undefined => intent === undefined))
 
+type BundleableSigningPayload = PlaceOrderSigningPayload
+export const payloadCanBeBundled = (intent: SigningPayload): intent is BundleableSigningPayload => (
+  intent.primaryType === 'PlaceOrderAction'
+)
+
 const getMarketAddressFromIntent = (intent: SigningPayload): Address | undefined => {
   switch (intent.primaryType) {
     case 'PlaceOrderAction':
