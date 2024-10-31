@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "@perennial/core/contracts/interfaces/IMarket.sol";
 import "@perennial/extensions/contracts/interfaces/IMultiInvoker.sol";
+import { IManager } from "@perennial/order/contracts/interfaces/IManager.sol";
 import "@equilibria/root/token/types/Token18.sol";
 import "@equilibria/root/attribute/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -15,7 +16,10 @@ contract BatchKeeper is Ownable {
     UFixed6 public constant CLOSE_POSITION = UFixed6.wrap(type(uint256).max - 1);
 
     /// @dev The MultiInvoker contract
-    IMultiInvoker immutable invoker;
+    IMultiInvoker public immutable invoker;
+
+    /// @dev The manager contract
+    IManager public immutable manager;
 
     /// @dev Struct representing the result of a liquidation attempt.
     struct LiquidationResult {
@@ -26,6 +30,7 @@ contract BatchKeeper is Ownable {
 
     /// @dev Struct representing the result of an order execution attempt.
     struct ExecutionResult {
+        address source;
         address account;
         uint256 nonce;
         Result result;
@@ -46,9 +51,11 @@ contract BatchKeeper is Ownable {
 
     /// @notice Constructs a new BatchKeeper contract
     /// @param invoker_ The address of the MultiInvoker contract to use
-    constructor(IMultiInvoker invoker_) {
+    /// @param manager_ The address of the Manager contract to use
+    constructor(IMultiInvoker invoker_, IManager manager_) {
         __Ownable__initialize();
         invoker = invoker_;
+        manager = manager_;
     }
 
     /// @dev Allow the contract to receive Ether
@@ -80,19 +87,21 @@ contract BatchKeeper is Ownable {
         }
     }
 
-    /// @notice Attempts to execute orders for multiple accounts in a market
+    /// @notice Attempts to execute orders for multiple accounts in a market using the manager contract
     /// @param market The market contract to perform order execution for
+    /// @param sources The source of the orders (multiinvoker or manager)
     /// @param accounts An array of accounts to attempt order execution for
-    /// @param nonces An array of nonces to attempt order execution for
+    /// @param nonces An array of nonces (multiinvoker) or order IDs (manager) to attempt order execution for
     /// @param commitment Price update commitment to execute before execution
-    /// @return results An array of `ExecRes` structs containing the execution results for each account
+    /// @return results An array of `ExecutionResult` structs containing the execution results for each account
     /// @return reward The total reward earned by the keeper
     function tryExecute(
         IMarket market,
+        address[] calldata sources,
         address[] calldata accounts,
         uint256[] calldata nonces,
         IMultiInvoker.Invocation[] memory commitment
-    ) public payable returnEther returns (ExecutionResult[] memory results, UFixed18 reward) {
+    ) external payable returnEther returns (ExecutionResult[] memory results, UFixed18 reward) {
         invoker.invoke{value: msg.value}(commitment);
 
         UFixed18 balanceBefore = market.token().balanceOf();
@@ -102,14 +111,23 @@ contract BatchKeeper is Ownable {
 
         results = new ExecutionResult[](accounts.length);
         for (uint256 i; i < accounts.length; i++) {
+            results[i].source = sources[i];
             results[i].account = accounts[i];
             results[i].nonce = nonces[i];
 
-            invocations[0].args = abi.encode(accounts[i], market, nonces[i]);
-            try invoker.invoke(invocations) {
-                results[i].result.success = true;
-            } catch (bytes memory reason) {
-                results[i].result.reason = reason;
+            if (sources[i] == address(manager)) {
+                try manager.executeOrder(market, accounts[i], nonces[i]) {
+                    results[i].result.success = true;
+                } catch (bytes memory reason) {
+                        results[i].result.reason = reason;
+                }
+            } else {
+                invocations[0].args = abi.encode(accounts[i], market, nonces[i]);
+                try invoker.invoke(invocations) {
+                    results[i].result.success = true;
+                } catch (bytes memory reason) {
+                    results[i].result.reason = reason;
+                }
             }
         }
 
