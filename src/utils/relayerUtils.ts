@@ -1,5 +1,5 @@
 import { Hex, encodeFunctionData, Address } from 'viem'
-import { UserOperationStruct } from '@aa-sdk/core'
+import { UserOperationStruct, BatchUserOperationCallData } from '@aa-sdk/core'
 
 import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
 import { BaseTipMultiplier, MaxRetries, TipPercentageIncrease } from '../constants/relayer.js'
@@ -212,6 +212,8 @@ export const requiresPriceCommit = (intent: SigningPayload): intent is (PlaceOrd
     intent.primaryType === 'PlaceOrderAction'
   )
 }
+
+export const isBatchOperationCallData = (bundle: (UserOperation | undefined)[]): bundle is BatchUserOperationCallData => (!bundle.some((intent): intent is undefined => intent === undefined))
 
 const getMarketAddressFromIntent = (intent: SigningPayload): Address | undefined => {
   switch (intent.primaryType) {

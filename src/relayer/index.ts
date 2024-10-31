@@ -2,7 +2,7 @@ import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
 import { BatchUserOperationCallData } from '@aa-sdk/core'
-import { Hex, Hash } from 'viem'
+import { Hash } from 'viem'
 import { Chain, SDK, relayerSmartClient } from '../config.js'
 import {
   calcOpMaxFeeUsd,
@@ -11,9 +11,10 @@ import {
   retryUserOpWithIncreasingTip,
   injectUOError,
   requiresPriceCommit,
-  buildPriceCommit
+  buildPriceCommit,
+  isBatchOperationCallData
 } from '../utils/relayerUtils.js'
-import { UserOpStatus, UOError, IntentBundle, UserOperation } from './types.js'
+import { UserOpStatus, UOError, IntentBundle } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
@@ -23,8 +24,6 @@ import { CallGasLimitMultiplier } from '../constants/relayer.js'
 BigInt.prototype.toJSON = function (): number {
   return this.toString()
 }
-
-const isBatchOperationCallData = (bundle: (UserOperation | undefined)[]): bundle is BatchUserOperationCallData => (!bundle.some((intent): intent is undefined => intent === undefined))
 
 export async function createRelayer() {
   const app = express()
@@ -47,10 +46,11 @@ export async function createRelayer() {
       }
     }
 
-    if (!intents.length) {
+    if (!intents || !intents.length) {
       res.send(JSON.stringify({ success: false, error: 'Missing intents' }))
       return
     }
+
     for (const { signatures, signingPayload } of intents) {
       let error
       let relayedIntent
@@ -99,6 +99,10 @@ export async function createRelayer() {
         })
       const entryPoint = relayerSmartClient.account.getEntryPoint().address
 
+      const intentTypes = intents.map(({ signingPayload }) => signingPayload.primaryType).join(',')
+      // TODO if signer is different between intents does this matter?
+      const nonceKey = BigInt(intents[0].signingPayload.message.action.common.signer)
+
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
           const userOp = await relayerSmartClient.buildUserOperation({
@@ -114,7 +118,7 @@ export async function createRelayer() {
                   multiplier: tipMultiplier
                 },
                 // this is important for parellelization of user ops
-                nonceKey: BigInt(intents[0].signingPayload.message.action.common.signer)
+                nonceKey
               }
           }).catch(injectUOError(UOError.FailedBuildOperation))
 
@@ -124,7 +128,7 @@ export async function createRelayer() {
             // this error will not retry
             tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
               chain: Chain.id,
-              primaryType: intents[0].signingPayload.primaryType,
+              primaryType: intentTypes
             })
             throw new Error(UOError.MaxFeeTooLow)
           }
@@ -135,12 +139,10 @@ export async function createRelayer() {
             .catch(injectUOError(UOError.FailedSendOperation))
 
           console.log(`Sent userOp: ${uoHash}`)
-          intents.forEach(({ signingPayload }) => {
-            tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
-              chain: Chain.id,
-              primaryType: signingPayload.primaryType,
-              tipMultiplier
-            })
+          tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
+            chain: Chain.id,
+            primaryType: intentTypes,
+            tipMultiplier
           })
 
           let txHash: Hash | undefined
