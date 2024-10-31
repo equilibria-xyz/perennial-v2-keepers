@@ -2,7 +2,7 @@ import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
 import { UserOperationCallData } from '@aa-sdk/core'
-import { Hash } from 'viem'
+import { Hash, Hex } from 'viem'
 import { Chain, SDK, relayerSmartClient } from '../config.js'
 import {
   calcOpMaxFeeUsd,
@@ -15,7 +15,7 @@ import {
   isBatchOperationCallData,
   getMarketAddressFromIntent
 } from '../utils/relayerUtils.js'
-import { UserOpStatus, UOError, IntentBundle } from './types.js'
+import { UserOpStatus, UOError, SigningPayload } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
@@ -41,7 +41,10 @@ export async function createRelayer() {
       intents,
       meta
     } = req.body as {
-      intents: IntentBundle
+      intents: {
+        signatures: Hex[];
+        signingPayload: SigningPayload,
+      }[],
       meta?: {
         wait?: boolean
         maxRetries?: number
@@ -93,8 +96,8 @@ export async function createRelayer() {
           marketPriceCommits[marketAddress] = priceCommitment
         }
       }
-      const priceCommitsBundle = Object.values(marketPriceCommits)
-      const uos = priceCommitsBundle.concat(intentBatch)
+      const priceCommitsBatch = Object.values(marketPriceCommits)
+      const uos = priceCommitsBatch.concat(intentBatch)
 
       const latestEthPrice: bigint = await ethOracleFetcher.getLastPriceBig6()
         .catch((e) => {

@@ -213,7 +213,7 @@ export const requiresPriceCommit = (intent: SigningPayload): intent is (PlaceOrd
   )
 }
 
-export const isBatchOperationCallData = (bundle: (UserOperation | undefined)[]): bundle is BatchUserOperationCallData => (!bundle.some((intent): intent is undefined => intent === undefined))
+export const isBatchOperationCallData = (batch: (UserOperation | undefined)[]): batch is BatchUserOperationCallData => (!batch.some((intent): intent is undefined => intent === undefined))
 
 export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
   switch (intent.primaryType) {
