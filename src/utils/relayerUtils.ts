@@ -215,19 +215,15 @@ export const requiresPriceCommit = (intent: SigningPayload): intent is (PlaceOrd
 
 export const isBatchOperationCallData = (bundle: (UserOperation | undefined)[]): bundle is BatchUserOperationCallData => (!bundle.some((intent): intent is undefined => intent === undefined))
 
-type BundleableSigningPayload = PlaceOrderSigningPayload
-export const payloadCanBeBundled = (intent: SigningPayload): intent is BundleableSigningPayload => (
-  intent.primaryType === 'PlaceOrderAction'
-)
-
-const getMarketAddressFromIntent = (intent: SigningPayload): Address | undefined => {
+export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
   switch (intent.primaryType) {
     case 'PlaceOrderAction':
       return intent.message.action.market
     case 'MarketTransfer':
       return intent.message.market
   }
-  return
+
+  throw new Error (UOError.MarketAddressNotFound)
 }
 
 export const buildPriceCommit = async (
@@ -236,9 +232,6 @@ export const buildPriceCommit = async (
   intent: PlaceOrderSigningPayload | MarketTransferSigningPayload,
 ): Promise<{ target: Hex, data: Hex, value: bigint }> => {
   const marketAddress = getMarketAddressFromIntent(intent)
-  if (!marketAddress) {
-    throw new Error (UOError.MarketAddressNotFound)
-  }
   const market = addressToMarket(chainId, marketAddress)
   const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
     markets: [market],

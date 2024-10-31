@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-import { BatchUserOperationCallData } from '@aa-sdk/core'
+import { UserOperationCallData } from '@aa-sdk/core'
 import { Hash } from 'viem'
 import { Chain, SDK, relayerSmartClient } from '../config.js'
 import {
@@ -13,12 +13,13 @@ import {
   requiresPriceCommit,
   buildPriceCommit,
   isBatchOperationCallData,
-  payloadCanBeBundled
+  getMarketAddressFromIntent
 } from '../utils/relayerUtils.js'
 import { UserOpStatus, UOError, IntentBundle } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
+import { Address } from 'hardhat-deploy/dist/types.js'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -52,19 +53,6 @@ export async function createRelayer() {
       return
     }
 
-    const firstPayload = intents[0].signingPayload
-    const primaryType = firstPayload.primaryType
-    if (
-      intents.length > 1 &&
-      !(
-        payloadCanBeBundled(firstPayload) &&
-        intents.every((intent) => intent.signingPayload.primaryType === primaryType)
-      )
-    ) {
-      res.send(JSON.stringify({ success: false, error: 'Invalid intent bundle' }))
-      return
-    }
-
     for (const { signatures, signingPayload } of intents) {
       let error
       let relayedIntent
@@ -88,23 +76,25 @@ export async function createRelayer() {
       }
     }
 
-    const intentTypes = intents.map(({ signingPayload }) => signingPayload.primaryType).join(',')
     try {
-
-      const intentBundle = intents.map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures))
-      if (!isBatchOperationCallData(intentBundle)) {
+      const intentBatch = intents.map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures))
+      if (!isBatchOperationCallData(intentBatch)) {
         throw Error(UOError.FailedToConstructUO)
       }
 
-      const priceCommitsBundle: BatchUserOperationCallData = []
+      const marketPriceCommits: Record<Address, UserOperationCallData> = {}
       for (const { signingPayload } of intents) {
         if (requiresPriceCommit(signingPayload)) {
+          const marketAddress = getMarketAddressFromIntent(signingPayload)
+          if (marketPriceCommits[marketAddress]) {
+            continue
+          }
           const priceCommitment = await buildPriceCommit(SDK, Chain.id, signingPayload)
-          priceCommitsBundle.push(priceCommitment)
-          break
+          marketPriceCommits[marketAddress] = priceCommitment
         }
       }
-      const uos = priceCommitsBundle.concat(intentBundle)
+      const priceCommitsBundle = Object.values(marketPriceCommits)
+      const uos = priceCommitsBundle.concat(intentBatch)
 
       const latestEthPrice: bigint = await ethOracleFetcher.getLastPriceBig6()
         .catch((e) => {
@@ -115,7 +105,6 @@ export async function createRelayer() {
         })
       const entryPoint = relayerSmartClient.account.getEntryPoint().address
 
-      // TODO if signer is different between intents does this matter?
       const nonceKey = BigInt(intents[0].signingPayload.message.action.common.signer)
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
@@ -142,7 +131,6 @@ export async function createRelayer() {
             // this error will not retry
             tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
               chain: Chain.id,
-              primaryType: intentTypes
             })
             throw new Error(UOError.MaxFeeTooLow)
           }
@@ -155,7 +143,6 @@ export async function createRelayer() {
           console.log(`Sent userOp: ${uoHash}`)
           tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
             chain: Chain.id,
-            primaryType: intentTypes,
             tipMultiplier
           })
 
@@ -181,7 +168,6 @@ export async function createRelayer() {
       console.warn(e)
       tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
-        primaryType: intentTypes
       })
       res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}` }))
     }
