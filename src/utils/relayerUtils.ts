@@ -1,4 +1,4 @@
-import { Hex, encodeFunctionData, Address } from 'viem'
+import { Hex, encodeFunctionData, Address, zeroAddress } from 'viem'
 import { UserOperationStruct, BatchUserOperationCallData } from '@aa-sdk/core'
 
 import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
@@ -221,9 +221,9 @@ export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
       return intent.message.action.market
     case 'MarketTransfer':
       return intent.message.market
+    default:
+      return zeroAddress
   }
-
-  throw new Error (UOError.MarketAddressNotFound)
 }
 
 export const buildPriceCommit = async (
