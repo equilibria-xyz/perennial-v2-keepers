@@ -1,5 +1,5 @@
-import { Hex, encodeFunctionData, Address } from 'viem'
-import { UserOperationStruct } from '@aa-sdk/core'
+import { Hex, encodeFunctionData, Address, zeroAddress } from 'viem'
+import { UserOperationStruct, BatchUserOperationCallData } from '@aa-sdk/core'
 
 import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
 import { BaseTipMultiplier, MaxRetries, TipPercentageIncrease } from '../constants/relayer.js'
@@ -213,14 +213,17 @@ export const requiresPriceCommit = (intent: SigningPayload): intent is (PlaceOrd
   )
 }
 
-const getMarketAddressFromIntent = (intent: SigningPayload): Address | undefined => {
+export const isBatchOperationCallData = (batch: (UserOperation | undefined)[]): batch is BatchUserOperationCallData => (!batch.some((intent): intent is undefined => intent === undefined))
+
+export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
   switch (intent.primaryType) {
     case 'PlaceOrderAction':
       return intent.message.action.market
     case 'MarketTransfer':
       return intent.message.market
+    default:
+      return zeroAddress
   }
-  return
 }
 
 export const buildPriceCommit = async (
@@ -229,9 +232,6 @@ export const buildPriceCommit = async (
   intent: PlaceOrderSigningPayload | MarketTransferSigningPayload,
 ): Promise<{ target: Hex, data: Hex, value: bigint }> => {
   const marketAddress = getMarketAddressFromIntent(intent)
-  if (!marketAddress) {
-    throw new Error (UOError.MarketAddressNotFound)
-  }
   const market = addressToMarket(chainId, marketAddress)
   const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
     markets: [market],
