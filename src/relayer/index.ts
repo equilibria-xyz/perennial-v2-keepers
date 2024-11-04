@@ -108,7 +108,6 @@ export async function createRelayer() {
       const uos = priceCommitsBatch.concat(intentBatch)
 
       const entryPoint = relayerSmartClient.account.getEntryPoint().address
-
       const nonceKey = BigInt(intents[0].signingPayload.message.action.common.signer)
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
