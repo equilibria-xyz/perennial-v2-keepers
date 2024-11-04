@@ -80,32 +80,34 @@ export async function createRelayer() {
     }
 
     try {
-      const intentBatch = intents.map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures))
-      if (!isBatchOperationCallData(intentBatch)) {
-        throw Error(UOError.FailedToConstructUO)
-      }
-
-      const marketPriceCommits: Record<Address, UserOperationCallData> = {}
-      for (const { signingPayload } of intents) {
-        if (requiresPriceCommit(signingPayload)) {
-          const marketAddress = getMarketAddressFromIntent(signingPayload)
-          if (marketPriceCommits[marketAddress]) {
-            continue
-          }
-          const priceCommitment = await buildPriceCommit(SDK, Chain.id, signingPayload)
-          marketPriceCommits[marketAddress] = priceCommitment
-        }
-      }
-      const priceCommitsBatch = Object.values(marketPriceCommits)
-      const uos = priceCommitsBatch.concat(intentBatch)
-
-      const latestEthPrice: bigint = await ethOracleFetcher.getLastPriceBig6()
+      const latestEthPrice_ = ethOracleFetcher.getLastPriceBig6()
         .catch((e) => {
           tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
             chain: Chain.id,
           })
           return injectUOError(UOError.OracleError)(e)
         })
+
+      const marketPriceCommits: Record<Address, boolean> = {}
+      const priceCommitments: Promise<UserOperationCallData>[] = []
+      for (const { signingPayload } of intents) {
+        if (requiresPriceCommit(signingPayload)) {
+          const marketAddress = getMarketAddressFromIntent(signingPayload)
+          if (marketPriceCommits[marketAddress]) {
+            continue
+          }
+          priceCommitments.push(buildPriceCommit(SDK, Chain.id, signingPayload))
+          marketPriceCommits[marketAddress] = true
+        }
+      }
+      const priceCommitsBatch = await Promise.all(priceCommitments)
+
+      const intentBatch = intents.map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures))
+      if (!isBatchOperationCallData(intentBatch)) {
+        throw Error(UOError.FailedToConstructUO)
+      }
+      const uos = priceCommitsBatch.concat(intentBatch)
+
       const entryPoint = relayerSmartClient.account.getEntryPoint().address
 
       const nonceKey = BigInt(intents[0].signingPayload.message.action.common.signer)
@@ -128,6 +130,7 @@ export async function createRelayer() {
               }
           }).catch(injectUOError(UOError.FailedBuildOperation))
 
+          const latestEthPrice = await latestEthPrice_
           const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
           const sigMaxFee = intents.reduce((o, { signingPayload }) => o + signingPayload.message.action.maxFee, 0n)
           if (sigMaxFee < maxFeeUsd ) {
