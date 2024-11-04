@@ -93,7 +93,7 @@ export async function createRelayer() {
       for (const { signingPayload } of intents) {
         if (requiresPriceCommit(signingPayload)) {
           const marketAddress = getMarketAddressFromIntent(signingPayload)
-          if (!!marketPriceCommits[marketAddress]) {
+          if (marketAddress in marketPriceCommits) {
             continue
           }
           marketPriceCommits[marketAddress] = buildPriceCommit(SDK, Chain.id, signingPayload)
