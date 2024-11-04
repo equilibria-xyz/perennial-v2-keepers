@@ -100,12 +100,11 @@ export async function createRelayer() {
           marketPriceCommits[marketAddress] = true
         }
       }
-      const priceCommitsBatch = await Promise.all(priceCommitments)
-
       const intentBatch = intents.map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures))
       if (!isBatchOperationCallData(intentBatch)) {
         throw Error(UOError.FailedToConstructUO)
       }
+      const priceCommitsBatch = await Promise.all(priceCommitments)
       const uos = priceCommitsBatch.concat(intentBatch)
 
       const entryPoint = relayerSmartClient.account.getEntryPoint().address
@@ -154,7 +153,14 @@ export async function createRelayer() {
 
           let txHash: Hash | undefined
           if (shouldWait) {
-            txHash = await relayerSmartClient.waitForUserOperationTransaction({ hash: uoHash })
+            txHash = await relayerSmartClient.waitForUserOperationTransaction({
+              hash: uoHash,
+              retries: {
+                maxRetries: relayerSmartClient.txMaxRetries, // default 5
+                multiplier: relayerSmartClient.txRetryMultiplier, // default 1.5
+                intervalMs: 500 // default 2000
+              }
+            })
               .catch(injectUOError(UOError.FailedWaitForOperation))
             console.log(`UserOp confirmed: ${txHash}`)
           }
