@@ -37,6 +37,7 @@ export async function createRelayer() {
 
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
+    const startTime = performance.now()
     const {
       intents,
       meta
@@ -109,6 +110,10 @@ export async function createRelayer() {
 
       const entryPoint = relayerSmartClient.account.getEntryPoint().address
       const nonceKey = BigInt(intents[0].signingPayload.message.action.common.signer)
+
+      tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
+        chain: Chain.id,
+      })
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
           const userOp = await relayerSmartClient.buildUserOperation({
@@ -175,6 +180,11 @@ export async function createRelayer() {
 
       const status = txHash ? UserOpStatus.Complete: UserOpStatus.Pending
       res.send(JSON.stringify({ success: true, status, uoHash, txHash }))
+
+      // sendUserOp time can be derived from relayer.time.total - relayer.time.preUserOp
+      tracer.dogstatsd.gauge('relayer.time.total', performance.now() - startTime, {
+        chain: Chain.id,
+      })
     } catch (e) {
       console.warn(e)
       tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
