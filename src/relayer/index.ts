@@ -89,23 +89,21 @@ export async function createRelayer() {
           return injectUOError(UOError.OracleError)(e)
         })
 
-      const marketPriceCommits: Record<Address, boolean> = {}
-      const priceCommitments: Promise<UserOperationCallData>[] = []
+      const marketPriceCommits: Record<Address, Promise<UserOperationCallData>> = {}
       for (const { signingPayload } of intents) {
         if (requiresPriceCommit(signingPayload)) {
           const marketAddress = getMarketAddressFromIntent(signingPayload)
-          if (marketPriceCommits[marketAddress]) {
+          if (!!marketPriceCommits[marketAddress]) {
             continue
           }
-          priceCommitments.push(buildPriceCommit(SDK, Chain.id, signingPayload))
-          marketPriceCommits[marketAddress] = true
+          marketPriceCommits[marketAddress] = buildPriceCommit(SDK, Chain.id, signingPayload)
         }
       }
       const intentBatch = intents.map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures))
       if (!isBatchOperationCallData(intentBatch)) {
         throw Error(UOError.FailedToConstructUO)
       }
-      const priceCommitsBatch = await Promise.all(priceCommitments)
+      const priceCommitsBatch = await Promise.all(Object.values(marketPriceCommits))
       const uos = priceCommitsBatch.concat(intentBatch)
 
       const entryPoint = relayerSmartClient.account.getEntryPoint().address
