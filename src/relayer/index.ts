@@ -177,6 +177,7 @@ export async function createRelayer() {
       )
 
       const status = txHash ? UserOpStatus.Complete: UserOpStatus.Pending
+      console.log(`Total time: ${(performance.now() - startTime) / 1000} seconds`)
       res.send(JSON.stringify({ success: true, status, uoHash, txHash }))
 
       // sendUserOp time can be derived from relayer.time.total - relayer.time.preUserOp
