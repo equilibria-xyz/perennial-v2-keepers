@@ -165,6 +165,11 @@ export async function createRelayer() {
             })
               .catch(injectUOError(UOError.FailedWaitForOperation))
             console.log(`UserOp confirmed: ${txHash}`)
+
+            const receipt = await relayerSmartClient.getUserOperationReceipt(uoHash)
+            if (receipt?.success === false) {
+              throw new Error(`UserOp reverted: ${receipt.reason}`)
+            }
           }
           return ({
             uoHash,
