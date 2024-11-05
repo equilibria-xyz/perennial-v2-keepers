@@ -148,6 +148,8 @@ export async function createRelayer() {
             .catch(injectUOError(UOError.FailedSendOperation))
 
           console.log(`Sent userOp: ${uoHash}`)
+          console.log(`Time since start: ${(performance.now() - startTime) / 1000} seconds`)
+
           tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
             chain: Chain.id,
             tipMultiplier
@@ -155,6 +157,7 @@ export async function createRelayer() {
 
           let txHash: Hash | undefined
           if (shouldWait) {
+            const startWait = performance.now()
             txHash = await relayerSmartClient.waitForUserOperationTransaction({
               hash: uoHash,
               retries: {
@@ -165,6 +168,7 @@ export async function createRelayer() {
             })
               .catch(injectUOError(UOError.FailedWaitForOperation))
             console.log(`UserOp confirmed: ${txHash}`)
+            console.log(`Spent ${(performance.now() - startWait) / 1000} seconds waiting for userOp`)
           }
           return ({
             uoHash,
@@ -178,6 +182,7 @@ export async function createRelayer() {
 
       const status = txHash ? UserOpStatus.Complete: UserOpStatus.Pending
       console.log(`Total time: ${(performance.now() - startTime) / 1000} seconds`)
+      console.log()
       res.send(JSON.stringify({ success: true, status, uoHash, txHash }))
 
       // sendUserOp time can be derived from relayer.time.total - relayer.time.preUserOp
