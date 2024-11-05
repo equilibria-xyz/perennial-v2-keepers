@@ -50,7 +50,7 @@
     "gen:lens-artifact": "yarn compile && tsx --tsconfig ./tsconfig.release.json src/scripts/lensAbiCopy.ts && prettier --write src/constants/abi/*",
     "precommit": "yarn lint-staged",
     "gen:gql-typings": "graphql-codegen --config graph-codegen.ts",
-    "postinstall": "husky install",
+    "postinstall": "husky install && patch-package",
     "test": "vitest"
   },
   "license": "Apache-2.0",
