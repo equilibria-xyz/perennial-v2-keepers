@@ -1,115 +1,11 @@
-diff --git a/node_modules/@aa-sdk/core/dist/esm/account/smartContractAccount.js b/node_modules/@aa-sdk/core/dist/esm/account/smartContractAccount.js
-index ba526ed..ab27ae0 100644
---- a/node_modules/@aa-sdk/core/dist/esm/account/smartContractAccount.js
-+++ b/node_modules/@aa-sdk/core/dist/esm/account/smartContractAccount.js
-@@ -195,12 +195,16 @@ export async function toSmartContractAccount(params) {
-         (() => {
-             throw new UpgradesNotSupportedError(source);
-         });
-+
-     const isAccountDeployed = async () => {
-+        console.log("Checking is account deployed");
-         const initCode = await getInitCode();
-         return initCode === "0x";
-     };
-+    let isDeployed = isAccountDeployed();
-+
-     const getNonce = async (nonceKey = 0n) => {
--        if (!(await isAccountDeployed())) {
-+        if (!(await isDeployed)) {
-             return 0n;
-         }
-         return entryPointContract.read.getNonce([
-@@ -273,6 +277,7 @@ export async function toSmartContractAccount(params) {
-         encodeUpgradeToAndCall: encodeUpgradeToAndCall_,
-         getEntryPoint: () => entryPoint,
-         isAccountDeployed,
-+        isDeployed,
-         getAccountNonce: getNonce,
-         signMessageWith6492,
-         signTypedDataWith6492,
-diff --git a/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/internal/initUserOperation.js b/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/internal/initUserOperation.js
-index 0e0d1e7..d10ee11 100644
---- a/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/internal/initUserOperation.js
-+++ b/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/internal/initUserOperation.js
-@@ -39,8 +39,8 @@ export async function _initUserOperation(client, args) {
-             signature,
-         }
-         : {
--            factory: conditionalReturn(account.isAccountDeployed().then((deployed) => !deployed), account.getFactoryAddress),
--            factoryData: conditionalReturn(account.isAccountDeployed().then((deployed) => !deployed), account.getFactoryData),
-+            factory: conditionalReturn(account.isDeployed.then((deployed) => !deployed), account.getFactoryAddress),
-+            factoryData: conditionalReturn(account.isDeployed.then((deployed) => !deployed), account.getFactoryData),
-             sender: account.address,
-             nonce,
-             callData,
-diff --git a/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/internal/runMiddlewareStack.js b/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/internal/runMiddlewareStack.js
-index 4ae9814..0f1b87c 100644
---- a/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/internal/runMiddlewareStack.js
-+++ b/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/internal/runMiddlewareStack.js
-@@ -1,18 +1,28 @@
- import { AccountNotFoundError } from "../../../errors/account.js";
- import { noopMiddleware } from "../../../middleware/noopMiddleware.js";
- import { bypassPaymasterAndData, resolveProperties, } from "../../../utils/index.js";
-+
- const asyncPipe = (...fns) => async (s, opts) => {
-     let result = s;
-     for (const fn of fns) {
-+      const startTime = performance.now();
-+      if (Array.isArray(fn)) {
-+        const results = await Promise.all(fn.map((fn_) => (fn_(result, opts))))
-+        result = results.reduce((o, r) => ({ ...o, ...r }), result)
-+      } else {
-         result = await fn(result, opts);
-+      }
-+      console.log(`Took ${(performance.now() - startTime) / 1000} seconds`, fn)
-     }
-     return result;
- };
-+
- export async function _runMiddlewareStack(client, args) {
-     const { uo, overrides, account = client.account, context } = args;
-     if (!account) {
-         throw new AccountNotFoundError();
-     }
-+
-     const { dummyPaymasterAndData, paymasterAndData, } = bypassPaymasterAndData(overrides)
-         ? {
-             dummyPaymasterAndData: async (uo, { overrides }) => {
-@@ -34,11 +44,20 @@ export async function _runMiddlewareStack(client, args) {
-             },
-             paymasterAndData: noopMiddleware,
-         }
--        : {
-+        :     {
-             dummyPaymasterAndData: client.middleware.dummyPaymasterAndData,
-             paymasterAndData: client.middleware.paymasterAndData,
-         };
--    const result = await asyncPipe(dummyPaymasterAndData, client.middleware.feeEstimator, client.middleware.gasEstimator, client.middleware.customMiddleware, paymasterAndData, client.middleware.userOperationSimulator)(uo, { overrides, feeOptions: client.feeOptions, account, client, context });
-+    const result = await asyncPipe(
-+        dummyPaymasterAndData,
-+        [
-+          client.middleware.feeEstimator,
-+          client.middleware.gasEstimator,
-+          client.middleware.customMiddleware,
-+        ],
-+        paymasterAndData,
-+        client.middleware.userOperationSimulator
-+      )(uo, { overrides, feeOptions: client.feeOptions, account, client, context });
-     return resolveProperties(result);
- }
- //# sourceMappingURL=runMiddlewareStack.js.map
-\ No newline at end of file
 diff --git a/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/waitForUserOperationTransacation.js b/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/waitForUserOperationTransacation.js
-index 08ee28d..7fa7e72 100644
+index 08ee28d..16e0ccb 100644
 --- a/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/waitForUserOperationTransacation.js
 +++ b/node_modules/@aa-sdk/core/dist/esm/actions/smartAccount/waitForUserOperationTransacation.js
-@@ -53,4 +53,26 @@ export const waitForUserOperationTransaction = async (client, args) => {
-     }
+@@ -54,3 +54,33 @@ export const waitForUserOperationTransaction = async (client, args) => {
      throw new FailedToFindTransactionError(hash);
  };
--//# sourceMappingURL=waitForUserOperationTransacation.js.map
-\ No newline at end of file
+ //# sourceMappingURL=waitForUserOperationTransacation.js.map
 +
 +export const waitForUserOperationReceipt = async (client, args) => {
 +    if (!isBaseSmartAccountClient(client)) {
@@ -129,7 +25,14 @@ index 08ee28d..7fa7e72 100644
 +            .catch((e) => {
 +            Logger.error(`[SmartAccountProvider] waitForUserOperationTransaction error fetching receipt for ${hash}: ${e}`);
 +        });
-+        return receipt
++        if (receipt) {
++            return getTransaction(client, {
++                hash: receipt.receipt.transactionHash,
++            }).then((tx) => ({
++              hash: tx.hash,
++              userOpReceipt: receipt
++            }));
++        }
 +    }
 +    throw new FailedToFindTransactionError(hash);
 +};
@@ -146,65 +49,6 @@ index fa6e071..6611b78 100644
  export { createBundlerClient, createBundlerClientFromExisting, } from "./client/bundlerClient.js";
  export { bundlerActions } from "./client/decorators/bundlerClient.js";
  export { smartAccountClientActions } from "./client/decorators/smartAccountClient.js";
-diff --git a/node_modules/@aa-sdk/core/dist/esm/middleware/defaults/gasEstimator.js b/node_modules/@aa-sdk/core/dist/esm/middleware/defaults/gasEstimator.js
-index bcb491c..1aff2ad 100644
---- a/node_modules/@aa-sdk/core/dist/esm/middleware/defaults/gasEstimator.js
-+++ b/node_modules/@aa-sdk/core/dist/esm/middleware/defaults/gasEstimator.js
-@@ -9,8 +9,14 @@ import { applyUserOpOverrideOrFeeOption } from "../../utils/userop.js";
-  * @returns {ClientMiddlewareFn} middleware execution function used to estimate gas for user operations
-  */
- export const defaultGasEstimator = (client) => async (struct, { account, overrides, feeOptions }) => {
-+    let start = performance.now();
-     const request = deepHexlify(await resolveProperties(struct));
-+    console.log(`GE<resolveProperties>: ${(performance.now() - start) / 1000} seconds`)
-+
-+    start = performance.now();
-     const estimates = await client.estimateUserOperationGas(request, account.getEntryPoint().address, overrides?.stateOverride);
-+    console.log(`GE<estimateUserOpGas>: ${(performance.now() - start) / 1000} seconds`)
-+
-     const callGasLimit = applyUserOpOverrideOrFeeOption(estimates.callGasLimit, overrides?.callGasLimit, feeOptions?.callGasLimit);
-     const verificationGasLimit = applyUserOpOverrideOrFeeOption(estimates.verificationGasLimit, overrides?.verificationGasLimit, feeOptions?.verificationGasLimit);
-     const preVerificationGas = applyUserOpOverrideOrFeeOption(estimates.preVerificationGas, overrides?.preVerificationGas, feeOptions?.preVerificationGas);
-diff --git a/node_modules/@aa-sdk/core/dist/esm/middleware/defaults/paymasterAndData.js b/node_modules/@aa-sdk/core/dist/esm/middleware/defaults/paymasterAndData.js
-index 6fbb349..3673809 100644
---- a/node_modules/@aa-sdk/core/dist/esm/middleware/defaults/paymasterAndData.js
-+++ b/node_modules/@aa-sdk/core/dist/esm/middleware/defaults/paymasterAndData.js
-@@ -7,6 +7,7 @@
-  * @returns {Promise<UserOperationStruct>} a promise that resolves to the modified user operation structure
-  */
- export const defaultPaymasterAndData = async (struct, { account }) => {
-+    console.log("Appending paymaster and data")
-     const entryPoint = account.getEntryPoint();
-     if (entryPoint.version === "0.6.0") {
-         struct.paymasterAndData = "0x";
-diff --git a/node_modules/@aa-sdk/core/dist/esm/middleware/erc7677middleware.js b/node_modules/@aa-sdk/core/dist/esm/middleware/erc7677middleware.js
-index 3bb59c8..9bb8a66 100644
---- a/node_modules/@aa-sdk/core/dist/esm/middleware/erc7677middleware.js
-+++ b/node_modules/@aa-sdk/core/dist/esm/middleware/erc7677middleware.js
-@@ -24,7 +24,10 @@ import { deepHexlify, resolveProperties, } from "../utils/index.js";
-  */
- export function erc7677Middleware(params) {
-     const dummyPaymasterAndData = async (uo, { client, account, feeOptions, overrides }) => {
-+        const startResolve = performance.now();
-         const userOp = deepHexlify(await resolveProperties(uo));
-+        console.log(`DPM<resolveProperties>: ${(performance.now() - startResolve) / 1000} seconds`)
-+
-         // Those values will be set after fee estimation.
-         userOp.maxFeePerGas = "0x0";
-         userOp.maxPriorityFeePerGas = "0x0";
-@@ -44,10 +47,12 @@ export function erc7677Middleware(params) {
-         }
-         const erc7677client = client;
-         // TODO: probably need to handle the sponsor and isFinal fields
-+        const startStub = performance.now()
-         const { paymaster, paymasterAndData, paymasterData, paymasterPostOpGasLimit, paymasterVerificationGasLimit, } = await erc7677client.request({
-             method: "pm_getPaymasterStubData",
-             params: [userOp, entrypoint.address, toHex(client.chain.id), context],
-         });
-+        console.log(`DPM<getPaymasterStubData>: ${(performance.now() - startStub) / 1000} seconds`)
-         if (entrypoint.version === "0.6.0") {
-             return {
-                 ...uo,
 diff --git a/node_modules/@aa-sdk/core/dist/types/index.d.ts b/node_modules/@aa-sdk/core/dist/types/index.d.ts
 index 24c5baf..75d8816 100644
 --- a/node_modules/@aa-sdk/core/dist/types/index.d.ts

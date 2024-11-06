@@ -157,7 +157,7 @@ export async function createRelayer() {
 
           let txHash
           if (shouldWait) {
-            const userOpReceipt = await waitForUserOperationReceipt(relayerSmartClient, {
+            const { userOpReceipt, hash } = await waitForUserOperationReceipt(relayerSmartClient, {
               hash: uoHash,
               retries: {
                 maxRetries: relayerSmartClient.txMaxRetries, // default 5
@@ -166,7 +166,7 @@ export async function createRelayer() {
               }
             })
               .catch(injectUOError(UOError.FailedWaitForOperation))
-            txHash = userOpReceipt?.receipt?.transactionHash
+            txHash = hash
             console.log(`UserOp confirmed: ${txHash}`)
             if (userOpReceipt?.success === false) {
               erroredTxHash = txHash
