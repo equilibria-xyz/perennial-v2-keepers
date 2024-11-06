@@ -20,6 +20,7 @@ import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
 import { Address } from 'hardhat-deploy/dist/types.js'
+import { waitForUserOperationReceipt } from 'viem/account-abstraction'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -155,24 +156,25 @@ export async function createRelayer() {
             tipMultiplier
           })
 
-          let txHash: Hash | undefined
+          let userOpReceipt = undefined
           if (shouldWait) {
             const startWait = performance.now()
-            txHash = await relayerSmartClient.waitForUserOperationTransaction({
+            userOpReceipt = await waitForUserOperationReceipt(relayerSmartClient, {
               hash: uoHash,
-              retries: {
-                maxRetries: relayerSmartClient.txMaxRetries, // default 5
-                multiplier: relayerSmartClient.txRetryMultiplier, // default 1.5
-                intervalMs: 500 // default 2000
-              }
+              pollingInterval: 500 // default 1000
             })
               .catch(injectUOError(UOError.FailedWaitForOperation))
+            console.log(`UserOp confirmed: ${txHash}`)
+
+            if (userOpReceipt?.success === false) {
+              throw new Error(`UserOp reverted: ${userOpReceipt.reason}`)
+            }
             console.log(`UserOp confirmed: ${txHash}`)
             console.log(`Spent ${(performance.now() - startWait) / 1000} seconds waiting for userOp`)
           }
           return ({
             uoHash,
-            txHash
+            txHash: userOpReceipt?.receipt?.transactionHash
           })
         }, {
           maxRetry: meta?.maxRetries,
