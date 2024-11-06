@@ -81,7 +81,7 @@ export async function createRelayer() {
       }
     }
 
-    let erroredUoHash, erroredTxHash
+    let erroredTxHash
     try {
       const latestEthPrice_ = ethOracleFetcher.getLastPriceBig6()
         .catch((e) => {
@@ -167,7 +167,6 @@ export async function createRelayer() {
             txHash = userOpReceipt?.receipt?.transactionHash
 
             if (userOpReceipt?.success === false) {
-              erroredUoHash = uoHash
               erroredTxHash = txHash
               throw new Error(`UserOp reverted: ${userOpReceipt.reason}`)
             }
@@ -194,7 +193,7 @@ export async function createRelayer() {
       tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
       })
-      res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}`, uoHash: erroredUoHash, txHash: erroredTxHash }))
+      res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}`, txHash: erroredTxHash }))
     }
   })
 
