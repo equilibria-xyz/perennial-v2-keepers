@@ -1,5 +1,5 @@
-import Perennial, { Big6Math } from '@perennial/sdk'
-import { arbitrumSepolia } from '@account-kit/infra'
+import Perennial, { Big6Math, type SupportedChainId } from '@perennial/sdk'
+import { arbitrum, arbitrumSepolia } from '@account-kit/infra'
 import type { Hex } from 'viem'
 import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -7,8 +7,8 @@ import { privateKeyToAccount } from 'viem/accounts'
 const relayerBackendUrl = 'http://localhost:3030'
 
 const graphUrl = process.env.ARBITRUM_GRAPH_URL
-const pythUrl = process.env.ARBITRUM_NODE_URL
-const rpcUrl = process.env.PYTH_URL
+const rpcUrl = process.env.ARBITRUM_NODE_URL
+const pythUrl = process.env.PYTH_URL
 const privateKeys = process.env.PRIVATE_KEYS
 const alchemyApiKey = process.env.ALCHEMY_API_KEY
 
@@ -26,16 +26,18 @@ if (
   return this.toString()
 }
 
+const chain = process.env.MAINNET ? arbitrum : arbitrumSepolia;
+
 const sdks = (privateKeys.split(',') as Hex[]).map((privateKey) => {
   const walletClient = createWalletClient({
     account: privateKeyToAccount(privateKey),
-    chain: arbitrumSepolia,
+    chain,
     transport: http(rpcUrl),
   })
   const address = walletClient.account.address
 
   const sdk = new Perennial({
-    chainId: arbitrumSepolia.id as 421614,
+    chainId: chain.id as SupportedChainId,
     rpcUrl,
     graphUrl,
     pythUrl,
@@ -87,8 +89,12 @@ const run = async () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          signatures: [signature],
-          signingPayload: withdrawal,
+          intents: [
+            {
+              signatures: [signature],
+              signingPayload: withdrawal,
+            }
+          ],
           meta: {
             wait: true,
           },
@@ -96,7 +102,7 @@ const run = async () => {
       })
       .then((res) => res.json())
       .then((res) => {
-        console.log("Got", result)
+        console.debug("Got", res)
         if (res.success) {
           success++
         }
