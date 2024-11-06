@@ -81,6 +81,7 @@ export async function createRelayer() {
       }
     }
 
+    let erroredUoHash, erroredTxHash
     try {
       const latestEthPrice_ = ethOracleFetcher.getLastPriceBig6()
         .catch((e) => {
@@ -113,6 +114,7 @@ export async function createRelayer() {
       tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
         chain: Chain.id,
       })
+
       const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
           const userOp = await relayerSmartClient.buildUserOperation({
@@ -154,22 +156,25 @@ export async function createRelayer() {
             tipMultiplier
           })
 
-          let userOpReceipt = undefined
+          let txHash
           if (shouldWait) {
-            userOpReceipt = await waitForUserOperationReceipt(relayerSmartClient, {
+            const userOpReceipt = await waitForUserOperationReceipt(relayerSmartClient, {
               hash: uoHash,
               pollingInterval: 500 // default 1000
             })
               .catch(injectUOError(UOError.FailedWaitForOperation))
             console.log(`UserOp confirmed: ${txHash}`)
+            txHash = userOpReceipt?.receipt?.transactionHash
 
             if (userOpReceipt?.success === false) {
+              erroredUoHash = uoHash
+              erroredTxHash = txHash
               throw new Error(`UserOp reverted: ${userOpReceipt.reason}`)
             }
           }
           return ({
             uoHash,
-            txHash: userOpReceipt?.receipt?.transactionHash
+            txHash
           })
         }, {
           maxRetry: meta?.maxRetries,
@@ -189,7 +194,7 @@ export async function createRelayer() {
       tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
       })
-      res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}` }))
+      res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}`, uoHash: erroredUoHash, txHash: erroredTxHash }))
     }
   })
 
