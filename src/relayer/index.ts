@@ -20,7 +20,7 @@ import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
 import { Address } from 'hardhat-deploy/dist/types.js'
-import { UserOperationReceipt, waitForUserOperationReceipt } from 'viem/account-abstraction'
+import { waitForUserOperationReceipt } from 'viem/account-abstraction'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -154,12 +154,10 @@ export async function createRelayer() {
             tipMultiplier
           })
 
-          let userOpReceipt: UserOperationReceipt
+          let userOpReceipt = undefined
           if (shouldWait) {
-            // userOpReceipt = await relayerSmartClient.waitForUserOperationReceipt({
             userOpReceipt = await waitForUserOperationReceipt(relayerSmartClient, {
               hash: uoHash,
-              retryCount: relayerSmartClient.txMaxRetries, // default 5
               pollingInterval: 500 // default 1000
             })
               .catch(injectUOError(UOError.FailedWaitForOperation))
@@ -171,7 +169,7 @@ export async function createRelayer() {
           }
           return ({
             uoHash,
-            txHash
+            txHash: userOpReceipt?.receipt?.transactionHash
           })
         }, {
           maxRetry: meta?.maxRetries,
