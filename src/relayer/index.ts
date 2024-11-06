@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-import { UserOperationCallData } from '@aa-sdk/core'
+import { UserOperationCallData, waitForUserOperationReceipt } from '@aa-sdk/core'
 import { Hash, Hex } from 'viem'
 import { Chain, SDK, relayerSmartClient } from '../config.js'
 import {
@@ -20,7 +20,6 @@ import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
 import { Address } from 'hardhat-deploy/dist/types.js'
-import { waitForUserOperationReceipt } from 'viem/account-abstraction'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -160,12 +159,15 @@ export async function createRelayer() {
           if (shouldWait) {
             const userOpReceipt = await waitForUserOperationReceipt(relayerSmartClient, {
               hash: uoHash,
-              pollingInterval: 500 // default 1000
+              retries: {
+                maxRetries: relayerSmartClient.txMaxRetries, // default 5
+                multiplier: relayerSmartClient.txRetryMultiplier, // default 1.5
+                intervalMs: 500 // default 2000
+              }
             })
               .catch(injectUOError(UOError.FailedWaitForOperation))
-            console.log(`UserOp confirmed: ${txHash}`)
             txHash = userOpReceipt?.receipt?.transactionHash
-
+            console.log(`UserOp confirmed: ${txHash}`)
             if (userOpReceipt?.success === false) {
               erroredTxHash = txHash
               throw new Error(`UserOp reverted: ${userOpReceipt.reason}`)
