@@ -1,16 +1,19 @@
-import { Hex, encodeFunctionData } from 'viem'
-import { UserOperationStruct } from '@aa-sdk/core'
+import { Hex, encodeFunctionData, Address, zeroAddress } from 'viem'
+import { UserOperationStruct, BatchUserOperationCallData } from '@aa-sdk/core'
 
 import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
-import { BaseTipMultiplier } from '../constants/relayer.js'
+import { BaseTipMultiplier, MaxRetries, TipPercentageIncrease } from '../constants/relayer.js'
 
-import {
+import PerennialSDK, {
   ControllerAddresses,
   ControllerAbi,
   SupportedChainId,
   ManagerAddresses,
-  ManagerAbi
+  ManagerAbi,
+  addressToMarket,
 } from '@perennial/sdk'
+
+import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 
 export const constructDirectUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
   const chainId = payload.domain?.chainId as SupportedChainId
@@ -139,21 +142,30 @@ export const constructUserOperation = (signingPayload: SigningPayload, signature
 }
 
 const RetryOnErrors = [UOError.FailedWaitForOperation, UOError.FailedSendOperation, UOError.FailedBuildOperation]
-export const retryUserOpWithIncreasingTip = async (sendUserOp: (tipMultiplier: number, shouldWait?: boolean) => Promise<UOResult>, options?: { maxRetry?: number, shouldWait?: boolean }): Promise<UOResult> => {
-  const maxRetry = options?.maxRetry ?? 3
+export const retryUserOpWithIncreasingTip =
+  async (
+    sendUserOp: (tipMultiplier: number, shouldWait?: boolean) => Promise<UOResult>,
+    options?: {
+      maxRetry?: number,
+      shouldWait?: boolean,
+      baseTipMultiplier?: number,
+      tipPercentageIncrease?: number,
+    }
+  ): Promise<UOResult> => {
+  const maxRetry = options?.maxRetry ?? MaxRetries
+  const baseTipMultiplier = options?.baseTipMultiplier ?? BaseTipMultiplier
+  const tipPercentageIncrease = options?.tipPercentageIncrease ?? TipPercentageIncrease
   let retry = 0
   while (retry <= maxRetry) {
-    // increase tip by 10% each time
-    const tipMultiplier = BaseTipMultiplier + (0.1 * retry)
+    // increase tip, alchemy throws if its more than 4 decimals https://github.com/alchemyplatform/aa-sdk/blob/main/aa-sdk/core/src/utils/schema.ts#L34
+    const tipMultiplier = parseFloat((baseTipMultiplier + (tipPercentageIncrease * retry)).toFixed(4))
     try {
-      console.debug(`Attempting to send userOp (${retry})`)
       return await sendUserOp(tipMultiplier, options?.shouldWait)
     } catch (e) {
       if (!RetryOnErrors.includes(e.message)) {
         // forward on error we dont want to retry with a higher fee
         throw e
       }
-      console.debug(`Failed to send userOp: ${e.message}`)
       retry += 1
     }
   }
@@ -189,7 +201,47 @@ export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean 
 
 export const injectUOError = (uoError: UOError): ((e: unknown) => never) => {
   return (e: unknown) => {
-    console.debug('UserOp.Failed', e)
+    console.error('UserOp.Failed', e)
     throw new Error(uoError)
   }
+}
+
+export const requiresPriceCommit = (intent: SigningPayload): intent is (PlaceOrderSigningPayload | MarketTransferSigningPayload) => {
+  return (
+    (intent.primaryType === 'MarketTransfer' && intent.message.amount < 0n) ||
+    intent.primaryType === 'PlaceOrderAction'
+  )
+}
+
+export const isBatchOperationCallData = (batch: (UserOperation | undefined)[]): batch is BatchUserOperationCallData => (!batch.some((intent): intent is undefined => intent === undefined))
+
+export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
+  switch (intent.primaryType) {
+    case 'PlaceOrderAction':
+      return intent.message.action.market
+    case 'MarketTransfer':
+      return intent.message.market
+    default:
+      return zeroAddress
+  }
+}
+
+export const buildPriceCommit = async (
+  sdk: InstanceType<typeof PerennialSDK.default>,
+  chainId: SupportedChainId,
+  intent: PlaceOrderSigningPayload | MarketTransferSigningPayload,
+): Promise<{ target: Hex, data: Hex, value: bigint }> => {
+  const marketAddress = getMarketAddressFromIntent(intent)
+  const market = addressToMarket(chainId, marketAddress)
+  const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
+    markets: [market],
+  })
+
+  const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })
+
+  return ({
+    target: priceCommitment.to,
+    data: priceCommitment.data,
+    value: priceCommitment.value
+  })
 }

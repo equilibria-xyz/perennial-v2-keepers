@@ -39,10 +39,7 @@ export class EthOracleFetcher {
     })
 
     const price = BigInt(roundData[1])
-
-    const r = BigInt(Big6Math.FIXED_DECIMALS - this.decimals)
-    // TODO use fromDecimals when version upgrades > 0.0.3-alpha.8
-    const priceBig6 = r >= 0n ? price * 10n ** r : price / (10n ** (r * -1n))
+    const priceBig6 = Big6Math.fromDecimals(price, this.decimals)
 
     this.lastPrice = {
       expiry: Date.now() + EthOracleFetcher.TTL,

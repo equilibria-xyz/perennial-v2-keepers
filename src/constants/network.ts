@@ -16,8 +16,8 @@ export {
 } from '@perennial/sdk'
 
 export const BatchKeeperAddresses = {
-  [arbitrum.id]: getAddress('0x5A8557449c05fA515FEA099178D42b9415B9F118'),
-  [arbitrumSepolia.id]: getAddress('0x766C7863D8042A2D7973dDacaCB44B48b2220b9e'),
+  [arbitrum.id]: getAddress('0xb5ae2b4e766f2714129720d88a0934feb6c90ea6'),
+  [arbitrumSepolia.id]: getAddress('0x8d97f7b564e30e37d030fbe182b0d677bedbbb1d'),
 }
 
 export const MaxSimSizes: {

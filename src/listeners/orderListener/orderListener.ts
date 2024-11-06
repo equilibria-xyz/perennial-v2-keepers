@@ -1,5 +1,7 @@
-import { Hex, WatchContractEventReturnType, getAddress } from 'viem'
+import { Address, Hex, WatchContractEventReturnType, getAddress } from 'viem'
 import {
+  ManagerAbi,
+  ManagerAddresses,
   MultiInvokerAbi,
   MultiInvokerAction,
   MultiInvokerAddresses,
@@ -22,18 +24,22 @@ export class OrderListener {
   protected markets: MarketDetails[] = []
   private latestPrices: { market: MarketDetails; price: bigint; priceData: UpdateDataResponse }[] = []
   private unwatchMultiInvokerMarketOrders: WatchContractEventReturnType | null = null
+  private unwatchManagerMarketOrders: WatchContractEventReturnType | null = null
 
   public async init() {
     this.markets = await getMarkets()
 
     // Watch for orders
-    this.watchMarketOrders()
+    this.watchMultiInvokerTriggerOrders()
+    this.watchManagerTriggerOrders()
   }
 
   // Watch for new orders and try to execute them if they are immediately executable (effectively market orders)
-  private watchMarketOrders() {
+  private watchMultiInvokerTriggerOrders() {
     console.log(
-      `Watching market ${this.markets.map((m) => m.metricsTag).join(', ')} for immediately executable orders.`,
+      `Watching MultiInvoker for markets ${this.markets
+        .map((m) => m.metricsTag)
+        .join(', ')} for immediately executable orders.`,
     )
 
     if (this.unwatchMultiInvokerMarketOrders) this.unwatchMultiInvokerMarketOrders()
@@ -55,11 +61,15 @@ export class OrderListener {
           if (!executableOrders.length) continue
 
           console.log(
-            `Market ${marketPrice.market.metricsTag} - Immediately executable orders: ${executableOrders.length}`,
+            `MultiInvoker - Market ${marketPrice.market.metricsTag} - Immediately executable orders: ${executableOrders.length}`,
           )
 
           await this.executeOrders({
-            allOrders: executableOrders.map((log) => ({ account: log.args.account, nonce: log.args.nonce })),
+            allOrders: executableOrders.map((log) => ({
+              source: log.address,
+              account: log.args.account,
+              nonce: log.args.nonce,
+            })),
             market: marketPrice.market,
             commit: buildCommit({
               keeperFactory: marketPrice.market.providerFactory,
@@ -74,8 +84,63 @@ export class OrderListener {
         }
       },
       onError: (error) => {
-        console.error(`Error watching market triggerorders: ${error.message}. Retrying...`)
-        this.watchMarketOrders()
+        console.error(`Error watching multiInvoker triggerorders: ${error.message}. Retrying...`)
+        this.watchMultiInvokerTriggerOrders()
+      },
+    })
+  }
+
+  private async watchManagerTriggerOrders() {
+    console.log(
+      `Watching Manager for markets ${this.markets
+        .map((m) => m.metricsTag)
+        .join(', ')} for immediately executable orders.`,
+    )
+
+    if (this.unwatchManagerMarketOrders) this.unwatchManagerMarketOrders()
+
+    this.unwatchManagerMarketOrders = WssClient.watchContractEvent({
+      address: ManagerAddresses[Chain.id],
+      abi: ManagerAbi,
+      eventName: 'TriggerOrderPlaced',
+      strict: true,
+      onLogs: async (logs) => {
+        for (const marketPrice of this.latestPrices) {
+          const marketOrders = logs.filter((log) => getAddress(log.args.market) === marketPrice.market.market)
+          const executableOrders = marketOrders.filter((log) =>
+            log.args.order.comparison === 1
+              ? marketPrice.price >= log.args.order.price
+              : marketPrice.price <= log.args.order.price,
+          )
+
+          if (!executableOrders.length) continue
+
+          console.log(
+            `Manager - Market ${marketPrice.market.metricsTag} - Immediately executable orders: ${executableOrders.length}`,
+          )
+
+          await this.executeOrders({
+            allOrders: executableOrders.map((log) => ({
+              source: log.address,
+              account: log.args.account,
+              nonce: log.args.orderId,
+            })),
+            market: marketPrice.market,
+            commit: buildCommit({
+              keeperFactory: marketPrice.market.providerFactory,
+              version: marketPrice.priceData.version,
+              value: marketPrice.priceData.value,
+              ids: [marketPrice.market.feed],
+              vaa: marketPrice.priceData.updateData,
+              revertOnFailure: false,
+            }),
+            value: marketPrice.priceData.value,
+          })
+        }
+      },
+      onError: (error) => {
+        console.error(`Error watching manager triggerorders: ${error.message}. Retrying...`)
+        this.watchManagerTriggerOrders()
       },
     })
   }
@@ -152,7 +217,7 @@ export class OrderListener {
     commit,
     value,
   }: {
-    allOrders: { account: `0x${string}`; nonce: bigint }[]
+    allOrders: { account: Address; nonce: bigint; source: Address }[]
     market: MarketDetails
     commit: MultiInvokerAction
     value: bigint
@@ -163,7 +228,13 @@ export class OrderListener {
         address: BatchKeeperAddresses[Chain.id],
         abi: BatchKeeperAbi,
         functionName: 'tryExecute',
-        args: [market.market, orders.map((o) => o.account), orders.map((o) => o.nonce), [commit]],
+        args: [
+          market.market,
+          orders.map((o) => o.source),
+          orders.map((o) => o.account),
+          orders.map((o) => o.nonce),
+          [commit],
+        ],
         value,
         account: orderSigner.account,
       })
@@ -198,11 +269,12 @@ export class OrderListener {
     version: bigint
     updateData: Hex
     value: bigint
-    orders: { account: string; nonce: string }[]
+    orders: { account: string; nonce: string; source: string }[]
   }) {
     if (orders.length === 0) return null
 
     // Try execute orders
+    const sources = orders.map((o) => getAddress(o.source))
     const accounts = orders.map((o) => getAddress(o.account))
     const nonces = orders.map((o) => BigInt(o.nonce))
     const commit = buildCommit({
@@ -218,7 +290,7 @@ export class OrderListener {
       address: BatchKeeperAddresses[Chain.id],
       abi: BatchKeeperAbi,
       functionName: 'tryExecute',
-      args: [market.market, accounts, nonces, [commit]],
+      args: [market.market, sources, accounts, nonces, [commit]],
       value,
       account: orderSigner.account,
     })
@@ -243,7 +315,7 @@ export class OrderListener {
                 ]}
               ]
             }, first: ${GraphDefaultPageSize}, skip: ${page * GraphDefaultPageSize}
-          ) { account, market, nonce }
+          ) { account, market, nonce, source }
       `
       })
 
@@ -254,7 +326,7 @@ export class OrderListener {
       `
 
       return GraphClient.request(query) as Promise<{
-        [key: string]: { account: string; market: string; nonce: string }[]
+        [key: string]: { account: string; market: string; nonce: string; source: string }[]
       }>
     })
 

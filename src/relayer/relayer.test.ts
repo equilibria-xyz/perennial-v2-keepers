@@ -614,39 +614,52 @@ describe('Validates signatures', () => {
   })
 })
 
+const options = {
+  baseTipMultiplier: 1,
+  tipPercentageIncrease: 0.1
+}
+
 describe('retryUserOpWithIncreasingTip', () => {
   it('should succeed on first try', async () => {
     const sendUserOp = vi.fn().mockResolvedValue({ success: true })
-    const result = await retryUserOpWithIncreasingTip(sendUserOp)
+    const result = await retryUserOpWithIncreasingTip(sendUserOp, options)
     expect(result).toEqual({ success: true })
     expect(sendUserOp).toHaveBeenCalledTimes(1)
     expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
   })
 
   it('should retry on a retriable error', async () => {
-    const sendUserOp = vi.fn()
-      .mockRejectedValueOnce(new Error(UOError.FailedWaitForOperation))
-      .mockRejectedValueOnce(new Error(UOError.FailedSendOperation))
-      .mockResolvedValueOnce({ success: true })
 
-    const result = await retryUserOpWithIncreasingTip(sendUserOp)
-    expect(result).toEqual({ success: true })
-    expect(sendUserOp).toHaveBeenCalledTimes(3)
-    expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
-    expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined)
-    expect(sendUserOp).toHaveBeenCalledWith(1.2, undefined)
+    const errorTypes = [
+      UOError.FailedWaitForOperation,
+      UOError.FailedBuildOperation,
+      UOError.FailedSendOperation
+    ]
+
+    errorTypes.forEach(async (errorType) => {
+      const sendUserOp = vi.fn()
+        .mockRejectedValueOnce(new Error(errorType))
+        .mockResolvedValueOnce({ success: true })
+      const result = await retryUserOpWithIncreasingTip(sendUserOp, options)
+      expect(result).toEqual({ success: true })
+      expect(sendUserOp).toHaveBeenCalledTimes(2)
+      expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
+      expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined)
+    })
   })
 
   it('should throw on non-retriable error', async () => {
     const errorTypes = [
       UOError.MaxFeeTooLow,
-      UOError.FailedBuildOperation,
-      UOError.FailedSignOperation
+      UOError.ExceededMaxRetry,
+      UOError.MaxFeeTooLow,
+      UOError.FailedToConstructUO,
+      UOError.OracleError,
     ]
 
     errorTypes.forEach((errorType) => {
       const sendUserOp = vi.fn().mockRejectedValue(new Error(errorType))
-      expect(retryUserOpWithIncreasingTip(sendUserOp)).rejects.toThrow(errorType)
+      expect(retryUserOpWithIncreasingTip(sendUserOp, options)).rejects.toThrow(errorType)
       expect(sendUserOp).toHaveBeenCalledTimes(1)
       expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
     })
@@ -654,7 +667,7 @@ describe('retryUserOpWithIncreasingTip', () => {
 
   it('should throw after exceeding max retries', async () => {
     const sendUserOp = vi.fn().mockRejectedValue(new Error(UOError.FailedWaitForOperation))
-    await expect(retryUserOpWithIncreasingTip(sendUserOp, { maxRetry: 2 })).rejects.toThrow(UOError.ExceededMaxRetry)
+    await expect(retryUserOpWithIncreasingTip(sendUserOp, { ...options, maxRetry: 2 })).rejects.toThrow(UOError.ExceededMaxRetry)
     expect(sendUserOp).toHaveBeenCalledTimes(3)
     expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
     expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined)
@@ -663,7 +676,7 @@ describe('retryUserOpWithIncreasingTip', () => {
 
   it('should have txHash if waited', async () => {
     const sendUserOp = vi.fn().mockImplementation(mockSendUO)
-    const result = await retryUserOpWithIncreasingTip(sendUserOp, { shouldWait: true })
+    const result = await retryUserOpWithIncreasingTip(sendUserOp, { ...options, shouldWait: true })
     expect(result).toEqual({ uoHash: 'uoHash', txHash: 'txHash' })
     expect(sendUserOp).toHaveBeenCalledTimes(1)
     expect(sendUserOp).toHaveBeenCalledWith(1, true)
@@ -671,7 +684,7 @@ describe('retryUserOpWithIncreasingTip', () => {
 
   it('should not have txHash if waited', async () => {
     const sendUserOp = vi.fn().mockImplementation(mockSendUO)
-    const result = await retryUserOpWithIncreasingTip(sendUserOp)
+    const result = await retryUserOpWithIncreasingTip(sendUserOp, options)
     expect(result).toEqual({ uoHash: 'uoHash' })
     expect(sendUserOp).toHaveBeenCalledTimes(1)
     expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
