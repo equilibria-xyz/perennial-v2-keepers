@@ -80,7 +80,7 @@ export async function createRelayer() {
       }
     }
 
-    let erroredTxHash
+    let txHash: Hash | undefined
     try {
       const latestEthPrice_ = ethOracleFetcher.getLastPriceBig6()
         .catch((e) => {
@@ -114,7 +114,7 @@ export async function createRelayer() {
         chain: Chain.id,
       })
 
-      const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
+      const { uoHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
           const userOp = await relayerSmartClient.buildUserOperation({
               uo: uos,
@@ -155,7 +155,6 @@ export async function createRelayer() {
             tipMultiplier
           })
 
-          let txHash
           if (shouldWait) {
             const { userOpReceipt, hash } = await waitForUserOperationReceipt(relayerSmartClient, {
               hash: uoHash,
@@ -169,7 +168,6 @@ export async function createRelayer() {
             txHash = hash
             console.log(`UserOp confirmed: ${txHash}`)
             if (userOpReceipt?.success === false) {
-              erroredTxHash = txHash
               throw new Error(`UserOp reverted: ${userOpReceipt.reason}`)
             }
           }
@@ -195,7 +193,7 @@ export async function createRelayer() {
       tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
       })
-      res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}`, txHash: erroredTxHash }))
+      res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}`, txHash }))
     }
   })
 
