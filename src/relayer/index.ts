@@ -167,7 +167,7 @@ export async function createRelayer() {
               .catch(injectUOError(UOError.FailedWaitForOperation))
             txHash = hash
             console.log(`UserOp confirmed: ${txHash}`)
-            if (userOpReceipt?.success === false) {
+            if (!userOpReceipt?.success) {
               throw new Error(`UserOp reverted: ${userOpReceipt.reason}`)
             }
           }
