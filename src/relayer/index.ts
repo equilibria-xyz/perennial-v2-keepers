@@ -38,11 +38,7 @@ export async function createRelayer() {
     rateLimit({
       windowMs: 60 * 1000,
       limit: 5,
-      keyGenerator: (req) => {
-        return (
-          req?.body?.intents?.[0]?.signingPayload?.message?.action?.common?.signer ?? req.ip
-        )
-      },
+      keyGenerator: (req: Request) => req?.body?.intents?.[0]?.signingPayload?.message?.action?.common?.signer ?? req.ip,
       message: 'Too many requests, please try again later.',
     })
   )
