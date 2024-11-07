@@ -20,6 +20,7 @@ import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
 import { Address } from 'hardhat-deploy/dist/types.js'
+import { rateLimit } from 'express-rate-limit'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -29,8 +30,18 @@ BigInt.prototype.toJSON = function (): number {
 
 export async function createRelayer() {
   const app = express()
+
   app.use(express.json())
   app.use(cors())
+
+  app.use(
+    rateLimit({
+      windowMs: 1000,
+      limit: 5,
+      keyGenerator: (req: Request) => req?.body?.intents?.[0]?.signingPayload?.message?.action?.common?.signer ?? req.ip,
+      message: 'Too many requests, please try again later.',
+    })
+  )
 
   const ethOracleFetcher = new EthOracleFetcher()
   await ethOracleFetcher.init()
@@ -127,7 +138,8 @@ export async function createRelayer() {
                   multiplier: tipMultiplier
                 },
                 // this is important for parellelization of user ops
-                nonceKey
+                //  extra noise handles more ops in parallel that might have been built around the same time
+                nonceKey: nonceKey + BigInt(Date.now())
               }
           }).catch(injectUOError(UOError.FailedBuildOperation))
 
