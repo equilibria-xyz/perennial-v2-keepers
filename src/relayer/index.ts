@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-import { UserOperationCallData } from '@aa-sdk/core'
+import { UserOperationCallData, waitForUserOperationReceipt } from '@aa-sdk/core'
 import { Hash, Hex } from 'viem'
 import { Chain, SDK, relayerSmartClient } from '../config.js'
 import {
@@ -91,6 +91,7 @@ export async function createRelayer() {
       }
     }
 
+    let txHash: Hash | undefined
     try {
       const latestEthPrice_ = ethOracleFetcher.getLastPriceBig6()
         .catch((e) => {
@@ -123,7 +124,8 @@ export async function createRelayer() {
       tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
         chain: Chain.id,
       })
-      const { uoHash, txHash } = await retryUserOpWithIncreasingTip(
+
+      const { uoHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
           const userOp = await relayerSmartClient.buildUserOperation({
               uo: uos,
@@ -165,9 +167,8 @@ export async function createRelayer() {
             tipMultiplier
           })
 
-          let txHash: Hash | undefined
           if (shouldWait) {
-            txHash = await relayerSmartClient.waitForUserOperationTransaction({
+            const { userOpReceipt, hash } = await waitForUserOperationReceipt(relayerSmartClient, {
               hash: uoHash,
               retries: {
                 maxRetries: relayerSmartClient.txMaxRetries, // default 5
@@ -176,7 +177,11 @@ export async function createRelayer() {
               }
             })
               .catch(injectUOError(UOError.FailedWaitForOperation))
+            txHash = hash
             console.log(`UserOp confirmed: ${txHash}`)
+            if (!userOpReceipt?.success) {
+              throw new Error(`UserOp reverted: ${userOpReceipt.reason}`)
+            }
           }
           return ({
             uoHash,
@@ -200,7 +205,7 @@ export async function createRelayer() {
       tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
       })
-      res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}` }))
+      res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}`, txHash }))
     }
   })
 
