@@ -51,6 +51,7 @@
     "precommit": "yarn lint-staged",
     "gen:gql-typings": "graphql-codegen --config graph-codegen.ts",
     "postinstall": "husky install && patch-package",
+    "heroku-cleanup": "yarn patch-package",
     "test": "vitest"
   },
   "license": "Apache-2.0",
