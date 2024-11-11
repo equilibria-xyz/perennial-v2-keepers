@@ -73,8 +73,9 @@ export class OrderListener {
           })
         }
       },
-      onError: (error) => {
-        console.error(`Error watching market triggerorders: ${error.message}. Retrying...`)
+      onError: async (error) => {
+        console.error(`Error watching market triggerorders: ${error.name}. Retrying...`)
+        await new Promise((resolve) => setTimeout(resolve, 10000 * Math.random()))
         this.watchMarketOrders()
       },
     })
