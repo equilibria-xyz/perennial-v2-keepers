@@ -130,11 +130,11 @@ export class LiqListener {
 
     const updateData = updateDatas.at(0)
     if (!updateData) throw new Error(`No update data for market ${marketTag}`)
-    console.log(
-      `${marketTag}: Checking if any of ${users.length} users can be liquidated at current price $${formatEther(
-        updateData.details[0].price,
-      )}.`,
-    )
+    // console.log(
+    //   `${marketTag}: Checking if any of ${users.length} users can be liquidated at current price $${formatEther(
+    //     updateData.details[0].price,
+    //   )}.`,
+    // )
 
     const commit = buildCommit({
       keeperFactory: updateData.keeperFactory,
