@@ -23,7 +23,6 @@ import { MarketsModule } from '@perennial/sdk/dist/lib/markets/index.js'
 
 import { ControllerAbi, ControllerAddresses, ManagerAbi, ManagerAddresses, SupportedMarket } from '@perennial/sdk'
 
-
 import { retryUserOpWithIncreasingTip } from '../utils/relayerUtils.js'
 import { UOError } from './types.js'
 
@@ -51,7 +50,9 @@ const maxFee = 0n,
 const mockSendUO = async (_tipMultiplier: number, shouldWait?: boolean) => {
   const uoHash = 'uoHash'
   let txHash
-  if (shouldWait) { txHash = 'txHash' }
+  if (shouldWait) {
+    txHash = 'txHash'
+  }
   return { uoHash, txHash }
 }
 
@@ -616,7 +617,7 @@ describe('Validates signatures', () => {
 
 const options = {
   baseTipMultiplier: 1,
-  tipPercentageIncrease: 0.1
+  tipPercentageIncrease: 0.1,
 }
 
 describe('retryUserOpWithIncreasingTip', () => {
@@ -629,17 +630,10 @@ describe('retryUserOpWithIncreasingTip', () => {
   })
 
   it('should retry on a retriable error', async () => {
-
-    const errorTypes = [
-      UOError.FailedWaitForOperation,
-      UOError.FailedBuildOperation,
-      UOError.FailedSendOperation
-    ]
+    const errorTypes = [UOError.FailedWaitForOperation, UOError.FailedBuildOperation, UOError.FailedSendOperation]
 
     errorTypes.forEach(async (errorType) => {
-      const sendUserOp = vi.fn()
-        .mockRejectedValueOnce(new Error(errorType))
-        .mockResolvedValueOnce({ success: true })
+      const sendUserOp = vi.fn().mockRejectedValueOnce(new Error(errorType)).mockResolvedValueOnce({ success: true })
       const result = await retryUserOpWithIncreasingTip(sendUserOp, options)
       expect(result).toEqual({ success: true })
       expect(sendUserOp).toHaveBeenCalledTimes(2)
@@ -667,7 +661,9 @@ describe('retryUserOpWithIncreasingTip', () => {
 
   it('should throw after exceeding max retries', async () => {
     const sendUserOp = vi.fn().mockRejectedValue(new Error(UOError.FailedWaitForOperation))
-    await expect(retryUserOpWithIncreasingTip(sendUserOp, { ...options, maxRetry: 2 })).rejects.toThrow(UOError.ExceededMaxRetry)
+    await expect(retryUserOpWithIncreasingTip(sendUserOp, { ...options, maxRetry: 2 })).rejects.toThrow(
+      UOError.ExceededMaxRetry,
+    )
     expect(sendUserOp).toHaveBeenCalledTimes(3)
     expect(sendUserOp).toHaveBeenCalledWith(1, undefined)
     expect(sendUserOp).toHaveBeenCalledWith(1.1, undefined)

@@ -13,7 +13,7 @@ import {
   requiresPriceCommit,
   buildPriceCommit,
   isBatchOperationCallData,
-  getMarketAddressFromIntent
+  getMarketAddressFromIntent,
 } from '../utils/relayerUtils.js'
 import { UserOpStatus, UOError, SigningPayload } from './types.js'
 import tracer from '../tracer.js'
@@ -38,9 +38,10 @@ export async function createRelayer() {
     rateLimit({
       windowMs: 1000,
       limit: 5,
-      keyGenerator: (req: Request) => req?.body?.intents?.[0]?.signingPayload?.message?.action?.common?.signer ?? req.ip,
+      keyGenerator: (req: Request) =>
+        req?.body?.intents?.[0]?.signingPayload?.message?.action?.common?.signer ?? req.ip,
       message: 'Too many requests, please try again later.',
-    })
+    }),
   )
 
   const ethOracleFetcher = new EthOracleFetcher()
@@ -49,14 +50,11 @@ export async function createRelayer() {
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
     const startTime = performance.now()
-    const {
-      intents,
-      meta
-    } = req.body as {
+    const { intents, meta } = req.body as {
       intents: {
-        signatures: Hex[];
-        signingPayload: SigningPayload,
-      }[],
+        signatures: Hex[]
+        signingPayload: SigningPayload
+      }[]
       meta?: {
         wait?: boolean
         maxRetries?: number
@@ -93,13 +91,12 @@ export async function createRelayer() {
 
     let txHash: Hash | undefined
     try {
-      const latestEthPrice_ = ethOracleFetcher.getLastPriceBig6()
-        .catch((e) => {
-          tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
-            chain: Chain.id,
-          })
-          return injectUOError(UOError.OracleError)(e)
+      const latestEthPrice_ = ethOracleFetcher.getLastPriceBig6().catch((e) => {
+        tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
+          chain: Chain.id,
         })
+        return injectUOError(UOError.OracleError)(e)
+      })
 
       const marketPriceCommits: Record<Address, Promise<UserOperationCallData>> = {}
       for (const { signingPayload } of intents) {
@@ -111,7 +108,9 @@ export async function createRelayer() {
           marketPriceCommits[marketAddress] = buildPriceCommit(SDK, Chain.id, signingPayload)
         }
       }
-      const intentBatch = intents.map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures))
+      const intentBatch = intents.map(({ signingPayload, signatures }) =>
+        constructUserOperation(signingPayload, signatures),
+      )
       if (!isBatchOperationCallData(intentBatch)) {
         throw Error(UOError.FailedToConstructUO)
       }
@@ -127,28 +126,30 @@ export async function createRelayer() {
 
       const { uoHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
-          const userOp = await relayerSmartClient.buildUserOperation({
+          const userOp = await relayerSmartClient
+            .buildUserOperation({
               uo: uos,
               overrides: {
                 callGasLimit: {
                   multiplier: CallGasLimitMultiplier,
                 },
                 maxFeePerGas: {
-                  multiplier: tipMultiplier
+                  multiplier: tipMultiplier,
                 },
                 maxPriorityFeePerGas: {
-                  multiplier: tipMultiplier
+                  multiplier: tipMultiplier,
                 },
                 // this is important for parellelization of user ops
                 //  extra noise handles more ops in parallel that might have been built around the same time
-                nonceKey: nonceKey + BigInt(Date.now())
-              }
-          }).catch(injectUOError(UOError.FailedBuildOperation))
+                nonceKey: nonceKey + BigInt(Date.now()),
+              },
+            })
+            .catch(injectUOError(UOError.FailedBuildOperation))
 
           const latestEthPrice = await latestEthPrice_
           const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
           const sigMaxFee = intents.reduce((o, { signingPayload }) => o + signingPayload.message.action.maxFee, 0n)
-          if (sigMaxFee < maxFeeUsd ) {
+          if (sigMaxFee < maxFeeUsd) {
             // this error will not retry
             tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
               chain: Chain.id,
@@ -156,15 +157,17 @@ export async function createRelayer() {
             throw new Error(UOError.MaxFeeTooLow)
           }
 
-          const request = await relayerSmartClient.signUserOperation({ uoStruct: userOp })
+          const request = await relayerSmartClient
+            .signUserOperation({ uoStruct: userOp })
             .catch(injectUOError(UOError.FailedSignOperation))
-          const uoHash = await relayerSmartClient.sendRawUserOperation(request, entryPoint)
+          const uoHash = await relayerSmartClient
+            .sendRawUserOperation(request, entryPoint)
             .catch(injectUOError(UOError.FailedSendOperation))
 
           console.log(`Sent userOp: ${uoHash}`)
           tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
             chain: Chain.id,
-            tipMultiplier
+            tipMultiplier,
           })
 
           if (shouldWait) {
@@ -173,27 +176,27 @@ export async function createRelayer() {
               retries: {
                 maxRetries: relayerSmartClient.txMaxRetries, // default 5
                 multiplier: relayerSmartClient.txRetryMultiplier, // default 1.5
-                intervalMs: 500 // default 2000
-              }
-            })
-              .catch(injectUOError(UOError.FailedWaitForOperation))
+                intervalMs: 500, // default 2000
+              },
+            }).catch(injectUOError(UOError.FailedWaitForOperation))
             txHash = hash
             console.log(`UserOp confirmed: ${txHash}`)
             if (!userOpReceipt?.success) {
               throw new Error(`UserOp reverted: ${userOpReceipt.reason}`)
             }
           }
-          return ({
+          return {
             uoHash,
-            txHash
-          })
-        }, {
+            txHash,
+          }
+        },
+        {
           maxRetry: meta?.maxRetries,
-          shouldWait: meta?.wait
-        }
+          shouldWait: meta?.wait,
+        },
       )
 
-      const status = txHash ? UserOpStatus.Complete: UserOpStatus.Pending
+      const status = txHash ? UserOpStatus.Complete : UserOpStatus.Pending
       res.send(JSON.stringify({ success: true, status, uoHash, txHash }))
 
       // sendUserOp time can be derived from relayer.time.total - relayer.time.preUserOp
@@ -205,7 +208,14 @@ export async function createRelayer() {
       tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
       })
-      res.send(JSON.stringify({ success: false, status: UserOpStatus.Failed, error: `Unable to relay transaction: ${e.message}`, txHash }))
+      res.send(
+        JSON.stringify({
+          success: false,
+          status: UserOpStatus.Failed,
+          error: `Unable to relay transaction: ${e.message}`,
+          txHash,
+        }),
+      )
     }
   })
 

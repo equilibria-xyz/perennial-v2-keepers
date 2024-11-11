@@ -21,19 +21,19 @@ export enum UOError {
   FailedToConstructUO = 'Failed to construct user operation',
   OracleError = 'Failed to fetch ethPrice from oracle',
   FailedPriceCommit = 'Failed to build price commitment',
-  MarketAddressNotFound = 'Market address not found'
+  MarketAddressNotFound = 'Market address not found',
 }
 
 export type UserOperation = {
-  target: Hex,
-  data: Hex,
-  value?: bigint, // optional
+  target: Hex
+  data: Hex
+  value?: bigint // optional
 }
 
 export type RelayedSignatures = {
   innerSignature: Hex
   outerSignature: Hex
-};
+}
 
 export type SigningPayload =
   | PerennialSDK.eip712.DeployAccountSigningPayload
@@ -42,7 +42,7 @@ export type SigningPayload =
   | PerennialSDK.eip712.RebalanceConfigChangeSigningPayload
   | PerennialSDK.eip712.PlaceOrderSigningPayload
   | PerennialSDK.eip712.CancelOrderSigningPayload
-
+  // Relayed Actions
   | PerennialSDK.eip712.RelayedAccessUpdateBatchSigningPayload
   | PerennialSDK.eip712.RelayedGroupCancellationSigningPayload
   | PerennialSDK.eip712.RelayedNonceCancellationSigningPayload
