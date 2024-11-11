@@ -1,4 +1,4 @@
-import { Address, Hex, WatchContractEventReturnType, formatEther, getAddress } from 'viem'
+import { Address, Hex, WatchContractEventReturnType, getAddress } from 'viem'
 import { MarketDetails, getMarkets } from '../../utils/marketUtils.js'
 import { getMarketsUsers } from '../../utils/graphUtils.js'
 import { Chain, Client, liquidatorAccount, liquidatorSigner } from '../../config.js'
