@@ -63,7 +63,7 @@
     "@perennial/extensions": "1.3.0-rc1",
     "@perennial/oracle": "1.3.0-rc2",
     "@perennial/order": "^1.3.0-rc1",
-    "@perennial/sdk": "^0.0.3-beta.3",
+    "@perennial/sdk": "0.0.3-beta.7",
     "@perennial/verifier": "1.3.0-rc1",
     "@pythnetwork/pyth-evm-js": "^1.20.1",
     "@types/cors": "^2.8.17",
