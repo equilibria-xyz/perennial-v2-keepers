@@ -83,8 +83,9 @@ export class OrderListener {
           })
         }
       },
-      onError: (error) => {
-        console.error(`Error watching multiInvoker triggerorders: ${error.message}. Retrying...`)
+      onError: async (error) => {
+        console.error(`Error watching multiInvoker triggerorders: ${error.name}. Retrying...`)
+        await new Promise((resolve) => setTimeout(resolve, 10000 * Math.random()))
         this.watchMultiInvokerTriggerOrders()
       },
     })
@@ -138,8 +139,9 @@ export class OrderListener {
           })
         }
       },
-      onError: (error) => {
-        console.error(`Error watching manager triggerorders: ${error.message}. Retrying...`)
+      onError: async (error) => {
+        console.error(`Error watching manager triggerorders: ${error.name}. Retrying...`)
+        await new Promise((resolve) => setTimeout(resolve, 10000 * Math.random()))
         this.watchManagerTriggerOrders()
       },
     })
