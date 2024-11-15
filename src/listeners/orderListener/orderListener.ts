@@ -64,23 +64,27 @@ export class OrderListener {
             `MultiInvoker - Market ${marketPrice.market.metricsTag} - Immediately executable orders: ${executableOrders.length}`,
           )
 
-          await this.executeOrders({
-            allOrders: executableOrders.map((log) => ({
-              source: log.address,
-              account: log.args.account,
-              nonce: log.args.nonce,
-            })),
-            market: marketPrice.market,
-            commit: buildCommit({
-              keeperFactory: marketPrice.market.providerFactory,
-              version: marketPrice.priceData.version,
+          try {
+            await this.executeOrders({
+              allOrders: executableOrders.map((log) => ({
+                source: log.address,
+                account: log.args.account,
+                nonce: log.args.nonce,
+              })),
+              market: marketPrice.market,
+              commit: buildCommit({
+                keeperFactory: marketPrice.market.providerFactory,
+                version: marketPrice.priceData.version,
+                value: marketPrice.priceData.value,
+                ids: [marketPrice.market.feed],
+                vaa: marketPrice.priceData.updateData,
+                revertOnFailure: false,
+              }),
               value: marketPrice.priceData.value,
-              ids: [marketPrice.market.feed],
-              vaa: marketPrice.priceData.updateData,
-              revertOnFailure: false,
-            }),
-            value: marketPrice.priceData.value,
-          })
+            })
+          } catch (e) {
+            // pass
+          }
         }
       },
       onError: async (error) => {
@@ -120,23 +124,27 @@ export class OrderListener {
             `Manager - Market ${marketPrice.market.metricsTag} - Immediately executable orders: ${executableOrders.length}`,
           )
 
-          await this.executeOrders({
-            allOrders: executableOrders.map((log) => ({
-              source: log.address,
-              account: log.args.account,
-              nonce: log.args.orderId,
-            })),
-            market: marketPrice.market,
-            commit: buildCommit({
-              keeperFactory: marketPrice.market.providerFactory,
-              version: marketPrice.priceData.version,
+          try {
+            await this.executeOrders({
+              allOrders: executableOrders.map((log) => ({
+                source: log.address,
+                account: log.args.account,
+                nonce: log.args.orderId,
+              })),
+              market: marketPrice.market,
+              commit: buildCommit({
+                keeperFactory: marketPrice.market.providerFactory,
+                version: marketPrice.priceData.version,
+                value: marketPrice.priceData.value,
+                ids: [marketPrice.market.feed],
+                vaa: marketPrice.priceData.updateData,
+                revertOnFailure: false,
+              }),
               value: marketPrice.priceData.value,
-              ids: [marketPrice.market.feed],
-              vaa: marketPrice.priceData.updateData,
-              revertOnFailure: false,
-            }),
-            value: marketPrice.priceData.value,
-          })
+            })
+          } catch (e) {
+            // pass
+          }
         }
       },
       onError: async (error) => {
