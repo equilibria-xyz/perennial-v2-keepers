@@ -14,8 +14,9 @@ import {
   buildPriceCommit,
   isBatchOperationCallData,
   getMarketAddressFromIntent,
+  constructImmediateTriggerOrder,
 } from '../utils/relayerUtils.js'
-import { UserOpStatus, UOError, SigningPayload } from './types.js'
+import { UserOpStatus, UOError, SigningPayload, UserOperation } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
@@ -99,13 +100,18 @@ export async function createRelayer() {
       })
 
       const marketPriceCommits: Record<Address, Promise<UserOperationCallData>> = {}
+      const immediateTriggers: UserOperation[] = []
       for (const { signingPayload } of intents) {
+        // Add price commit if required
         if (requiresPriceCommit(signingPayload)) {
           const marketAddress = getMarketAddressFromIntent(signingPayload)
-          if (marketPriceCommits[marketAddress] !== undefined) {
-            continue
-          }
-          marketPriceCommits[marketAddress] = buildPriceCommit(SDK, Chain.id, signingPayload)
+          if (marketPriceCommits[marketAddress] === undefined)
+            marketPriceCommits[marketAddress] = buildPriceCommit(SDK, Chain.id, signingPayload)
+        }
+        // Add immediate trigger execution if required
+        if (signingPayload.primaryType === 'PlaceOrderAction') {
+          const immediateTrigger = constructImmediateTriggerOrder(signingPayload)
+          if (immediateTrigger) immediateTriggers.push(immediateTrigger)
         }
       }
       const intentBatch = intents.map(({ signingPayload, signatures }) =>
@@ -115,7 +121,7 @@ export async function createRelayer() {
         throw Error(UOError.FailedToConstructUO)
       }
       const priceCommitsBatch = await Promise.all(Object.values(marketPriceCommits))
-      const uos = priceCommitsBatch.concat(intentBatch)
+      const uos = priceCommitsBatch.concat(intentBatch, immediateTriggers)
 
       const entryPoint = relayerSmartClient.account.getEntryPoint().address
       const nonceKey = BigInt(intents[0].signingPayload.message.action.common.signer)

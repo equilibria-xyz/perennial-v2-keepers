@@ -14,6 +14,7 @@ import PerennialSDK, {
 } from '@perennial/sdk'
 
 import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
+import { Chain } from '../config.js'
 
 export const constructDirectUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
   const chainId = payload.domain?.chainId as SupportedChainId
@@ -234,6 +235,29 @@ export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
       return intent.message.market
     default:
       return zeroAddress
+  }
+}
+
+export const constructImmediateTriggerOrder = (intent: PlaceOrderSigningPayload): UserOperation | null => {
+  try {
+    // Only trigger orders with a comparison of 1 (GTE) and price of 1 (min price)
+    if (BigInt(intent.message.order.comparison) !== 1n || BigInt(intent.message.order.price) !== 1n) {
+      return null
+    }
+    const marketAddress = getMarketAddressFromIntent(intent)
+    const account = intent.message.action.common.account
+    const fnData = encodeFunctionData({
+      abi: ManagerAbi,
+      functionName: 'executeOrder',
+      args: [marketAddress, account, intent.message.action.orderId],
+    })
+    return {
+      target: ManagerAddresses[Chain.id],
+      data: fnData,
+      value: 0n,
+    }
+  } catch (e) {
+    return null
   }
 }
 
