@@ -4,16 +4,22 @@ import * as BatchKeeperBytecode from '../../artifacts/src/contracts/BatchKeeper.
 import { Chain, Client, liquidatorAccount, liquidatorSigner } from '../config.js'
 import { Hex } from 'viem'
 import { MultiInvokerAddresses } from '../constants/network.js'
+import { ManagerAddresses } from '@perennial/sdk'
 
 export default async function DeployBatchKeeper() {
+  const constructorArgs = [MultiInvokerAddresses[Chain.id], ManagerAddresses[Chain.id]] as const
   const hash = await liquidatorSigner.deployContract({
     abi: BatchKeeperAbi,
     account: liquidatorAccount,
-    args: [MultiInvokerAddresses[Chain.id]],
+    args: constructorArgs,
     bytecode: BatchKeeperBytecode.default.bytecode as Hex,
   })
 
-  await Client.waitForTransactionReceipt({ hash })
+  console.log('deploying batched keeper with constructor args', constructorArgs.join(' '))
 
-  console.log('deployed batched keeper', hash)
+  const receipt = await Client.waitForTransactionReceipt({ hash })
+
+  console.log('deployed batched keeper in TX Hash', hash, 'at address', receipt.contractAddress)
+
+  process.exit(0)
 }

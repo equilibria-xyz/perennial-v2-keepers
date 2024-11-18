@@ -2756,10 +2756,17 @@
   dependencies:
     "@perennial/core" "1.3.0-rc1"
 
-"@perennial/sdk@0.0.3-alpha.9":
-  version "0.0.3-alpha.9"
-  resolved "https://registry.yarnpkg.com/@perennial/sdk/-/sdk-0.0.3-alpha.9.tgz#79886b84471a264041ca90fb0c5b4fb02948c5e2"
-  integrity sha512-u4TxQ3Sl+sPwhWN1qmMvfvNgU4zXBn0Iz7NBcAjsfUga1cO12Zz4ZhxBqmxL607J3QHQQf3wsljQ8s50HICSyw==
+"@perennial/order@^1.3.0-rc1":
+  version "1.3.0-rc1"
+  resolved "https://registry.yarnpkg.com/@perennial/order/-/order-1.3.0-rc1.tgz#37913fd8aee567e30942a04b95305bc7f2f30d4a"
+  integrity sha512-eFNxWsP7qWvDaZhYmWv2fVSnbfcfQwpBxZofCQ7w+z1FxBjCZZmGMgrFdKmW/OXRTWY45/uuzznnoiKzj0bYzg==
+  dependencies:
+    "@perennial/core" "1.3.0-rc1"
+
+"@perennial/sdk@0.0.3-beta.7":
+  version "0.0.3-beta.7"
+  resolved "https://registry.yarnpkg.com/@perennial/sdk/-/sdk-0.0.3-beta.7.tgz#92278c080bf188b1aaab82afdf2a64b352cde6ea"
+  integrity sha512-9gGMH3NMY6n64m0YsWAdW5FzMbNgUQM/AdbEbIl8IdArzc9qisUIiheaSjHZlVscsSb+T8G+WgHtiW1W8WtClw==
   dependencies:
     "@microsoft/tsdoc" "^0.14.2"
     "@pythnetwork/hermes-client" "^1.0.4"
@@ -7678,6 +7685,11 @@ expect@^29.0.0, expect@^29.7.0:
     jest-matcher-utils "^29.7.0"
     jest-message-util "^29.7.0"
     jest-util "^29.7.0"
+
+express-rate-limit@^7.4.1:
+  version "7.4.1"
+  resolved "https://registry.yarnpkg.com/express-rate-limit/-/express-rate-limit-7.4.1.tgz#90954ecbcde9e7ae7b5000325395f86991191d94"
+  integrity sha512-KS3efpnpIDVIXopMc65EMbWbUht7qvTCdtCR2dD/IZmi9MIkopYESwyRqLgv8Pfu589+KqDqOdzJWW7AHoACeg==
 
 express@^4.14.0, express@^4.21.0:
   version "4.21.1"

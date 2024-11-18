@@ -3,6 +3,7 @@ import './tracer.js'
 import { Task, TaskType, IsMainnet, Chain } from './config.js'
 import { MetricsListener } from './listeners/metricsListener/metricsListener.js'
 import deployBatchKeeper from './scripts/DeployBatchKeeper.js'
+import manageEntryPointStake from './scripts/ManageEntryPointStake.js'
 import { OrderListener } from './listeners/orderListener/orderListener.js'
 import { LiqListener } from './listeners/liqListener/liqListener.js'
 import { SettlementListener } from './listeners/settlementListener/settlementListener.js'
@@ -85,6 +86,10 @@ const run = async () => {
       await ClaimBatchKeeper()
       break
     }
+    case TaskType.relayerStake: {
+      await manageEntryPointStake()
+      break
+    }
     case TaskType.metrics: {
       const metricsListener = new MetricsListener()
       await metricsListener.init()
@@ -104,6 +109,7 @@ const run = async () => {
     case TaskType.relayer: {
       const port = process.env.PORT || 3030
       const relayer = await createRelayer()
+
       relayer.listen(port, () => {
         console.log(`Server listening on port ${port}`)
       })

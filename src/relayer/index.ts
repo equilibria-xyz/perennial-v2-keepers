@@ -1,21 +1,27 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-
-import { createLightAccount } from '@account-kit/smart-contracts'
-import { alchemy, createAlchemySmartAccountClient, arbitrum, arbitrumSepolia } from '@account-kit/infra'
-import { LocalAccountSigner } from '@aa-sdk/core'
-import { Hex, Hash } from 'viem'
-import { Chain } from '../config.js'
-
-import { constructUserOperation, isRelayedIntent } from '../utils/relayerUtils.js'
-import { SigningPayload } from './types.js'
+import { UserOperationCallData, waitForUserOperationReceipt } from '@aa-sdk/core'
+import { Hash, Hex } from 'viem'
+import { Chain, SDK, relayerSmartClient } from '../config.js'
+import {
+  calcOpMaxFeeUsd,
+  constructUserOperation,
+  isRelayedIntent,
+  retryUserOpWithIncreasingTip,
+  injectUOError,
+  requiresPriceCommit,
+  buildPriceCommit,
+  isBatchOperationCallData,
+  getMarketAddressFromIntent,
+  constructImmediateTriggerOrder,
+} from '../utils/relayerUtils.js'
+import { UserOpStatus, UOError, SigningPayload, UserOperation } from './types.js'
 import tracer from '../tracer.js'
-
-const ChainIdToAlchemyChain = {
-  [arbitrum.id]: arbitrum,
-  [arbitrumSepolia.id]: arbitrumSepolia,
-}
+import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
+import { CallGasLimitMultiplier } from '../constants/relayer.js'
+import { Address } from 'hardhat-deploy/dist/types.js'
+import { rateLimit } from 'express-rate-limit'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -25,83 +31,197 @@ BigInt.prototype.toJSON = function (): number {
 
 export async function createRelayer() {
   const app = express()
+
   app.use(express.json())
   app.use(cors())
 
-  const alchemyTransport = alchemy({
-    apiKey: process.env.RELAYER_API_KEY || '',
-  })
+  app.use(
+    rateLimit({
+      windowMs: 1000,
+      limit: 5,
+      keyGenerator: (req: Request) =>
+        req?.body?.intents?.[0]?.signingPayload?.message?.action?.common?.signer ?? req.ip,
+      message: 'Too many requests, please try again later.',
+    }),
+  )
 
-  const chain = ChainIdToAlchemyChain[Chain.id]
-  const account = await createLightAccount({
-    chain,
-    transport: alchemyTransport,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex),
-  })
-
-  const client = createAlchemySmartAccountClient({
-    transport: alchemyTransport,
-    policyId: process.env.RELAYER_POLICY_ID || '',
-    chain,
-    account,
-  })
+  const ethOracleFetcher = new EthOracleFetcher()
+  await ethOracleFetcher.init()
 
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
-    const { signatures, signingPayload, meta } = req.body as {
-      signatures: Hex[]
-      signingPayload: SigningPayload
-      meta?: { wait?: boolean }
-    }
-
-    let error
-    let relayedIntent
-    if (!signingPayload) {
-      error = 'Missing required signature payload'
-    } else if (!signatures || !signatures.length) {
-      error = 'Missing required signatures array'
-    } else if (!signingPayload?.primaryType) {
-      error = 'Missing signature payload primaryType'
-    } else if (signingPayload.primaryType) {
-      relayedIntent = isRelayedIntent(signingPayload.primaryType)
-      if (relayedIntent && signatures.length !== 2) {
-        error = 'Missing signature; requires [signature]'
-      } else if (!relayedIntent && signatures.length !== 1) {
-        error = 'Missing signatures; requires [innerSignature, outerSignature]'
+    const startTime = performance.now()
+    const { intents, meta } = req.body as {
+      intents: {
+        signatures: Hex[]
+        signingPayload: SigningPayload
+      }[]
+      meta?: {
+        wait?: boolean
+        maxRetries?: number
       }
     }
 
-    if (error) {
-      res.send(JSON.stringify({ success: false, error }))
+    if (!intents || !intents.length) {
+      res.send(JSON.stringify({ success: false, error: 'Missing intents' }))
       return
     }
 
-    try {
-      const uo = constructUserOperation(signingPayload, signatures)
-
-      if (!uo) {
-        throw Error('Failed to construct user operation')
+    for (const { signatures, signingPayload } of intents) {
+      let error
+      let relayedIntent
+      if (!signingPayload) {
+        error = 'Missing required signature payload'
+      } else if (!signatures || !signatures.length) {
+        error = 'Missing required signatures array'
+      } else if (!signingPayload?.primaryType) {
+        error = 'Missing signature payload primaryType'
+      } else if (signingPayload.primaryType) {
+        relayedIntent = isRelayedIntent(signingPayload.primaryType)
+        if (relayedIntent && signatures.length !== 2) {
+          error = 'Missing signature; requires [signature]'
+        } else if (!relayedIntent && signatures.length !== 1) {
+          error = 'Missing signatures; requires [innerSignature, outerSignature]'
+        }
       }
+      if (error) {
+        res.send(JSON.stringify({ success: false, error }))
+        return
+      }
+    }
 
-      const { hash } = await client.sendUserOperation({ uo, overrides: { callGasLimit: 2_000_000 } })
-
-      let txHash: Hash | undefined
-      if (meta?.wait) txHash = await client.waitForUserOperationTransaction({ hash })
-
-      tracer.dogstatsd.increment('relayer.transaction.sent', 1, {
-        chain: Chain.id,
-        primaryType: signingPayload.primaryType,
+    let txHash: Hash | undefined
+    try {
+      const latestEthPrice_ = ethOracleFetcher.getLastPriceBig6().catch((e) => {
+        tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
+          chain: Chain.id,
+        })
+        return injectUOError(UOError.OracleError)(e)
       })
-      res.send(JSON.stringify({ success: true, uoHash: hash, txHash }))
+
+      const marketPriceCommits: Record<Address, Promise<UserOperationCallData>> = {}
+      const immediateTriggers: UserOperation[] = []
+      for (const { signingPayload } of intents) {
+        // Add price commit if required
+        if (requiresPriceCommit(signingPayload)) {
+          const marketAddress = getMarketAddressFromIntent(signingPayload)
+          if (marketPriceCommits[marketAddress] === undefined)
+            marketPriceCommits[marketAddress] = buildPriceCommit(SDK, Chain.id, signingPayload)
+        }
+        // Add immediate trigger execution if required
+        if (signingPayload.primaryType === 'PlaceOrderAction') {
+          const immediateTrigger = constructImmediateTriggerOrder(signingPayload)
+          if (immediateTrigger) immediateTriggers.push(immediateTrigger)
+        }
+      }
+      const intentBatch = intents.map(({ signingPayload, signatures }) =>
+        constructUserOperation(signingPayload, signatures),
+      )
+      if (!isBatchOperationCallData(intentBatch)) {
+        throw Error(UOError.FailedToConstructUO)
+      }
+      const priceCommitsBatch = await Promise.all(Object.values(marketPriceCommits))
+      const uos = priceCommitsBatch.concat(intentBatch, immediateTriggers)
+
+      const entryPoint = relayerSmartClient.account.getEntryPoint().address
+      const nonceKey = BigInt(intents[0].signingPayload.message.action.common.signer)
+
+      tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
+        chain: Chain.id,
+      })
+
+      const { uoHash } = await retryUserOpWithIncreasingTip(
+        async (tipMultiplier: number, shouldWait?: boolean) => {
+          const userOp = await relayerSmartClient
+            .buildUserOperation({
+              uo: uos,
+              overrides: {
+                callGasLimit: {
+                  multiplier: CallGasLimitMultiplier,
+                },
+                maxFeePerGas: {
+                  multiplier: tipMultiplier,
+                },
+                maxPriorityFeePerGas: {
+                  multiplier: tipMultiplier,
+                },
+                // this is important for parellelization of user ops
+                //  extra noise handles more ops in parallel that might have been built around the same time
+                nonceKey: nonceKey + BigInt(Date.now()),
+              },
+            })
+            .catch(injectUOError(UOError.FailedBuildOperation))
+
+          const latestEthPrice = await latestEthPrice_
+          const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
+          const sigMaxFee = intents.reduce((o, { signingPayload }) => o + signingPayload.message.action.maxFee, 0n)
+          if (sigMaxFee < maxFeeUsd) {
+            // this error will not retry
+            tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
+              chain: Chain.id,
+            })
+            throw new Error(UOError.MaxFeeTooLow)
+          }
+
+          const request = await relayerSmartClient
+            .signUserOperation({ uoStruct: userOp })
+            .catch(injectUOError(UOError.FailedSignOperation))
+          const uoHash = await relayerSmartClient
+            .sendRawUserOperation(request, entryPoint)
+            .catch(injectUOError(UOError.FailedSendOperation))
+
+          console.log(`Sent userOp: ${uoHash}`)
+          tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
+            chain: Chain.id,
+            tipMultiplier,
+          })
+
+          if (shouldWait) {
+            const { userOpReceipt, hash } = await waitForUserOperationReceipt(relayerSmartClient, {
+              hash: uoHash,
+              retries: {
+                maxRetries: relayerSmartClient.txMaxRetries, // default 5
+                multiplier: relayerSmartClient.txRetryMultiplier, // default 1.5
+                intervalMs: 500, // default 2000
+              },
+            }).catch(injectUOError(UOError.FailedWaitForOperation))
+            txHash = hash
+            console.log(`UserOp confirmed: ${txHash}`)
+            if (!userOpReceipt?.success) {
+              throw new Error(`UserOp reverted: ${userOpReceipt.reason}`)
+            }
+          }
+          return {
+            uoHash,
+            txHash,
+          }
+        },
+        {
+          maxRetry: meta?.maxRetries,
+          shouldWait: meta?.wait,
+        },
+      )
+
+      const status = txHash ? UserOpStatus.Complete : UserOpStatus.Pending
+      res.send(JSON.stringify({ success: true, status, uoHash, txHash }))
+
+      // sendUserOp time can be derived from relayer.time.total - relayer.time.preUserOp
+      tracer.dogstatsd.gauge('relayer.time.total', performance.now() - startTime, {
+        chain: Chain.id,
+      })
     } catch (e) {
       console.warn(e)
-
-      tracer.dogstatsd.increment('relayer.transaction.reverted', 1, {
+      tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
-        primaryType: signingPayload.primaryType,
       })
-      res.send(JSON.stringify({ success: false, error: `Unable to relay transaction: ${e.message}` }))
+      res.send(
+        JSON.stringify({
+          success: false,
+          status: UserOpStatus.Failed,
+          error: `Unable to relay transaction: ${e.message}`,
+          txHash,
+        }),
+      )
     }
   })
 
@@ -112,7 +232,7 @@ export async function createRelayer() {
       return
     }
     try {
-      const uo = await client.getUserOperationReceipt(hash as Hash)
+      const uo = await relayerSmartClient.getUserOperationReceipt(hash as Hash)
 
       res.send(JSON.stringify({ success: true, uo }))
     } catch (e) {
