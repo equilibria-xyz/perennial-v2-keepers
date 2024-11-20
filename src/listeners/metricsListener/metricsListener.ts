@@ -13,7 +13,6 @@ import {
   BatchKeeperAddresses,
   DSUAddresses,
   MarketFactoryAddresses,
-  MultiInvokerAddresses,
   OracleFactoryAddresses,
   USDCAddresses,
 } from '../../constants/network.js'
@@ -26,7 +25,7 @@ import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUti
 import { getVaults } from '../../utils/vaultUtils.js'
 import { nowSeconds } from '../../utils/timeUtils.js'
 import { getUpdateDataForProviderType } from '../../utils/oracleUtils.js'
-import { calcNotional, pythMarketOpen, MultiInvokerAbi, MarketAbi } from '@perennial/sdk'
+import { calcNotional, pythMarketOpen, MarketAbi } from '@perennial/sdk'
 
 const Balances = ['ETH', 'USDC', 'DSU']
 const ERC20Abi = parseAbi(['function balanceOf(address owner) view returns (uint256)'] as const)
@@ -73,69 +72,6 @@ export class MetricsListener {
           tracer.dogstatsd.increment('market.update', 1, {
             chain: Chain.id,
             market: marketTag,
-          })
-        })
-      },
-    })
-
-    Client.watchContractEvent({
-      address: MultiInvokerAddresses[Chain.id],
-      abi: MultiInvokerAbi,
-      eventName: 'OrderPlaced',
-      strict: true,
-      poll: true,
-      pollingInterval: MetricsListener.PollingInterval,
-      onLogs: (logs) => {
-        logs.forEach((log) => {
-          const marketTag = marketAddressToMarketTag(Chain.id, log.args.market)
-          const side = log.args.order.side
-          const sideStr = side === 0 ? 'maker' : side === 1 ? 'long' : side === 2 ? 'short' : 'collateral'
-          console.log(
-            `${marketTag}: ${log.args.account} order placed. side: ${sideStr}, delta: ${Big6Math.toFloatString(
-              log.args.order.delta,
-            )}, trigger: ${log.args.order.comparison === 1 ? '>=' : '<='} $${Big6Math.toFloatString(
-              log.args.order.price,
-            )}`,
-          )
-          tracer.dogstatsd.increment('market.order.placed', 1, {
-            chain: Chain.id,
-            market: marketTag,
-            side: sideStr,
-            comparison: log.args.order.comparison === 1 ? 'gte' : 'lte',
-          })
-        })
-      },
-    })
-
-    Client.watchContractEvent({
-      address: MultiInvokerAddresses[Chain.id],
-      abi: MultiInvokerAbi,
-      eventName: 'OrderExecuted',
-      strict: true,
-      poll: true,
-      pollingInterval: MetricsListener.PollingInterval,
-      onLogs: (logs) => {
-        logs.forEach((log) => {
-          tracer.dogstatsd.increment('market.order.executed', 1, {
-            chain: Chain.id,
-            market: marketAddressToMarketTag(Chain.id, log.args.market),
-          })
-        })
-      },
-    })
-
-    Client.watchContractEvent({
-      address: MultiInvokerAddresses[Chain.id],
-      abi: MultiInvokerAbi,
-      eventName: 'OrderCancelled',
-      strict: true,
-      poll: true,
-      pollingInterval: MetricsListener.PollingInterval,
-      onLogs: (logs) => {
-        logs.forEach((log) => {
-          tracer.dogstatsd.increment('market.order.cancelled', 1, {
-            chain: Chain.id,
-            market: marketAddressToMarketTag(Chain.id, log.args.market),
           })
         })
       },
