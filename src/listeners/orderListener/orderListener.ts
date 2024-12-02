@@ -165,7 +165,7 @@ export class OrderListener {
 
   private async _run() {
     try {
-      const blockNumber = await Client.getBlockNumber()
+      const blockNumber = await Client.getBlockNumber({ cacheTime: OrderListener.PollingInterval })
       console.log(`Running Order Handler. Block: ${blockNumber}`)
 
       const prices = (

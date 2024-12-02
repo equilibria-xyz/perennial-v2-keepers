@@ -44,7 +44,7 @@ export class OracleListener {
   }
 
   private async _run() {
-    const blockNumber = await Client.getBlockNumber()
+    const blockNumber = await Client.getBlockNumber({ cacheTime: OracleListener.PollingInterval })
     console.log(`[${this.statsPrefix}] Running Oracle Handler. Block: ${blockNumber}`)
     tracer.dogstatsd.gauge(`${this.statsPrefix}.blockNumber`, Number(blockNumber), { chain: Chain.id })
 
