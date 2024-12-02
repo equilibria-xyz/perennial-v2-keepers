@@ -21,7 +21,7 @@ type CommitmentWithMetrics = {
 }
 
 export class OracleListener {
-  public static PollingInterval = 4000 // 4s
+  public static PollingInterval = 2000 // 2s
 
   protected oracleAddresses: { oracle: Address; id: Hex; providerTag: string }[] = []
 
