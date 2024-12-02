@@ -21,7 +21,7 @@ type CommitmentWithMetrics = {
 }
 
 export class OracleListener {
-  public static PollingInterval = 4000 // 4s
+  public static PollingInterval = 2000 // 2s
 
   protected oracleAddresses: { oracle: Address; id: Hex; providerTag: string }[] = []
 
@@ -36,7 +36,15 @@ export class OracleListener {
   }
 
   public async run() {
-    const blockNumber = await Client.getBlockNumber()
+    const now = Date.now()
+    await this._run()
+    tracer.dogstatsd.distribution('oracleListener.run.time', Date.now() - now, {
+      chain: Chain.id,
+    })
+  }
+
+  private async _run() {
+    const blockNumber = await Client.getBlockNumber({ cacheTime: OracleListener.PollingInterval })
     console.log(`[${this.statsPrefix}] Running Oracle Handler. Block: ${blockNumber}`)
     tracer.dogstatsd.gauge(`${this.statsPrefix}.blockNumber`, Number(blockNumber), { chain: Chain.id })
 

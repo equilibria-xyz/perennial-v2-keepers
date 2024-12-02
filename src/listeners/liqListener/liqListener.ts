@@ -37,7 +37,7 @@ export class LiqListener {
 
   public async run() {
     try {
-      const blockNumber = await Client.getBlockNumber()
+      const blockNumber = await Client.getBlockNumber({ cacheTime: LiqListener.PollingInterval })
       console.log(`Running Liq Handler. Block: ${blockNumber}`)
 
       const results = await Promise.allSettled(this.markets.map((market) => this.checkMarket(market)))

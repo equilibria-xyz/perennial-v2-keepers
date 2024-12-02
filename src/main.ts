@@ -61,7 +61,7 @@ const run = async () => {
           pythListener.run()
           cryptexListener?.run()
         },
-        IsMainnet ? OracleListener.PollingInterval : 2 * OracleListener.PollingInterval,
+        IsMainnet ? OracleListener.PollingInterval : 4 * OracleListener.PollingInterval,
       )
       break
     }
