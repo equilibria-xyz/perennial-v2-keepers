@@ -90,12 +90,14 @@ export class MetricsListener {
             makerNotional
             longNotional
             shortNotional
+            solverNotional
           }
           hourly: accumulations(where: {bucket: hourly, timestamp_gte: $hour}) {
             bucket
             makerNotional
             longNotional
             shortNotional
+            solverNotional
           }
         }
 
@@ -104,6 +106,7 @@ export class MetricsListener {
           makerNotional
           longNotional
           shortNotional
+          solverNotional
         }
 
         hourlyProtocol: protocolAccumulations(where: { bucket: hourly, timestamp_gte: $hour }) {
@@ -111,6 +114,7 @@ export class MetricsListener {
           makerNotional
           longNotional
           shortNotional
+          solverNotional
         }
       }
     `)
@@ -133,6 +137,10 @@ export class MetricsListener {
         chain: Chain.id,
         bucket: v.bucket,
       })
+      tracer.dogstatsd.gauge('protocol.solverNotional', Big6Math.toUnsafeFloat(BigInt(v.solverNotional)), {
+        chain: Chain.id,
+        bucket: v.bucket,
+      })
     })
 
     markets.forEach((market) => {
@@ -151,6 +159,11 @@ export class MetricsListener {
           bucket: v.bucket,
         })
         tracer.dogstatsd.gauge('market.shortNotional', Big6Math.toUnsafeFloat(BigInt(v.shortNotional)), {
+          chain: Chain.id,
+          market: marketTag,
+          bucket: v.bucket,
+        })
+        tracer.dogstatsd.gauge('market.solverNotional', Big6Math.toUnsafeFloat(BigInt(v.solverNotional)), {
           chain: Chain.id,
           market: marketTag,
           bucket: v.bucket,
