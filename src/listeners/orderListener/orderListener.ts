@@ -156,6 +156,14 @@ export class OrderListener {
   }
 
   public async run() {
+    const now = Date.now()
+    await this._run()
+    tracer.dogstatsd.distribution('orderListener.run.time', Date.now() - now, {
+      chain: Chain.id,
+    })
+  }
+
+  private async _run() {
     try {
       const blockNumber = await Client.getBlockNumber()
       console.log(`Running Order Handler. Block: ${blockNumber}`)
