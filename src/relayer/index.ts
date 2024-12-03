@@ -182,7 +182,7 @@ export async function createRelayer() {
               retries: {
                 maxRetries: relayerSmartClient.txMaxRetries, // default 5
                 multiplier: relayerSmartClient.txRetryMultiplier, // default 1.5
-                intervalMs: 500, // default 2000
+                intervalMs: 250, // default 2000
               },
             }).catch(injectUOError(UOError.FailedWaitForOperation))
             txHash = hash
