@@ -29,9 +29,9 @@ export class OrderListener {
   public async init() {
     this.markets = await getMarkets()
 
-    // Watch for orders
-    this.watchMultiInvokerTriggerOrders()
-    this.watchManagerTriggerOrders()
+    // Watch for orders - removing for now as the relayer will automatically execute them
+    // this.watchMultiInvokerTriggerOrders()
+    // this.watchManagerTriggerOrders()
   }
 
   // Watch for new orders and try to execute them if they are immediately executable (effectively market orders)
