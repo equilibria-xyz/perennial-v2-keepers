@@ -12,6 +12,7 @@ import { OracleListener } from './listeners/oracleListener/oracleListener.js'
 import { PythFactoryAddresses, CryptexFactoryAddresses } from './constants/network.js'
 import { zeroAddress } from 'viem'
 import { createRelayer } from './relayer/index.js'
+import relayerWithdraw from './scripts/relayerWithdraw.js'
 
 const run = async () => {
   switch (Task) {
@@ -88,6 +89,10 @@ const run = async () => {
     }
     case TaskType.relayerStake: {
       await manageEntryPointStake()
+      break
+    }
+    case TaskType.relayerWithdraw: {
+      await relayerWithdraw()
       break
     }
     case TaskType.metrics: {

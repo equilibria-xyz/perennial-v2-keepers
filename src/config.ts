@@ -6,7 +6,12 @@ import { GraphQLClient } from 'graphql-request'
 import { arbitrum, arbitrumSepolia } from 'viem/chains'
 import { notEmpty } from './utils/arrayUtils.js'
 import PerennialSDK, { chainIdToChainMap, SupportedChainIds } from '@perennial/sdk'
-import { alchemy, createAlchemySmartAccountClient, arbitrum as alchemyArbitrum, arbitrumSepolia as alchemyArbitrumSepolia } from '@account-kit/infra'
+import {
+  alchemy,
+  createAlchemySmartAccountClient,
+  arbitrum as alchemyArbitrum,
+  arbitrumSepolia as alchemyArbitrumSepolia,
+} from '@account-kit/infra'
 import { LocalAccountSigner } from '@aa-sdk/core'
 import { createLightAccount } from '@account-kit/smart-contracts'
 
@@ -98,7 +103,7 @@ export const relayerAccount = await createLightAccount({
   chain: alchemyChain,
   transport: alchemyTransport,
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex)
+  signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex),
 })
 
 export const relayerSmartClient = createAlchemySmartAccountClient({
@@ -107,7 +112,6 @@ export const relayerSmartClient = createAlchemySmartAccountClient({
   chain: alchemyChain,
   account: relayerAccount,
 })
-
 
 const PythUrls = [
   process.env.PYTH_HERMES_URL,
@@ -135,7 +139,8 @@ export enum TaskType {
   'deploy',
   'claim',
   'relayer',
-  'relayerStake'
+  'relayerStake',
+  'relayerWithdraw',
 }
 
 const _task = process.argv[3]
