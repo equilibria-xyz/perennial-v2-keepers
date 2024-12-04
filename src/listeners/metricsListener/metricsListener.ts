@@ -26,7 +26,7 @@ import { MarketDetails, getMarkets, transformPrice } from '../../utils/marketUti
 import { getVaults } from '../../utils/vaultUtils.js'
 import { nowSeconds } from '../../utils/timeUtils.js'
 import { getUpdateDataForProviderType } from '../../utils/oracleUtils.js'
-import { calcNotional, pythMarketOpen, MarketAbi } from '@perennial/sdk'
+import { calcNotional, pythMarketOpen, MarketAbi, ControllerAddresses, ControllerAbi } from '@perennial/sdk'
 
 const Balances = ['ETH', 'USDC', 'DSU']
 const ERC20Abi = parseAbi(['function balanceOf(address owner) view returns (uint256)'] as const)
@@ -74,6 +74,20 @@ export class MetricsListener {
             chain: Chain.id,
             market: marketTag,
           })
+        })
+      },
+    })
+
+    Client.watchContractEvent({
+      address: ControllerAddresses[Chain.id],
+      abi: ControllerAbi,
+      eventName: 'AccountDeployed',
+      strict: true,
+      poll: true,
+      pollingInterval: MetricsListener.PollingInterval,
+      onLogs: (logs) => {
+        tracer.dogstatsd.increment('collateralAccount.deployed', logs.length, {
+          chain: Chain.id,
         })
       },
     })
