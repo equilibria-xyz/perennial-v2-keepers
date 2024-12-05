@@ -156,6 +156,7 @@ export async function createRelayer() {
           const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
           const sigMaxFee = intents.reduce((o, { signingPayload }) => o + signingPayload.message.action.maxFee, 0n)
           if (sigMaxFee < maxFeeUsd) {
+            console.warn(`Max fee too low: ${sigMaxFee} < ${maxFeeUsd}`)
             // this error will not retry
             // tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
             //   chain: Chain.id,
