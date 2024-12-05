@@ -180,9 +180,9 @@ export async function createRelayer() {
             const { userOpReceipt, hash } = await waitForUserOperationReceipt(relayerSmartClient, {
               hash: uoHash,
               retries: {
-                maxRetries: relayerSmartClient.txMaxRetries * 2, // default 5
-                multiplier: relayerSmartClient.txRetryMultiplier, // default 1.5
-                intervalMs: 250, // default 2000
+                maxRetries: 20,
+                multiplier: 1.5,
+                intervalMs: 250,
               },
             }).catch(injectUOError(UOError.FailedWaitForOperation))
             txHash = hash
