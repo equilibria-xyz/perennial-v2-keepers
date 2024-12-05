@@ -22,6 +22,7 @@ import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
 import { Address } from 'hardhat-deploy/dist/types.js'
 import { rateLimit } from 'express-rate-limit'
+import { Big6Math } from '@perennial/sdk'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -157,11 +158,13 @@ export async function createRelayer() {
           const sigMaxFee = intents.reduce((o, { signingPayload }) => o + signingPayload.message.action.maxFee, 0n)
           if (sigMaxFee < maxFeeUsd) {
             console.warn(`Max fee too low: ${sigMaxFee} < ${maxFeeUsd}`)
-            // this error will not retry
-            // tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
-            //   chain: Chain.id,
-            // })
-            // throw new Error(UOError.MaxFeeTooLow)
+            // this error will not retry. We won't relay a tx if the signature max fee is too low
+            if (sigMaxFee < Big6Math.fromFloatString('1')) {
+              tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
+                chain: Chain.id,
+              })
+              throw new Error(UOError.MaxFeeTooLow)
+            }
           }
 
           const request = await relayerSmartClient
