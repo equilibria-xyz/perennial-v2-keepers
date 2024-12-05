@@ -157,10 +157,10 @@ export async function createRelayer() {
           const sigMaxFee = intents.reduce((o, { signingPayload }) => o + signingPayload.message.action.maxFee, 0n)
           if (sigMaxFee < maxFeeUsd) {
             // this error will not retry
-            tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
-              chain: Chain.id,
-            })
-            throw new Error(UOError.MaxFeeTooLow)
+            // tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
+            //   chain: Chain.id,
+            // })
+            // throw new Error(UOError.MaxFeeTooLow)
           }
 
           const request = await relayerSmartClient
