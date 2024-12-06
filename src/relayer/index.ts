@@ -2,7 +2,6 @@ import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
 import { UserOperationCallData, waitForUserOperationReceipt } from '@aa-sdk/core'
-import { Hash, Hex } from 'viem'
 import { Chain, SDK, relayerSmartClient } from '../config.js'
 import {
   calcOpMaxFeeUsd,
@@ -23,6 +22,7 @@ import { CallGasLimitMultiplier } from '../constants/relayer.js'
 import { Address } from 'hardhat-deploy/dist/types.js'
 import { rateLimit } from 'express-rate-limit'
 import { Big6Math } from '@perennial/sdk'
+import { Hash, Hex } from 'viem'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -100,7 +100,7 @@ export async function createRelayer() {
         return injectUOError(UOError.OracleError)(e)
       })
 
-      const marketPriceCommits: Record<Address, Promise<UserOperationCallData>> = {}
+      const marketPriceCommits: Record<Address, Promise<Exclude<UserOperationCallData, Hex>>> = {}
       const immediateTriggers: UserOperation[] = []
       for (const { signingPayload } of intents) {
         // Add price commit if required
@@ -130,6 +130,55 @@ export async function createRelayer() {
       tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
         chain: Chain.id,
       })
+
+      // const multicall4Contract = getContract({
+      //   abi: Multicall4Abi,
+      //   address: Multicall4Addresses[Chain.id],
+      //   client: settlementSigner,
+      // })
+
+      // const simRes = await multicall4Contract.simulate.aggregate3Value(
+      //   [
+      //     uos
+      //       .map((uo) => {
+      //         return {
+      //           target: uo.target,
+      //           allowFailure: false,
+      //           value: uo.value ?? 0n,
+      //           callData: uo.data,
+      //         }
+      //       })
+      //       .concat([
+      //         {
+      //           target: multicall4Contract.address,
+      //           allowFailure: false,
+      //           value: 0n,
+      //           callData: encodeFunctionData({
+      //             abi: Multicall4Abi,
+      //             functionName: 'drain',
+      //             args: [DSUAddresses[Chain.id], settlementSigner.account.address],
+      //           }),
+      //         },
+      //         {
+      //           target: multicall4Contract.address,
+      //           allowFailure: false,
+      //           value: 0n,
+      //           callData: encodeFunctionData({
+      //             abi: Multicall4Abi,
+      //             functionName: 'drain',
+      //             args: [settlementSigner.account.address],
+      //           }),
+      //         },
+      //       ]),
+      //   ],
+      //   {
+      //     value: uos.reduce((o, uo) => o + (uo.value ?? 0n), 0n),
+      //   },
+      // )
+
+      // const txHash2 = await settlementSigner.writeContract(simRes.request)
+      // res.send(JSON.stringify({ success: true, status: UserOpStatus.Complete, uoHash: '', txHash: txHash2 }))
+      // return
 
       const { uoHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
