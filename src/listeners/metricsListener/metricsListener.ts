@@ -15,6 +15,7 @@ import {
   DSUAddresses,
   MarketFactoryAddresses,
   OracleFactoryAddresses,
+  ReferrerAddresses,
   USDCAddresses,
 } from '../../constants/network.js'
 import { gql } from '../../../types/gql/gql.js'
@@ -256,33 +257,29 @@ export class MetricsListener {
         market: marketTag,
       })
 
-      // Get batch keeper balance for the market (liquidations)
-      const [, batchKeeperLocals] = await Client.multicall({
+      // Get referrer locals for claimable collateral
+      const [, referrerLocals] = await Client.multicall({
         contracts: [
           {
             address: marketAddress,
             abi: MarketAbi,
-            functionName: 'update',
-            args: [BatchKeeperAddresses[Chain.id], maxUint256, maxUint256, maxUint256, 0n, false],
+            functionName: 'settle',
+            args: [ReferrerAddresses[Chain.id]],
           },
           {
             address: marketAddress,
             abi: MarketAbi,
             functionName: 'locals',
-            args: [BatchKeeperAddresses[Chain.id]],
+            args: [ReferrerAddresses[Chain.id]],
           },
         ],
       })
 
-      if (batchKeeperLocals.result) {
-        tracer.dogstatsd.gauge(
-          'market.batchKeeper.collateral',
-          Number(formatUnits(batchKeeperLocals.result.collateral, 6)),
-          {
-            chain: Chain.id,
-            market: marketTag,
-          },
-        )
+      if (referrerLocals.result) {
+        tracer.dogstatsd.gauge('market.referrer.claimable', Number(formatUnits(referrerLocals.result.claimable, 6)), {
+          chain: Chain.id,
+          market: marketTag,
+        })
       }
     })
 
