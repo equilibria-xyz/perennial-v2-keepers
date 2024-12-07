@@ -22,7 +22,7 @@ import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
 import { Address } from 'hardhat-deploy/dist/types.js'
 import { rateLimit } from 'express-rate-limit'
-import { Big6Math } from '@perennial/sdk'
+import { Big6Math, parseViemContractCustomError } from '@perennial/sdk'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -51,6 +51,9 @@ export async function createRelayer() {
 
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
+    tracer.dogstatsd.increment('relayer.userOp.requested', 1, {
+      chain: Chain.id,
+    })
     const startTime = performance.now()
     const { intents, meta } = req.body as {
       intents: {
@@ -214,7 +217,8 @@ export async function createRelayer() {
         chain: Chain.id,
       })
     } catch (e) {
-      console.warn(e)
+      const parsedError = parseViemContractCustomError(e)
+      console.warn(parsedError ?? e)
       tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
       })
@@ -222,7 +226,7 @@ export async function createRelayer() {
         JSON.stringify({
           success: false,
           status: UserOpStatus.Failed,
-          error: `Unable to relay transaction: ${e.message}`,
+          error: `Unable to relay transaction: ${parsedError ?? e.message}`,
           txHash,
         }),
       )
