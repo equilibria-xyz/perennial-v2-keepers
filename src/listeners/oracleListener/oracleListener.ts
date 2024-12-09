@@ -7,7 +7,13 @@ import { Big6Math } from '../../constants/Big6Math.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
 import { buildCommit } from '../../utils/oracleUtils.js'
 import { nowSeconds } from '../../utils/timeUtils.js'
-import { UpdateDataRequest, KeeperFactoryAbi, MultiInvokerAbi } from '@perennial/sdk'
+import {
+  UpdateDataRequest,
+  KeeperFactoryAbi,
+  MultiInvokerAbi,
+  KeeperOracleAbi,
+  parseViemContractCustomError,
+} from '@perennial/sdk'
 
 type Commitment = {
   action: number
@@ -98,14 +104,34 @@ export class OracleListener {
   }
 
   protected async getCommitments(): Promise<CommitmentWithMetrics[]> {
-    const commitmentPromises = this.oracleAddresses.map(async ({ oracle, id, providerTag }) => {
+    // Query all oracle next versions via multicall
+    const nextVersions = await SDK.publicClient.multicall({
+      contracts: this.oracleAddresses.map(({ oracle }) => ({
+        address: oracle,
+        abi: KeeperOracleAbi,
+        functionName: 'next',
+      })),
+    })
+    const commitmentPromises = this.oracleAddresses.map(async ({ oracle, id, providerTag }, i) => {
+      const nextVersion = nextVersions[i].status === 'success' ? nextVersions[i].result : 0n
+      if (nextVersion === 0n) {
+        if (nextVersions[i].status === 'failure')
+          console.warn(
+            `${providerTag}: Failed to get next version: ${parseViemContractCustomError(nextVersions[i].error)}`,
+          )
+        return {
+          commitment: null,
+          awaitingVersions: 0,
+          providerTag: providerTag,
+        }
+      }
+
       const factoryContract = SDK.contracts.getKeeperFactoryContract(this.keeperFactoryAddress)
       const oracleContract = SDK.contracts.getKeeperOracleContract(oracle)
 
-      const [factoryParameter, GracePeriod, nextVersion, global, underlyingId] = await Promise.all([
+      const [factoryParameter, GracePeriod, global, underlyingId] = await Promise.all([
         factoryContract.read.parameter(),
         oracleContract.read.timeout(),
-        oracleContract.read.next(),
         oracleContract.read.global(),
         factoryContract.read.toUnderlyingId([id]),
       ])
@@ -117,10 +143,6 @@ export class OracleListener {
         commitment: null,
         awaitingVersions: awaitingVersions,
         providerTag: providerTag,
-      }
-
-      if (nextVersion === 0n) {
-        return nullCommitmentWithMetrics
       }
 
       console.log(
@@ -182,7 +204,14 @@ export class OracleListener {
           if (publishTime - version > MaxDelay)
             throw new Error(`${providerTag}: VAA too late: Version: ${version}. Publish Time: ${publishTime}`)
 
-          return { version, data, publishTime, index, prevVersion: i > 0 ? versionsToCommit[i - 1].version : 0n, value }
+          return {
+            version,
+            data,
+            publishTime,
+            index,
+            prevVersion: i > 0 ? versionsToCommit[i - 1].version : 0n,
+            value,
+          }
         }),
       )
 
@@ -222,8 +251,8 @@ export class OracleListener {
       return commitments
     })
 
-    const commitments_ = await Promise.all(commitmentPromises)
-    return commitments_.flat()
+    const commitments_ = (await Promise.allSettled(commitmentPromises)).filter((v) => v.status === 'fulfilled')
+    return commitments_.map((v) => v.value).flat()
   }
 
   public async getOracleAddresses() {

@@ -1,4 +1,4 @@
-import { Address, formatEther, formatUnits, getAddress, maxUint256, parseAbi } from 'viem'
+import { Address, formatEther, formatUnits, getAddress, parseAbi } from 'viem'
 import {
   Chain,
   oracleAccount,
