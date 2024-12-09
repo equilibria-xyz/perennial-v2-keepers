@@ -7,7 +7,13 @@ import { Big6Math } from '../../constants/Big6Math.js'
 import { oracleProviderAddressToOracleProviderTag } from '../../constants/addressTagging.js'
 import { buildCommit } from '../../utils/oracleUtils.js'
 import { nowSeconds } from '../../utils/timeUtils.js'
-import { UpdateDataRequest, KeeperFactoryAbi, MultiInvokerAbi } from '@perennial/sdk'
+import {
+  UpdateDataRequest,
+  KeeperFactoryAbi,
+  MultiInvokerAbi,
+  KeeperOracleAbi,
+  parseViemContractCustomError,
+} from '@perennial/sdk'
 
 type Commitment = {
   action: number
@@ -98,132 +104,164 @@ export class OracleListener {
   }
 
   protected async getCommitments(): Promise<CommitmentWithMetrics[]> {
-    const commitmentPromises = this.oracleAddresses.map(async ({ oracle, id, providerTag }) => {
-      const factoryContract = SDK.contracts.getKeeperFactoryContract(this.keeperFactoryAddress)
-      const oracleContract = SDK.contracts.getKeeperOracleContract(oracle)
-
-      const [factoryParameter, GracePeriod, nextVersion, global, underlyingId] = await Promise.all([
-        factoryContract.read.parameter(),
-        oracleContract.read.timeout(),
-        oracleContract.read.next(),
-        oracleContract.read.global(),
-        factoryContract.read.toUnderlyingId([id]),
-      ])
-      const MinDelay = factoryParameter.validFrom
-      const MaxDelay = factoryParameter.validTo
-
-      const awaitingVersions = Number(global.currentIndex - global.latestIndex)
-      const nullCommitmentWithMetrics: CommitmentWithMetrics = {
-        commitment: null,
-        awaitingVersions: awaitingVersions,
-        providerTag: providerTag,
-      }
-
-      if (nextVersion === 0n) {
-        return nullCommitmentWithMetrics
-      }
-
-      console.log(
-        `${providerTag}: New version(s) to commit: ${nextVersion}. Next Index: ${global.latestIndex + 1n}. Length: ${
-          global.currentIndex
-        }`,
-      )
-
-      // If the last committed publish time is greater than the next version + minDelay, we need to offset the query
-      // time to account for the requirement that the next publish time must be after the previous
-      // TODO: re-enable this once `lastCommittedPublishTime` fix is implemented
-      // TODO: Do we still need this as of 2.3?
-      const windowOffset = 0n
-      // if (lastCommittedPublishTime > nextVersion + MinDelay) {
-      //   windowOffset = lastCommittedPublishTime - (nextVersion + MinDelay)
-      //   console.log(`${providerTag}: Offsetting query time by: ${windowOffset}`)
-      // }
-
-      const versionsToCommit = await Promise.all(
-        range(global.latestIndex + 1n, global.currentIndex + 1n).map(async (i) => ({
-          index: i,
-          version: await oracleContract.read.requests([i]),
-        })),
-      )
-
-      console.log(`${providerTag}: Versions to commit: ${versionsToCommit.map((v) => v.version).join(', ')}`)
-
-      const now = BigInt(nowSeconds())
-      const updateDatas = await Promise.allSettled(
-        versionsToCommit.map(async ({ version, index }, i) => {
-          const vaaQueryTime = Big6Math.max(global.latestVersion, version + MinDelay + windowOffset)
-          if (vaaQueryTime > now) throw new Error(`${providerTag}: VAA query time is in the future: ${vaaQueryTime}`)
-
-          // Create a commitment with no data to commit invalid
-          if (now - version > GracePeriod)
-            return {
-              version: versionsToCommit[i].version,
-              data: '0x' as Hex,
-              publishTime: 0n,
-              index: versionsToCommit[i].index,
-              prevVersion: 0n,
-              value: 0n,
-            }
-
-          const { data, publishTime, value } = await this.getUpdateDataAtTimestamp(
-            vaaQueryTime,
-            {
-              id,
-              underlyingId,
-              minValidTime: MinDelay,
-              factory: this.keeperFactoryAddress,
-              subOracle: oracle,
-            },
-            providerTag,
-          )
-
-          if (publishTime - version < MinDelay)
-            throw new Error(`${providerTag}: VAA too early: Version: ${version}. Publish Time: ${publishTime}`)
-          if (publishTime - version > MaxDelay)
-            throw new Error(`${providerTag}: VAA too late: Version: ${version}. Publish Time: ${publishTime}`)
-
-          return { version, data, publishTime, index, prevVersion: i > 0 ? versionsToCommit[i - 1].version : 0n, value }
-        }),
-      )
-
-      const commitments: CommitmentWithMetrics[] = []
-
-      for (let i = 0; i < updateDatas.length; i++) {
-        const updatedData = updateDatas[i]
-        if (updatedData.status === 'rejected') {
-          // If the VAA failed and the grace period hasn't expired, we can't commit any more
-          if (now - versionsToCommit[i].version < GracePeriod) break
-          else continue
+    // Query all oracle next versions via multicall
+    const nextVersions = await SDK.publicClient.multicall({
+      contracts: this.oracleAddresses.map(({ oracle }) => ({
+        address: oracle,
+        abi: KeeperOracleAbi,
+        functionName: 'next',
+      })),
+    })
+    const commitmentPromises = this.oracleAddresses.map(async ({ oracle, id, providerTag }, i) => {
+      try {
+        const nextVersion = nextVersions[i].status === 'success' ? nextVersions[i].result : 0n
+        if (nextVersion === 0n) {
+          if (nextVersions[i].status === 'failure')
+            console.warn(
+              `${providerTag}: Failed to get next version: ${parseViemContractCustomError(nextVersions[i].error)}`,
+            )
+          return {
+            commitment: null,
+            awaitingVersions: 0,
+            providerTag: providerTag,
+          }
         }
 
-        commitments.push({
-          commitment: buildCommit({
-            keeperFactory: this.keeperFactoryAddress,
-            version: updatedData.value.version,
-            value: updatedData.value.value,
-            ids: [id],
-            vaa: updatedData.value.data,
-            revertOnFailure: true,
-          }),
+        const factoryContract = SDK.contracts.getKeeperFactoryContract(this.keeperFactoryAddress)
+        const oracleContract = SDK.contracts.getKeeperOracleContract(oracle)
+
+        const [factoryParameter, GracePeriod, global, underlyingId] = await Promise.all([
+          factoryContract.read.parameter(),
+          oracleContract.read.timeout(),
+          oracleContract.read.global(),
+          factoryContract.read.toUnderlyingId([id]),
+        ])
+        const MinDelay = factoryParameter.validFrom
+        const MaxDelay = factoryParameter.validTo
+
+        const awaitingVersions = Number(global.currentIndex - global.latestIndex)
+        const nullCommitmentWithMetrics: CommitmentWithMetrics = {
+          commitment: null,
           awaitingVersions: awaitingVersions,
           providerTag: providerTag,
+        }
+
+        console.log(
+          `${providerTag}: New version(s) to commit: ${nextVersion}. Next Index: ${global.latestIndex + 1n}. Length: ${
+            global.currentIndex
+          }`,
+        )
+
+        // If the last committed publish time is greater than the next version + minDelay, we need to offset the query
+        // time to account for the requirement that the next publish time must be after the previous
+        // TODO: re-enable this once `lastCommittedPublishTime` fix is implemented
+        // TODO: Do we still need this as of 2.3?
+        const windowOffset = 0n
+        // if (lastCommittedPublishTime > nextVersion + MinDelay) {
+        //   windowOffset = lastCommittedPublishTime - (nextVersion + MinDelay)
+        //   console.log(`${providerTag}: Offsetting query time by: ${windowOffset}`)
+        // }
+
+        const versionsToCommit = await Promise.all(
+          range(global.latestIndex + 1n, global.currentIndex + 1n).map(async (i) => ({
+            index: i,
+            version: await oracleContract.read.requests([i]),
+          })),
+        )
+
+        console.log(`${providerTag}: Versions to commit: ${versionsToCommit.map((v) => v.version).join(', ')}`)
+
+        const now = BigInt(nowSeconds())
+        const updateDatas = await Promise.allSettled(
+          versionsToCommit.map(async ({ version, index }, i) => {
+            const vaaQueryTime = Big6Math.max(global.latestVersion, version + MinDelay + windowOffset)
+            if (vaaQueryTime > now) throw new Error(`${providerTag}: VAA query time is in the future: ${vaaQueryTime}`)
+
+            // Create a commitment with no data to commit invalid
+            if (now - version > GracePeriod)
+              return {
+                version: versionsToCommit[i].version,
+                data: '0x' as Hex,
+                publishTime: 0n,
+                index: versionsToCommit[i].index,
+                prevVersion: 0n,
+                value: 0n,
+              }
+
+            const { data, publishTime, value } = await this.getUpdateDataAtTimestamp(
+              vaaQueryTime,
+              {
+                id,
+                underlyingId,
+                minValidTime: MinDelay,
+                factory: this.keeperFactoryAddress,
+                subOracle: oracle,
+              },
+              providerTag,
+            )
+
+            if (publishTime - version < MinDelay)
+              throw new Error(`${providerTag}: VAA too early: Version: ${version}. Publish Time: ${publishTime}`)
+            if (publishTime - version > MaxDelay)
+              throw new Error(`${providerTag}: VAA too late: Version: ${version}. Publish Time: ${publishTime}`)
+
+            return {
+              version,
+              data,
+              publishTime,
+              index,
+              prevVersion: i > 0 ? versionsToCommit[i - 1].version : 0n,
+              value,
+            }
+          }),
+        )
+
+        const commitments: CommitmentWithMetrics[] = []
+
+        for (let i = 0; i < updateDatas.length; i++) {
+          const updatedData = updateDatas[i]
+          if (updatedData.status === 'rejected') {
+            // If the VAA failed and the grace period hasn't expired, we can't commit any more
+            if (now - versionsToCommit[i].version < GracePeriod) break
+            else continue
+          }
+
+          commitments.push({
+            commitment: buildCommit({
+              keeperFactory: this.keeperFactoryAddress,
+              version: updatedData.value.version,
+              value: updatedData.value.value,
+              ids: [id],
+              vaa: updatedData.value.data,
+              revertOnFailure: true,
+            }),
+            awaitingVersions: awaitingVersions,
+            providerTag: providerTag,
+          })
+        }
+
+        if (commitments.length === 0) {
+          console.log(`${providerTag}: No commitments to make`)
+          const failedPromises = updateDatas.map((v) => (v.status === 'rejected' ? v.reason : null)).filter(notEmpty)
+          if (failedPromises.length > 0) console.log(`${providerTag}: Failed promises: ${failedPromises.join(', ')}`)
+          return nullCommitmentWithMetrics
+        } else {
+          console.log(`${providerTag}: Commitments to make: ${commitments.length}`)
+        }
+
+        return commitments
+      } catch (e) {
+        tracer.dogstatsd.increment('oracleListener.getCommitments.error', 1, {
+          chain: Chain.id,
+          providerTag,
         })
+        console.error(`${providerTag}: Failed to get commitments: ${e}`)
+        throw e
       }
-
-      if (commitments.length === 0) {
-        console.log(`${providerTag}: No commitments to make`)
-        const failedPromises = updateDatas.map((v) => (v.status === 'rejected' ? v.reason : null)).filter(notEmpty)
-        if (failedPromises.length > 0) console.log(`${providerTag}: Failed promises: ${failedPromises.join(', ')}`)
-        return nullCommitmentWithMetrics
-      } else {
-        console.log(`${providerTag}: Commitments to make: ${commitments.length}`)
-      }
-
-      return commitments
     })
 
-    const commitments_ = await Promise.all(commitmentPromises)
-    return commitments_.flat()
+    const commitments_ = (await Promise.allSettled(commitmentPromises)).filter((v) => v.status === 'fulfilled')
+    return commitments_.map((v) => v.value).flat()
   }
 
   public async getOracleAddresses() {
