@@ -11,6 +11,7 @@ import PerennialSDK, {
   ManagerAddresses,
   ManagerAbi,
   addressToMarket,
+  parseViemContractCustomError,
 } from '@perennial/sdk'
 
 import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
@@ -206,9 +207,18 @@ export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean 
   }
 }
 
-export const injectUOError = (uoError: UOError): ((e: unknown) => never) => {
+export const injectUOError = ({
+  uoError,
+  account,
+  signer,
+}: {
+  uoError: UOError
+  account?: Address
+  signer?: Address
+}): ((e: unknown) => never) => {
   return (e: unknown) => {
-    console.error('UserOp.Failed', e)
+    const parsedError = parseViemContractCustomError(e)
+    console.error(`UserOp.Failed: ${uoError}: account: ${account} signer: ${signer} error: ${parsedError ?? e}`)
     throw new Error(uoError)
   }
 }

@@ -93,6 +93,8 @@ export async function createRelayer() {
         return
       }
     }
+    const account = intents.at(0)?.signingPayload.message.action.common.account
+    const signer = intents.at(0)?.signingPayload.message.action.common.signer
 
     let txHash: Hash | undefined
     try {
@@ -100,7 +102,7 @@ export async function createRelayer() {
         tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
           chain: Chain.id,
         })
-        return injectUOError(UOError.OracleError)(e)
+        return injectUOError({ uoError: UOError.OracleError, account, signer })(e)
       })
 
       const marketPriceCommits: Record<Address, Promise<UserOperationCallData>> = {}
@@ -154,7 +156,7 @@ export async function createRelayer() {
                 nonceKey: nonceKey + BigInt(Date.now()),
               },
             })
-            .catch(injectUOError(UOError.FailedBuildOperation))
+            .catch(injectUOError({ uoError: UOError.FailedBuildOperation, account, signer }))
 
           const latestEthPrice = await latestEthPrice_
           const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
@@ -172,10 +174,10 @@ export async function createRelayer() {
 
           const request = await relayerSmartClient
             .signUserOperation({ uoStruct: userOp })
-            .catch(injectUOError(UOError.FailedSignOperation))
+            .catch(injectUOError({ uoError: UOError.FailedSignOperation, account, signer }))
           const uoHash = await relayerSmartClient
             .sendRawUserOperation(request, entryPoint)
-            .catch(injectUOError(UOError.FailedSendOperation))
+            .catch(injectUOError({ uoError: UOError.FailedSendOperation, account, signer }))
 
           console.log(`Sent userOp: ${uoHash}`)
           tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
@@ -187,11 +189,11 @@ export async function createRelayer() {
             const { userOpReceipt, hash } = await waitForUserOperationReceipt(relayerSmartClient, {
               hash: uoHash,
               retries: {
-                maxRetries: 20,
+                maxRetries: 25,
                 multiplier: 1.5,
                 intervalMs: 250,
               },
-            }).catch(injectUOError(UOError.FailedWaitForOperation))
+            }).catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
             txHash = hash
             console.log(`UserOp confirmed: ${txHash}`)
             if (!userOpReceipt?.success) {
@@ -218,7 +220,6 @@ export async function createRelayer() {
       })
     } catch (e) {
       const parsedError = parseViemContractCustomError(e)
-      console.warn(parsedError ?? e)
       tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
       })
