@@ -160,9 +160,12 @@ export async function createRelayer() {
 
           const latestEthPrice = await latestEthPrice_
           const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
-          const sigMaxFee = intents.reduce((o, { signingPayload }) => o + signingPayload.message.action.maxFee, 0n)
+          const sigMaxFee = intents.reduce(
+            (o, { signingPayload }) => o + BigInt(signingPayload.message.action.maxFee),
+            0n,
+          )
           if (sigMaxFee < maxFeeUsd) {
-            console.warn(`Max fee too low: ${sigMaxFee} < ${maxFeeUsd}`)
+            console.warn(`Max fee is low: ${sigMaxFee} < ${maxFeeUsd}. account: ${account} signer: ${signer}`)
             // this error will not retry. We won't relay a tx if the signature max fee is too low
             if (sigMaxFee < Big6Math.fromFloatString('1')) {
               tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
