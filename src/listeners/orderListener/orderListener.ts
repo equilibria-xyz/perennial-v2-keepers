@@ -281,14 +281,28 @@ export class OrderListener {
     updateData,
     version,
     value,
-    orders,
+    orders: orders_,
   }: {
     market: MarketDetails
     version: bigint
     updateData: Hex
     value: bigint
-    orders: { account: string; nonce: string; source: string }[]
+    orders: {
+      account: string
+      nonce: string
+      source: string
+      triggerOrderDelta: string
+      marketAccount: { positions: { long: string; short: string; maker: string }[] }
+    }[]
   }) {
+    // Filter out orders that are decreasing size but without an associated market position
+    // TODO: Is it safe to compare the trigger order delta to the market position (we'd need to handle magic values too)?
+    const orders = orders_.filter(
+      (o) =>
+        BigInt(o.triggerOrderDelta) > 0n ||
+        (BigInt(o.triggerOrderDelta) <= 0n &&
+          o.marketAccount.positions.some((p) => BigInt(p.long) > 0n || BigInt(p.short) > 0n || BigInt(p.maker) > 0n)),
+    )
     if (orders.length === 0) return null
 
     // Try execute orders
@@ -323,8 +337,8 @@ export class OrderListener {
       // This query finds trigger orders that are
       // * not cancelled or executed
       // * have associated market collateral
-      // * (if negative delta) have an associated market position
       // * have a trigger price that is satisfied given the market price
+      // We have to pull the market account positions as the market account is not optimisicaly updated (but positions are)
       const subQueries = marketPrices.map(({ market, price }) => {
         return `
           market_${market.market}: multiInvokerTriggerOrders(
@@ -333,18 +347,14 @@ export class OrderListener {
                 {market: "${market.market}", cancelled: false, executed: false},
                 {marketAccount_: {collateral_gt: 0}},
                 {or: [
-                  {triggerOrderDelta_lte: 0, marketAccount_: {long_gt: 0}},
-                  {triggerOrderDelta_lte: 0, marketAccount_: {short_gt: 0}},
-                  {triggerOrderDelta_lte: 0, marketAccount_: {maker_gt: 0}},
-                  {triggerOrderDelta_gt: 0},
-                ]},
-                {or: [
                   {triggerOrderComparison: 1, triggerOrderPrice_lte: "${price}"},
                   {triggerOrderComparison: -1, triggerOrderPrice_gte: "${price}"}
                 ]}
               ]
             }, first: ${GraphDefaultPageSize}, skip: ${page * GraphDefaultPageSize}
-          ) { account, market, nonce, source }
+          ) { account, market, nonce, source, triggerOrderDelta
+              marketAccount { positions(orderBy: nonce, orderDirection: desc, first: 1) { long, short, maker } }
+          }
       `
       })
 
@@ -355,7 +365,14 @@ export class OrderListener {
       `
 
       return GraphClient.request(query) as Promise<{
-        [key: string]: { account: string; market: string; nonce: string; source: string }[]
+        [key: string]: {
+          account: string
+          market: string
+          nonce: string
+          source: string
+          triggerOrderDelta: string
+          marketAccount: { positions: { long: string; short: string; maker: string }[] }
+        }[]
       }>
     })
 
