@@ -320,6 +320,11 @@ export class OrderListener {
   // Uses a manual graph query to pull orders. This is more efficient as it batches all the markets into a single query
   private async getOrdersForMarkets(marketPrices: { market: MarketDetails; price: bigint }[]) {
     const res = await queryAll(async (page: number) => {
+      // This query finds trigger orders that are
+      // * not cancelled or executed
+      // * have associated market collateral
+      // * (if negative delta) have an associated market position
+      // * have a trigger price that is satisfied given the market price
       const subQueries = marketPrices.map(({ market, price }) => {
         return `
           market_${market.market}: multiInvokerTriggerOrders(
@@ -327,6 +332,12 @@ export class OrderListener {
               and: [
                 {market: "${market.market}", cancelled: false, executed: false},
                 {marketAccount_: {collateral_gt: 0}},
+                {or: [
+                  {triggerOrderDelta_lte: 0, marketAccount_: {long_gt: 0}},
+                  {triggerOrderDelta_lte: 0, marketAccount_: {short_gt: 0}},
+                  {triggerOrderDelta_lte: 0, marketAccount_: {maker_gt: 0}},
+                  {triggerOrderDelta_gt: 0},
+                ]},
                 {or: [
                   {triggerOrderComparison: 1, triggerOrderPrice_lte: "${price}"},
                   {triggerOrderComparison: -1, triggerOrderPrice_gte: "${price}"}
