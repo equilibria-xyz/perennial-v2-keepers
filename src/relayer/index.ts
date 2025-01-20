@@ -120,6 +120,7 @@ export async function createRelayer() {
       const immediateTriggers: IntentBatch = intents
         .filter(({ signingPayload }) => signingPayload.primaryType === 'PlaceOrderAction')
         .map(({ signingPayload }) => constructImmediateTriggerOrder(signingPayload as PlaceOrderSigningPayload, Chain.id))
+        .filter((uo) => uo !== null)
 
       const intentBatch: IntentBatch = intents.map(({ signingPayload, signatures }) =>
         constructUserOperation(signingPayload, signatures, Chain.id),
@@ -129,7 +130,7 @@ export async function createRelayer() {
 
       const uos = priceCommitsBatch.concat(intentBatch, immediateTriggers)
 
-      if (!isBatchOperationCallData(intentBatch)) {
+      if (!isBatchOperationCallData(uos)) {
         throw Error(UOError.FailedToConstructUO)
       }
 
