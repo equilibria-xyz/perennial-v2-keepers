@@ -22,7 +22,7 @@ import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
 import { rateLimit } from 'express-rate-limit'
-import { addressToMarket, Big6Math, parseViemContractCustomError, unique } from '@perennial/sdk'
+import { addressToMarket, Big6Math, parseViemContractCustomError, unique, notEmpty } from '@perennial/sdk'
 import { PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -120,7 +120,7 @@ export async function createRelayer() {
       const immediateTriggers: IntentBatch = intents
         .filter(({ signingPayload }) => signingPayload.primaryType === 'PlaceOrderAction')
         .map(({ signingPayload }) => constructImmediateTriggerOrder(signingPayload as PlaceOrderSigningPayload, Chain.id))
-        .filter((uo) => uo !== null)
+        .filter(notEmpty)
 
       const intentBatch: IntentBatch = intents.map(({ signingPayload, signatures }) =>
         constructUserOperation(signingPayload, signatures, Chain.id),

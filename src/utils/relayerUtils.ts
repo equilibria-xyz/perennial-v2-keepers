@@ -15,6 +15,7 @@ import PerennialSDK, {
   UpdateDataRequest,
   marketOraclesToUpdateDataRequest,
   fetchMarketOracles,
+  notEmpty
 } from '@perennial/sdk'
 
 import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
@@ -258,7 +259,7 @@ export const requiresPriceCommit = (
 }
 
 export const isBatchOperationCallData = (batch: IntentBatch): batch is BatchUserOperationCallData =>
-  !batch.some((intent) => intent === undefined || intent === null)
+  batch.every(notEmpty)
 
 export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
   switch (intent.primaryType) {
