@@ -15,7 +15,7 @@ import {
   isBatchOperationCallData,
   getMarketAddressFromIntent,
   constructImmediateTriggerOrder,
-  fetchRequestMetaData,
+  fetchMarketsRequestMeta,
 } from '../utils/relayerUtils.js'
 import { UserOpStatus, UOError, SigningPayload, IntentBatch } from './types.js'
 import tracer from '../tracer.js'
@@ -47,7 +47,7 @@ export async function createRelayer() {
     }),
   )
 
-  const marketsRequestMeta = await fetchRequestMetaData(SDK)
+  const marketsRequestMeta = await fetchMarketsRequestMeta(SDK, Chain.id)
 
   const ethOracleFetcher = new EthOracleFetcher()
   await ethOracleFetcher.init()
@@ -120,10 +120,10 @@ export async function createRelayer() {
       // Add immediate trigger execution if required
       const immediateTriggers: IntentBatch = intents
         .filter(({ signingPayload }) => signingPayload.primaryType === 'PlaceOrderAction')
-        .map(({ signingPayload }) => constructImmediateTriggerOrder(signingPayload as PlaceOrderSigningPayload))
+        .map(({ signingPayload }) => constructImmediateTriggerOrder(signingPayload as PlaceOrderSigningPayload, Chain.id))
 
       const intentBatch: IntentBatch = intents.map(({ signingPayload, signatures }) =>
-        constructUserOperation(signingPayload, signatures),
+        constructUserOperation(signingPayload, signatures, Chain.id),
       )
 
       const priceCommitsBatch: IntentBatch = await marketPriceCommits_
