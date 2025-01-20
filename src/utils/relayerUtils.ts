@@ -1,4 +1,4 @@
-import { Hex, encodeFunctionData, Address, zeroAddress } from 'viem'
+import { Hex, encodeFunctionData, Address, zeroAddress, PublicClient } from 'viem'
 import { UserOperationStruct, BatchUserOperationCallData } from '@aa-sdk/core'
 
 import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
@@ -12,6 +12,10 @@ import PerennialSDK, {
   ManagerAbi,
   addressToMarket,
   parseViemContractCustomError,
+  SupportedMarket,
+  UpdateDataRequest,
+  marketOraclesToUpdateDataRequest,
+  fetchMarketOracles,
 } from '@perennial/sdk'
 
 import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
@@ -223,6 +227,26 @@ export const injectUOError = ({
   }
 }
 
+export const fetchRequestMetaData = async (
+  sdk: InstanceType<typeof PerennialSDK.default>,
+): Promise<Record<SupportedMarket, UpdateDataRequest>> => {
+  const allRequestMeta = marketOraclesToUpdateDataRequest(
+    Object.values(
+      await fetchMarketOracles(
+        Chain.id,
+        sdk.publicClient as PublicClient,
+        sdk.supportedMarkets
+      )
+    )
+  )
+  const marketsRequestMeta = sdk.supportedMarkets.reduce((o: Record<SupportedMarket, UpdateDataRequest>, market: SupportedMarket, index: number) => {
+    o[market] = allRequestMeta[index]
+    return o
+  }, {} as Record<SupportedMarket, UpdateDataRequest>)
+
+  return marketsRequestMeta
+}
+
 export const requiresPriceCommit = (
   intent: SigningPayload,
 ): intent is PlaceOrderSigningPayload | MarketTransferSigningPayload => {
@@ -275,11 +299,14 @@ export const buildPriceCommit = async (
   sdk: InstanceType<typeof PerennialSDK.default>,
   chainId: SupportedChainId,
   intent: PlaceOrderSigningPayload | MarketTransferSigningPayload,
+  marketsRequestMeta: Record<SupportedMarket, UpdateDataRequest>
 ): Promise<{ target: Hex; data: Hex; value: bigint }> => {
   const marketAddress = getMarketAddressFromIntent(intent)
   const market = addressToMarket(chainId, marketAddress)
+
   const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
     markets: [market],
+    requests: [marketsRequestMeta[market]]
   })
 
   const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })

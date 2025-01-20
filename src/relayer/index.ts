@@ -15,6 +15,7 @@ import {
   isBatchOperationCallData,
   getMarketAddressFromIntent,
   constructImmediateTriggerOrder,
+  fetchRequestMetaData,
 } from '../utils/relayerUtils.js'
 import { UserOpStatus, UOError, SigningPayload, UserOperation } from './types.js'
 import tracer from '../tracer.js'
@@ -45,6 +46,8 @@ export async function createRelayer() {
       message: 'Too many requests, please try again later.',
     }),
   )
+
+  const marketsRequestMeta = await fetchRequestMetaData(SDK)
 
   const ethOracleFetcher = new EthOracleFetcher()
   await ethOracleFetcher.init()
@@ -112,7 +115,7 @@ export async function createRelayer() {
         if (requiresPriceCommit(signingPayload)) {
           const marketAddress = getMarketAddressFromIntent(signingPayload)
           if (marketPriceCommits[marketAddress] === undefined)
-            marketPriceCommits[marketAddress] = buildPriceCommit(SDK, Chain.id, signingPayload)
+            marketPriceCommits[marketAddress] = buildPriceCommit(SDK, Chain.id, signingPayload, marketsRequestMeta)
         }
         // Add immediate trigger execution if required
         if (signingPayload.primaryType === 'PlaceOrderAction') {
