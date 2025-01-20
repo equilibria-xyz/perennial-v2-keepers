@@ -301,22 +301,20 @@ export const buildPriceCommits = async (
   marketsRequestMeta: Record<SupportedMarket, UpdateDataRequest>
 ): Promise<({ target: Hex; data: Hex; value: bigint })[]> => {
 
+  const commitments = await sdk.oracles.read.oracleCommitmentsLatest({
+    markets: markets,
+    requests: markets.map((market) => marketsRequestMeta[market])
+  })
+
   return (
-    Promise.all(
-      markets.map(async (market) => {
-        const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
-          markets: [market],
-          requests: [marketsRequestMeta[market]]
-        })
+    commitments.map((commitment) => {
+      const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })
 
-        const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })
-
-        return {
-          target: priceCommitment.to,
-          data: priceCommitment.data,
-          value: priceCommitment.value,
-        }
-      })
-    )
+      return {
+        target: priceCommitment.to,
+        data: priceCommitment.data,
+        value: priceCommitment.value,
+      }
+    })
   )
 }
