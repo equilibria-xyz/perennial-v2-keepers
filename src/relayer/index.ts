@@ -22,7 +22,7 @@ import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
 import { rateLimit } from 'express-rate-limit'
-import { addressToMarket, Big6Math, parseViemContractCustomError } from '@perennial/sdk'
+import { addressToMarket, Big6Math, parseViemContractCustomError, unique } from '@perennial/sdk'
 import { PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -108,12 +108,10 @@ export async function createRelayer() {
         return injectUOError({ uoError: UOError.OracleError, account, signer })(e)
       })
 
-      const marketsRequiringCommits = Array.from(
-        new Set(
-          intents
-            .filter(({ signingPayload }) => requiresPriceCommit(signingPayload))
-            .map(({ signingPayload }) => addressToMarket(Chain.id, getMarketAddressFromIntent(signingPayload)))
-        )
+      const marketsRequiringCommits = unique(
+        intents
+          .filter(({ signingPayload }) => requiresPriceCommit(signingPayload))
+          .map(({ signingPayload }) => addressToMarket(Chain.id, getMarketAddressFromIntent(signingPayload)))
       )
       const marketPriceCommits_ = buildPriceCommits(SDK, marketsRequiringCommits, marketsRequestMeta)
 
