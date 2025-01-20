@@ -113,7 +113,7 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(valid).toBe(true)
 
-    const uo = constructUserOperation(signingPayload, [sig.signature])
+    const uo = constructUserOperation(signingPayload, [sig.signature], chain.id)
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
@@ -160,7 +160,7 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(valid).toBe(true)
 
-    const uo = constructUserOperation(signingPayload, [sig.signature])
+    const uo = constructUserOperation(signingPayload, [sig.signature], chain.id)
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
@@ -210,7 +210,7 @@ describe('Validates signatures', () => {
 
     expect(valid).toBe(true)
 
-    const uo = constructUserOperation(signingPayload, [sig.signature])
+    const uo = constructUserOperation(signingPayload, [sig.signature], chain.id)
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
@@ -257,7 +257,7 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(valid).toBe(true)
 
-    const uo = constructUserOperation(signingPayload, [sig.signature])
+    const uo = constructUserOperation(signingPayload, [sig.signature], chain.id)
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
@@ -320,7 +320,7 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(valid).toBe(true)
 
-    const uo = constructUserOperation(signingPayload, [sig.signature])
+    const uo = constructUserOperation(signingPayload, [sig.signature], chain.id)
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(managerAddress)
@@ -373,7 +373,7 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(valid).toBe(true)
 
-    const uo = constructUserOperation(signingPayload, [sig.signature])
+    const uo = constructUserOperation(signingPayload, [sig.signature], chain.id)
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(managerAddress)
@@ -429,7 +429,7 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(outerValid).toBe(true)
 
-    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
+    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature], chain.id)
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
@@ -485,7 +485,7 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(outerValid).toBe(true)
 
-    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
+    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature], chain.id)
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
@@ -542,7 +542,7 @@ describe('Validates signatures', () => {
     } as VerifyTypedDataParameters)
     expect(outerValid).toBe(true)
 
-    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
+    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature], chain.id)
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)
@@ -600,7 +600,7 @@ describe('Validates signatures', () => {
     expect(outerValid).toBe(true)
 
     // only pass outer payload
-    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature])
+    const uo = constructUserOperation(outerSigningPayload, [sig.innerSignature, sig.outerSignature], chain.id)
     expect(!!uo).toBe(true)
     const { target, data } = uo as { target: string; data: string }
     expect(target).toBe(controllerAddress)

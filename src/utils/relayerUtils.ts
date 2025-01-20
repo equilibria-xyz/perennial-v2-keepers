@@ -1,7 +1,7 @@
 import { Hex, encodeFunctionData, Address, zeroAddress } from 'viem'
 import { UserOperationStruct, BatchUserOperationCallData } from '@aa-sdk/core'
 
-import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
+import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError, IntentBatch } from '../relayer/types.js'
 import { BaseTipMultiplier, MaxRetries, TipPercentageIncrease } from '../constants/relayer.js'
 
 import PerennialSDK, {
@@ -10,15 +10,18 @@ import PerennialSDK, {
   SupportedChainId,
   ManagerAddresses,
   ManagerAbi,
-  addressToMarket,
   parseViemContractCustomError,
+  SupportedMarket,
+  UpdateDataRequest,
+  marketOraclesToUpdateDataRequest,
+  fetchMarketOracles,
+  notEmpty
 } from '@perennial/sdk'
 
 import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
-import { Chain } from '../config.js'
+import { PublicClient } from '@perennial/sdk/node_modules/viem'
 
-export const constructDirectUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
-  const chainId = payload.domain?.chainId as SupportedChainId
+export const constructDirectUserOperation = (payload: SigningPayload, signature: Hex, chainId: SupportedChainId): UserOperation | undefined => {
   switch (payload.primaryType) {
     case 'DeployAccount':
       return {
@@ -85,9 +88,9 @@ export const constructDirectUserOperation = (payload: SigningPayload, signature:
 export const constructRelayedUserOperation = (
   payload: SigningPayload,
   signatures: RelayedSignatures,
+  chainId: SupportedChainId
 ): UserOperation | undefined => {
   const { innerSignature, outerSignature } = signatures
-  const chainId = payload.domain?.chainId as SupportedChainId
   switch (payload.primaryType) {
     case 'RelayedGroupCancellation':
       return {
@@ -136,15 +139,16 @@ export const constructRelayedUserOperation = (
 export const constructUserOperation = (
   signingPayload: SigningPayload,
   signatures: Hex[],
+  chainId: SupportedChainId
 ): UserOperation | undefined => {
   let uo
   if (isRelayedIntent(signingPayload.primaryType)) {
     uo = constructRelayedUserOperation(signingPayload as SigningPayload, {
       innerSignature: signatures[0],
       outerSignature: signatures[1],
-    })
+    }, chainId)
   } else {
-    uo = constructDirectUserOperation(signingPayload as SigningPayload, signatures[0])
+    uo = constructDirectUserOperation(signingPayload as SigningPayload, signatures[0], chainId)
   }
   return uo
 }
@@ -223,6 +227,27 @@ export const injectUOError = ({
   }
 }
 
+export const fetchMarketsRequestMeta = async (
+  sdk: InstanceType<typeof PerennialSDK.default>,
+  chainId: SupportedChainId
+): Promise<Record<SupportedMarket, UpdateDataRequest>> => {
+  const allRequestMeta = marketOraclesToUpdateDataRequest(
+    Object.values(
+      await fetchMarketOracles(
+        chainId,
+        sdk.publicClient as PublicClient,
+        sdk.supportedMarkets
+      )
+    )
+  )
+  const marketsRequestMeta = sdk.supportedMarkets.reduce((o: Record<SupportedMarket, UpdateDataRequest>, market: SupportedMarket, index: number) => {
+    o[market] = allRequestMeta[index]
+    return o
+  }, {} as Record<SupportedMarket, UpdateDataRequest>)
+
+  return marketsRequestMeta
+}
+
 export const requiresPriceCommit = (
   intent: SigningPayload,
 ): intent is PlaceOrderSigningPayload | MarketTransferSigningPayload => {
@@ -233,8 +258,8 @@ export const requiresPriceCommit = (
   )
 }
 
-export const isBatchOperationCallData = (batch: (UserOperation | undefined)[]): batch is BatchUserOperationCallData =>
-  !batch.some((intent): intent is undefined => intent === undefined)
+export const isBatchOperationCallData = (batch: IntentBatch): batch is BatchUserOperationCallData =>
+  batch.every(notEmpty)
 
 export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
   switch (intent.primaryType) {
@@ -248,7 +273,7 @@ export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
   }
 }
 
-export const constructImmediateTriggerOrder = (intent: PlaceOrderSigningPayload): UserOperation | null => {
+export const constructImmediateTriggerOrder = (intent: PlaceOrderSigningPayload, chainId: SupportedChainId): UserOperation | null => {
   try {
     // Only trigger orders with a comparison of 1 (GTE) and price of 1 (min price)
     if (BigInt(intent.message.order.comparison) !== 1n || BigInt(intent.message.order.price) !== 1n) {
@@ -262,7 +287,7 @@ export const constructImmediateTriggerOrder = (intent: PlaceOrderSigningPayload)
       args: [marketAddress, account, intent.message.action.orderId],
     })
     return {
-      target: ManagerAddresses[Chain.id],
+      target: ManagerAddresses[chainId],
       data: fnData,
       value: 0n,
     }
@@ -271,22 +296,26 @@ export const constructImmediateTriggerOrder = (intent: PlaceOrderSigningPayload)
   }
 }
 
-export const buildPriceCommit = async (
+export const buildPriceCommits = async (
   sdk: InstanceType<typeof PerennialSDK.default>,
-  chainId: SupportedChainId,
-  intent: PlaceOrderSigningPayload | MarketTransferSigningPayload,
-): Promise<{ target: Hex; data: Hex; value: bigint }> => {
-  const marketAddress = getMarketAddressFromIntent(intent)
-  const market = addressToMarket(chainId, marketAddress)
-  const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
-    markets: [market],
+  markets: SupportedMarket[],
+  marketsRequestMeta: Record<SupportedMarket, UpdateDataRequest>
+): Promise<({ target: Hex; data: Hex; value: bigint })[]> => {
+
+  const commitments = await sdk.oracles.read.oracleCommitmentsLatest({
+    markets: markets,
+    requests: markets.map((market) => marketsRequestMeta[market])
   })
 
-  const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })
+  return (
+    commitments.map((commitment) => {
+      const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })
 
-  return {
-    target: priceCommitment.to,
-    data: priceCommitment.data,
-    value: priceCommitment.value,
-  }
+      return {
+        target: priceCommitment.to,
+        data: priceCommitment.data,
+        value: priceCommitment.value,
+      }
+    })
+  )
 }
