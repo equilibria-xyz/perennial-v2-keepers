@@ -1,7 +1,7 @@
-import { Hex, encodeFunctionData, Address, zeroAddress, PublicClient } from 'viem'
+import { Hex, encodeFunctionData, Address, zeroAddress } from 'viem'
 import { UserOperationStruct, BatchUserOperationCallData } from '@aa-sdk/core'
 
-import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
+import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError, IntentBatch } from '../relayer/types.js'
 import { BaseTipMultiplier, MaxRetries, TipPercentageIncrease } from '../constants/relayer.js'
 
 import PerennialSDK, {
@@ -10,7 +10,6 @@ import PerennialSDK, {
   SupportedChainId,
   ManagerAddresses,
   ManagerAbi,
-  addressToMarket,
   parseViemContractCustomError,
   SupportedMarket,
   UpdateDataRequest,
@@ -19,6 +18,7 @@ import PerennialSDK, {
 } from '@perennial/sdk'
 
 import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
+import { PublicClient } from '@perennial/sdk/node_modules/viem'
 import { Chain } from '../config.js'
 
 export const constructDirectUserOperation = (payload: SigningPayload, signature: Hex): UserOperation | undefined => {
@@ -257,8 +257,8 @@ export const requiresPriceCommit = (
   )
 }
 
-export const isBatchOperationCallData = (batch: (UserOperation | undefined)[]): batch is BatchUserOperationCallData =>
-  !batch.some((intent): intent is undefined => intent === undefined)
+export const isBatchOperationCallData = (batch: IntentBatch): batch is BatchUserOperationCallData =>
+  !batch.some((intent) => intent === undefined || intent === null)
 
 export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
   switch (intent.primaryType) {
@@ -295,25 +295,28 @@ export const constructImmediateTriggerOrder = (intent: PlaceOrderSigningPayload)
   }
 }
 
-export const buildPriceCommit = async (
+export const buildPriceCommits = async (
   sdk: InstanceType<typeof PerennialSDK.default>,
-  chainId: SupportedChainId,
-  intent: PlaceOrderSigningPayload | MarketTransferSigningPayload,
+  markets: SupportedMarket[],
   marketsRequestMeta: Record<SupportedMarket, UpdateDataRequest>
-): Promise<{ target: Hex; data: Hex; value: bigint }> => {
-  const marketAddress = getMarketAddressFromIntent(intent)
-  const market = addressToMarket(chainId, marketAddress)
+): Promise<({ target: Hex; data: Hex; value: bigint })[]> => {
 
-  const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
-    markets: [market],
-    requests: [marketsRequestMeta[market]]
-  })
+  return (
+    Promise.all(
+      markets.map(async (market) => {
+        const [commitment] = await sdk.oracles.read.oracleCommitmentsLatest({
+          markets: [market],
+          requests: [marketsRequestMeta[market]]
+        })
 
-  const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })
+        const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })
 
-  return {
-    target: priceCommitment.to,
-    data: priceCommitment.data,
-    value: priceCommitment.value,
-  }
+        return {
+          target: priceCommitment.to,
+          data: priceCommitment.data,
+          value: priceCommitment.value,
+        }
+      })
+    )
+  )
 }
