@@ -47,6 +47,7 @@ export async function createRelayer() {
     }),
   )
 
+  // this is a one time fetch the relayer service should be restarted when updating market oracle settings
   const marketsRequestMeta = await fetchMarketsRequestMeta(SDK, Chain.id)
 
   const ethOracleFetcher = new EthOracleFetcher()
