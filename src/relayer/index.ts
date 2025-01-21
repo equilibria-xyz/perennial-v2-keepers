@@ -22,7 +22,7 @@ import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { CallGasLimitMultiplier } from '../constants/relayer.js'
 import { rateLimit } from 'express-rate-limit'
-import { addressToMarket, Big6Math, parseViemContractCustomError, unique, notEmpty } from '@perennial/sdk'
+import { addressToMarket, Big6Math, parseViemContractCustomError, unique, notEmpty, nowSeconds } from '@perennial/sdk'
 import { PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -90,6 +90,8 @@ export async function createRelayer() {
           error = 'Missing signature; requires [signature]'
         } else if (!relayedIntent && signatures.length !== 1) {
           error = 'Missing signatures; requires [innerSignature, outerSignature]'
+        } else if (signingPayload.message.action.common.expiry > nowSeconds()) {
+          error = 'Intent has already expired'
         }
       }
       if (error) {
