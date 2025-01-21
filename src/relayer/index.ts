@@ -90,7 +90,7 @@ export async function createRelayer() {
           error = 'Missing signature; requires [signature]'
         } else if (!relayedIntent && signatures.length !== 1) {
           error = 'Missing signatures; requires [innerSignature, outerSignature]'
-        } else if (signingPayload.message.action.common.expiry > nowSeconds()) {
+        } else if (signingPayload.message.action.common.expiry < nowSeconds()) {
           error = 'Intent has already expired'
         }
       }
