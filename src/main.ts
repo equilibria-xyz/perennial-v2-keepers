@@ -9,7 +9,7 @@ import { LiqListener } from './listeners/liqListener/liqListener.js'
 import { SettlementListener } from './listeners/settlementListener/settlementListener.js'
 import ClaimBatchKeeper from './scripts/claimBatchKeeper.js'
 import { OracleListener } from './listeners/oracleListener/oracleListener.js'
-import { PythFactoryAddresses, CryptexFactoryAddresses } from './constants/network.js'
+import { PythFactoryAddresses, CryptexFactoryAddresses, StorkFactoryAddresses } from './constants/network.js'
 import { zeroAddress } from 'viem'
 import { createRelayer } from './relayer/index.js'
 import relayerWithdraw from './scripts/relayerWithdraw.js'
@@ -48,8 +48,11 @@ const run = async () => {
       break
     }
     case TaskType.oracle: {
-      const pythListener = new OracleListener(PythFactoryAddresses[Chain.id], 'pythOracle')
-      await pythListener.init()
+      const pythListener =
+        PythFactoryAddresses[Chain.id] !== zeroAddress
+          ? new OracleListener(PythFactoryAddresses[Chain.id], 'pythOracle')
+          : undefined
+      await pythListener?.init()
 
       const cryptexListener =
         CryptexFactoryAddresses[Chain.id] !== zeroAddress
@@ -57,10 +60,17 @@ const run = async () => {
           : undefined
       await cryptexListener?.init()
 
+      const storkListener =
+        StorkFactoryAddresses[Chain.id] !== zeroAddress
+          ? new OracleListener(StorkFactoryAddresses[Chain.id], 'storkOracle')
+          : undefined
+      await storkListener?.init()
+
       setInterval(
         () => {
-          pythListener.run()
+          pythListener?.run()
           cryptexListener?.run()
+          storkListener?.run()
         },
         IsMainnet ? OracleListener.PollingInterval : 4 * OracleListener.PollingInterval,
       )

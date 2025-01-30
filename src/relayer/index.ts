@@ -1,7 +1,6 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-import { UserOperationCallData, waitForUserOperationReceipt } from '@aa-sdk/core'
 import { Hash, Hex } from 'viem'
 import { Chain, SDK, relayerSmartClient } from '../config.js'
 import {
@@ -12,17 +11,15 @@ import {
   injectUOError,
   requiresPriceCommit,
   buildPriceCommit,
-  isBatchOperationCallData,
   getMarketAddressFromIntent,
   constructImmediateTriggerOrder,
 } from '../utils/relayerUtils.js'
 import { UserOpStatus, UOError, SigningPayload, UserOperation } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
-import { CallGasLimitMultiplier } from '../constants/relayer.js'
 import { Address } from 'hardhat-deploy/dist/types.js'
 import { rateLimit } from 'express-rate-limit'
-import { Big6Math, parseViemContractCustomError } from '@perennial/sdk'
+import { Big6Math, notEmpty, parseViemContractCustomError } from '@perennial/sdk'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -105,7 +102,7 @@ export async function createRelayer() {
         return injectUOError({ uoError: UOError.OracleError, account, signer })(e)
       })
 
-      const marketPriceCommits: Record<Address, Promise<UserOperationCallData>> = {}
+      const marketPriceCommits: Record<Address, Promise<UserOperation>> = {}
       const immediateTriggers: UserOperation[] = []
       for (const { signingPayload } of intents) {
         // Add price commit if required
@@ -120,43 +117,53 @@ export async function createRelayer() {
           if (immediateTrigger) immediateTriggers.push(immediateTrigger)
         }
       }
-      const intentBatch = intents.map(({ signingPayload, signatures }) =>
-        constructUserOperation(signingPayload, signatures),
-      )
-      if (!isBatchOperationCallData(intentBatch)) {
-        throw Error(UOError.FailedToConstructUO)
-      }
+      const intentBatch = intents
+        .map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures))
+        .filter(notEmpty)
+      if (!intentBatch.length) throw Error(UOError.FailedToConstructUO)
+
       const priceCommitsBatch = await Promise.all(Object.values(marketPriceCommits))
       const uos = priceCommitsBatch.concat(intentBatch, immediateTriggers)
 
-      const entryPoint = relayerSmartClient.account.getEntryPoint().address
-      const nonceKey = BigInt(intents[0].signingPayload.message.action.common.signer)
+      // Nonce key must be 2 bytes for ZeroDev
+      const nonceKey = BigInt(intents[0].signingPayload.message.action.common.signer.slice(0, 6))
 
       tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
         chain: Chain.id,
       })
 
+      const nonce = await relayerSmartClient.account.getNonce({ key: nonceKey })
       const { uoHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
           const userOp = await relayerSmartClient
-            .buildUserOperation({
-              uo: uos,
-              overrides: {
-                callGasLimit: {
-                  multiplier: CallGasLimitMultiplier,
-                },
-                maxFeePerGas: {
-                  multiplier: tipMultiplier,
-                },
-                maxPriorityFeePerGas: {
-                  multiplier: tipMultiplier,
-                },
-                // this is important for parellelization of user ops
-                //  extra noise handles more ops in parallel that might have been built around the same time
-                nonceKey: nonceKey + BigInt(Date.now()),
-              },
+            .prepareUserOperation({
+              callData: await relayerSmartClient.account.encodeCalls(
+                uos.map((uo) => ({
+                  to: uo.target,
+                  data: uo.data,
+                  value: uo.value,
+                })),
+              ),
+              nonce,
             })
             .catch(injectUOError({ uoError: UOError.FailedBuildOperation, account, signer }))
+          // const userOp = await relayerSmartClient.buildUserOperation({
+          //   uo: uos,
+          //   overrides: {
+          //     callGasLimit: {
+          //       multiplier: CallGasLimitMultiplier,
+          //     },
+          //     maxFeePerGas: {
+          //       multiplier: tipMultiplier,
+          //     },
+          //     maxPriorityFeePerGas: {
+          //       multiplier: tipMultiplier,
+          //     },
+          //     // this is important for parellelization of user ops
+          //     //  extra noise handles more ops in parallel that might have been built around the same time
+          //     nonceKey: nonceKey + BigInt(Date.now()),
+          //   },
+          // })
 
           const latestEthPrice = await latestEthPrice_
           const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
@@ -167,7 +174,7 @@ export async function createRelayer() {
           if (sigMaxFee < maxFeeUsd) {
             console.warn(`Max fee is low: ${sigMaxFee} < ${maxFeeUsd}. account: ${account} signer: ${signer}`)
             // this error will not retry. We won't relay a tx if the signature max fee is too low
-            if (sigMaxFee < Big6Math.fromFloatString('1')) {
+            if (sigMaxFee < Big6Math.fromFloatString('0')) {
               tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
                 chain: Chain.id,
               })
@@ -175,11 +182,14 @@ export async function createRelayer() {
             }
           }
 
-          const request = await relayerSmartClient
-            .signUserOperation({ uoStruct: userOp })
-            .catch(injectUOError({ uoError: UOError.FailedSignOperation, account, signer }))
+          // const request = await relayerSmartClient
+          //   .signUserOperation({ uoStruct: userOp })
+          //   .catch(injectUOError({ uoError: UOError.FailedSignOperation, account, signer }))
           const uoHash = await relayerSmartClient
-            .sendRawUserOperation(request, entryPoint)
+            .sendUserOperation({
+              callData: userOp.callData,
+              nonce,
+            })
             .catch(injectUOError({ uoError: UOError.FailedSendOperation, account, signer }))
 
           console.log(`Sent userOp: ${uoHash}`)
@@ -189,18 +199,16 @@ export async function createRelayer() {
           })
 
           if (shouldWait) {
-            const { userOpReceipt, hash } = await waitForUserOperationReceipt(relayerSmartClient, {
-              hash: uoHash,
-              retries: {
-                maxRetries: 25,
-                multiplier: 1.5,
-                intervalMs: 250,
-              },
-            }).catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
-            txHash = hash
+            const receipt = await relayerSmartClient
+              .waitForUserOperationReceipt({
+                hash: uoHash,
+                retryCount: 4,
+              })
+              .catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
+            txHash = receipt.receipt.transactionHash
             console.log(`UserOp confirmed: ${txHash}`)
-            if (!userOpReceipt?.success) {
-              throw new Error(`UserOp reverted: ${userOpReceipt.reason}`)
+            if (!receipt.success) {
+              throw new Error(`UserOp reverted: ${receipt.reason}`)
             }
           }
           return {
@@ -244,7 +252,7 @@ export async function createRelayer() {
       return
     }
     try {
-      const uo = await relayerSmartClient.getUserOperationReceipt(hash as Hash)
+      const uo = await relayerSmartClient.getUserOperationReceipt({ hash: hash as Hash })
 
       res.send(JSON.stringify({ success: true, uo }))
     } catch (e) {

@@ -1,4 +1,4 @@
-import { Hex, Hash } from 'viem'
+import { Hex, Hash, Address } from 'viem'
 import PerennialSDK from '@perennial/sdk'
 
 export enum UserOpStatus {
@@ -25,7 +25,7 @@ export enum UOError {
 }
 
 export type UserOperation = {
-  target: Hex
+  target: Address
   data: Hex
   value?: bigint // optional
 }

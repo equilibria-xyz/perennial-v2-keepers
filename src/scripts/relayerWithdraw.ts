@@ -1,5 +1,5 @@
 import { encodeFunctionData, getAddress, isAddress } from 'viem'
-import { relayerAccount, relayerSmartClient, SDK } from '../config.js'
+import { relayerSmartClient, SDK, relayerSigner } from '../config.js'
 import { ERC20Abi } from '@perennial/sdk'
 
 const args = process.argv.slice(2)
@@ -9,10 +9,10 @@ export default async function relayerWithdraw() {
 
   if (!destination || !isAddress(destination)) throw new Error('Missing destination address')
 
-  console.log(`initiating withdrawal to ${destination} for lightAccount: ${relayerAccount.address}`)
+  console.log(`initiating withdrawal to ${destination} for lightAccount: ${relayerSigner.address}`)
 
   const dsuContract = SDK.contracts.getDSUContract()
-  const dsuBalance = await dsuContract.read.balanceOf([relayerAccount.address])
+  const dsuBalance = await dsuContract.read.balanceOf([relayerSigner.address])
 
   const txData = encodeFunctionData({
     abi: ERC20Abi,

@@ -1,12 +1,13 @@
 import { encodeFunctionData, parseEther } from 'viem'
 import { EntryPointAbi } from '../constants/abi/EntryPoint.abi.js'
-import { relayerAccount, relayerSmartClient } from '../config.js'
+import { relayerSmartClient, relayerSigner } from '../config.js'
 
 const args = process.argv.slice(2)
 const OneDaySecs = 60 * 60 * 24
 
 type Action = 'stake' | 'unstake' | 'withdraw'
-const isValidAction = (action: unknown): action is Action => (action === 'stake' || action === 'unstake' || action === 'withdraw')
+const isValidAction = (action: unknown): action is Action =>
+  action === 'stake' || action === 'unstake' || action === 'withdraw'
 
 const formatAction = (action: Action): string => {
   if (action === 'stake' || action === 'unstake') return action
@@ -20,7 +21,7 @@ export default async function ManageEntryPointStake() {
     process.exit(0)
   }
 
-  console.log(`initiating ${formatAction(action)} for lightAccount: ${relayerAccount.address}`)
+  console.log(`initiating ${formatAction(action)} for lightAccount: ${relayerSigner.address}`)
 
   let txData
   let value
@@ -37,7 +38,7 @@ export default async function ManageEntryPointStake() {
       functionName: 'unlockStake',
     })
   } else if (action === 'withdraw') {
-    const withdrawTo = await relayerAccount.getSigner().getAddress()
+    const withdrawTo = relayerSigner.address
     txData = encodeFunctionData({
       abi: EntryPointAbi,
       functionName: 'withdrawStake',
@@ -49,12 +50,12 @@ export default async function ManageEntryPointStake() {
     process.exit(0)
   }
 
-  const entryPointAddress = relayerSmartClient.account.getEntryPoint().address
+  const entryPointAddress = (await relayerSmartClient.getSupportedEntryPoints())[0]
   // this waits for userOp internally and returns txHash
   const txHash = await relayerSmartClient.sendTransaction({
     to: entryPointAddress,
     data: txData,
-    value
+    value,
   })
   console.log(`${formatAction(action)} complete`, txHash)
 }

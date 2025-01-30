@@ -20,7 +20,7 @@ export async function getMarkets() {
 
     // Oracle -> KeeperOracle
     const oracleContract = SDK.contracts.getOracleContract(oracle)
-    const [current] = await oracleContract.read.global()
+    const { current } = await oracleContract.read.global()
     const [keeperOracle] = await oracleContract.read.oracles([current])
 
     // KeeperOracle -> Feed

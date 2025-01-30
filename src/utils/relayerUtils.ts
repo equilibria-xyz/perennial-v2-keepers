@@ -1,5 +1,4 @@
 import { Hex, encodeFunctionData, Address, zeroAddress } from 'viem'
-import { UserOperationStruct, BatchUserOperationCallData } from '@aa-sdk/core'
 
 import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
 import { BaseTipMultiplier, MaxRetries, TipPercentageIncrease } from '../constants/relayer.js'
@@ -180,7 +179,10 @@ export const retryUserOpWithIncreasingTip = async (
   throw new Error(UOError.ExceededMaxRetry)
 }
 
-export const calcOpMaxFeeUsd = (userOp: UserOperationStruct, latestEthPrice: bigint) => {
+export const calcOpMaxFeeUsd = (
+  userOp: { callGasLimit: bigint; verificationGasLimit: bigint; preVerificationGas: bigint; maxFeePerGas: bigint },
+  latestEthPrice: bigint,
+) => {
   const opGasLimit =
     BigInt(userOp.callGasLimit) + BigInt(userOp.verificationGasLimit) + BigInt(userOp.preVerificationGas) // gwei
   const maxGasCost = (opGasLimit * BigInt(userOp.maxFeePerGas)) / 1_000_000_000n // gwei
@@ -232,9 +234,6 @@ export const requiresPriceCommit = (
     intent.primaryType === 'CancelOrderAction'
   )
 }
-
-export const isBatchOperationCallData = (batch: (UserOperation | undefined)[]): batch is BatchUserOperationCallData =>
-  !batch.some((intent): intent is undefined => intent === undefined)
 
 export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
   switch (intent.primaryType) {

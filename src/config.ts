@@ -5,21 +5,18 @@ import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
 import { GraphQLClient } from 'graphql-request'
 import { arbitrum, arbitrumSepolia } from 'viem/chains'
 import { notEmpty } from './utils/arrayUtils.js'
-import PerennialSDK, { chainIdToChainMap, SupportedChainIds } from '@perennial/sdk'
-import {
-  alchemy,
-  createAlchemySmartAccountClient,
-  arbitrum as alchemyArbitrum,
-  arbitrumSepolia as alchemyArbitrumSepolia,
-} from '@account-kit/infra'
-import { LocalAccountSigner } from '@aa-sdk/core'
-import { createLightAccount } from '@account-kit/smart-contracts'
+import PerennialSDK, { chainIdToChainMap, perennial, perennialSepolia, SupportedChainIds } from '@perennial/sdk'
+import { createKernelAccount, createKernelAccountClient, getUserOperationGasPrice } from '@zerodev/sdk'
+import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants'
+import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator'
 
 export const NodeUrls: {
   [key in SupportedChainId]: string
 } = {
   [arbitrum.id]: process.env.ARBITRUM_NODE_URL || '',
   [arbitrumSepolia.id]: process.env.ARBITRUM_SEPOLIA_NODE_URL || '',
+  [perennial.id]: process.env.PERENNIAL_NODE_URL || '',
+  [perennialSepolia.id]: process.env.PERENNIAL_SEPOLIA_NODE_URL || '',
 }
 
 export const GraphUrls: {
@@ -27,6 +24,8 @@ export const GraphUrls: {
 } = {
   [arbitrum.id]: process.env.ARBITRUM_GRAPH_URL || '',
   [arbitrumSepolia.id]: process.env.ARBITRUM_SEPOLIA_GRAPH_URL || '',
+  [perennial.id]: process.env.PERENNIAL_GRAPH_URL || '',
+  [perennialSepolia.id]: process.env.PERENNIAL_SEPOLIA_GRAPH_URL || '',
 }
 
 export const ChainlinkConfig = {
@@ -92,26 +91,82 @@ export const settlementSigner = createWalletClient({
   account: settlementAccount,
 })
 
-const alchemyChain = {
-  [arbitrum.id]: alchemyArbitrum,
-  [arbitrumSepolia.id]: alchemyArbitrumSepolia,
-}[Chain.id]
-const alchemyTransport = alchemy({
-  apiKey: process.env.RELAYER_API_KEY || '',
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+export const relayerSigner = privateKeyToAccount(process.env.RELAYER_PRIVATE_KEY! as Hex)
+const entryPoint = getEntryPoint('0.7')
+const kernelVersion = KERNEL_V3_1
+const ecdsaValidator = await signerToEcdsaValidator(Client, {
+  signer: relayerSigner,
+  entryPoint,
+  kernelVersion,
 })
-export const relayerAccount = await createLightAccount({
-  chain: alchemyChain,
-  transport: alchemyTransport,
+const kernelAccount = await createKernelAccount(Client, {
+  plugins: {
+    sudo: ecdsaValidator,
+  },
+  entryPoint,
+  kernelVersion,
+  useMetaFactory: false,
+})
+const kernelClient = createKernelAccountClient({
+  account: kernelAccount,
+
+  // Replace with your chain
+  chain: Chain as ViemChain,
+
+  // Replace with your bundler RPC.
+  // For ZeroDev, you can find the RPC on your dashboard.
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex),
+  bundlerTransport: http(process.env.ZERODEV_BUNDLER_URL!),
+
+  // Required - the public client
+  client: Client,
+
+  // Optional -- only if you want to use a paymaster
+  // paymaster: {
+  //   getPaymasterData(userOperation: GetPaymasterDataParameters) {
+  //     const zerodevPaymaster = createZeroDevPaymasterClient({
+  //       chain: Chain as ViemChain,
+  //       // Get this RPC from ZeroDev dashboard
+  //       transport: http(
+  //         process.env.ZERODEV_PAYMASTER_URL!,
+  //       ),
+  //     })
+  //     return zerodevPaymaster.sponsorUserOperation({ userOperation })
+  //   },
+  // },
+
+  // Required - the default gas prices might be too high
+  userOperation: {
+    estimateFeesPerGas: async ({ bundlerClient }) => {
+      // TODO: Use `zd_getUserOperationGasPrice` and check if
+      // slow and fast are the same value. If so, we can just set the
+      // priority fee to the minimum value
+      return getUserOperationGasPrice(bundlerClient)
+    },
+  },
 })
 
-export const relayerSmartClient = createAlchemySmartAccountClient({
-  transport: alchemyTransport,
-  policyId: process.env.RELAYER_POLICY_ID || '',
-  chain: alchemyChain,
-  account: relayerAccount,
-})
+// const IsPerennialChain = Chain.id === perennialSepolia.id
+
+// const alchemyChain = {
+//   [arbitrum.id]: alchemyArbitrum,
+//   [arbitrumSepolia.id]: alchemyArbitrumSepolia,
+//   [perennialSepolia.id]: alchemyArbitrumSepolia,
+// }[Chain.id]
+// const alchemyTransport = alchemy({
+//   apiKey: process.env.RELAYER_API_KEY || '',
+// })
+// export const relayerAccount = IsPerennialChain
+//   ? null
+//   : await createLightAccount({
+//       chain: alchemyChain,
+//       transport: alchemyTransport,
+//       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+//       signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex),
+//     })
+
+export const relayerSmartClient = kernelClient
 
 const PythUrls = [
   process.env.PYTH_HERMES_URL,
@@ -129,6 +184,8 @@ export const PythConnections = PythUrls.map(
 )
 
 export const PythBenchmarksURL = 'https://benchmarks.pyth.network'
+export const StorkURL = process.env.STORK_URL || ''
+export const StorkAPIKey = process.env.STORK_API_KEY || ''
 
 export enum TaskType {
   'liq',
@@ -153,5 +210,9 @@ export const SDK = new PerennialSDK.default({
   graphUrl: GraphUrls[Chain.id],
   pythUrl: PythUrls,
   cryptexUrl: CryptexPriceFeedUrl,
+  storkConfig: {
+    url: StorkURL,
+    apiKey: StorkAPIKey,
+  },
   rpcUrl: NodeUrls[Chain.id],
 })

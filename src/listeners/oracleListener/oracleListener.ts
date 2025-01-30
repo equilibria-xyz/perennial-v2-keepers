@@ -13,6 +13,7 @@ import {
   MultiInvokerAbi,
   KeeperOracleAbi,
   parseViemContractCustomError,
+  StorkFactoryAddresses,
 } from '@perennial/sdk'
 
 type Commitment = {
@@ -287,6 +288,14 @@ export class OracleListener {
     providerTag: string,
   ): Promise<{ data: Hex; publishTime: bigint; value: bigint }> {
     try {
+      // Stork doesn't support querying by timestamp, so we need to use the latest version
+      if (requestData.factory === StorkFactoryAddresses[Chain.id]) {
+        const [data] = await SDK.oracles.read.oracleCommitmentsLatest({
+          requests: [requestData],
+        })
+        return { data: data.updateData, publishTime: BigInt(data.details[0].publishTime), value: data.value }
+      }
+
       const [data] = await SDK.oracles.read.oracleCommitmentsTimestamp({
         timestamp,
         requests: [requestData],

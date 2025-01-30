@@ -8,7 +8,7 @@ import {
   orderAccount,
   settlementAccount,
   SDK,
-  relayerAccount,
+  relayerSmartClient,
 } from '../../config.js'
 import {
   BatchKeeperAddresses,
@@ -310,7 +310,7 @@ export class MetricsListener {
       { address: MarketFactoryAddresses[Chain.id], role: 'marketFactory' },
       { address: OracleFactoryAddresses[Chain.id], role: 'oracleFactory' },
       { address: BatchKeeperAddresses[Chain.id], role: 'batchKeeper' },
-      { address: relayerAccount.address, role: 'relayer' },
+      { address: relayerSmartClient.account.address, role: 'relayer' },
     ]
 
     monitoredAddresses.forEach(({ address, role }) => {

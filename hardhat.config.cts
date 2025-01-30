@@ -4,7 +4,8 @@ import '@nomicfoundation/hardhat-verify'
 import 'dotenv/config'
 import { NetworkUserConfig } from 'hardhat/types'
 
-export const OPTIMIZER_ENABLED = process.env.OPTIMIZER_ENABLED === 'true' || false
+export const OPTIMIZER_ENABLED =
+  process.env.OPTIMIZER_ENABLED === 'true' || false
 type configOverrides = {
   dependencyPaths?: string[]
 }
@@ -17,6 +18,10 @@ function getUrl(networkName: string): string {
       return process.env.ARBITRUM_SEPOLIA_NODE_URL ?? ''
     case 'base':
       return process.env.BASE_NODE_URL ?? ''
+    case 'perennialSepolia':
+      return process.env.PERENNIAL_SEPOLIA_NODE_URL ?? ''
+    case 'perennial':
+      return process.env.PERENNIAL_NODE_URL ?? ''
     default:
       return ''
   }
@@ -30,17 +35,23 @@ function createNetworkConfig(network: string): NetworkUserConfig {
   return cfg
 }
 
-function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserConfig {
+function defaultConfig({
+  dependencyPaths,
+}: configOverrides = {}): HardhatUserConfig {
   return {
     networks: {
       arbitrum: createNetworkConfig('arbitrum'),
       arbitrumSepolia: createNetworkConfig('arbitrumSepolia'),
       base: createNetworkConfig('base'),
+      perennialSepolia: createNetworkConfig('perennialSepolia'),
+      perennial: createNetworkConfig('perennial'),
       hardhat: {
         forking: {
           url: process.env.ARBITRUM_GOERLI_NODE_URL || '',
           enabled: process.env.FORK_ENABLED === 'true' || false,
-          blockNumber: process.env.FORK_BLOCK_NUMBER ? parseInt(process.env.FORK_BLOCK_NUMBER) : undefined,
+          blockNumber: process.env.FORK_BLOCK_NUMBER
+            ? parseInt(process.env.FORK_BLOCK_NUMBER)
+            : undefined,
         },
         // chainId: getChainId('hardhat'),
         // allowUnlimitedContractSize: true,
@@ -72,6 +83,8 @@ function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserCo
         arbitrumOne: process.env.ETHERSCAN_API_KEY_ARBITRUM || '',
         arbitrumSepolia: process.env.ETHERSCAN_API_KEY_ARBITRUM || '',
         base: process.env.ETHERSCAN_API_KEY_BASE || '',
+        perennial: 'foobar',
+        perennialSepolia: 'foobar',
       },
       customChains: [
         {
@@ -88,6 +101,22 @@ function defaultConfig({ dependencyPaths }: configOverrides = {}): HardhatUserCo
           urls: {
             apiURL: 'https://api.basescan.org/api',
             browserURL: 'https://basescan.org',
+          },
+        },
+        {
+          network: 'perennialSepolia',
+          chainId: 60850,
+          urls: {
+            apiURL: 'https://explorer-sepolia.perennial.foundation/api',
+            browserURL: 'https://explorer-sepolia.perennial.foundation',
+          },
+        },
+        {
+          network: 'perennial',
+          chainId: 1424,
+          urls: {
+            apiURL: 'https://explorer.perennial.foundation/api',
+            browserURL: 'https://explorer.perennial.foundation',
           },
         },
       ],
