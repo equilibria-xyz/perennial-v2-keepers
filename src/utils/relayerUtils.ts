@@ -15,13 +15,17 @@ import PerennialSDK, {
   UpdateDataRequest,
   marketOraclesToUpdateDataRequest,
   fetchMarketOracles,
-  notEmpty
+  notEmpty,
 } from '@perennial/sdk'
 
 import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 import { PublicClient } from '@perennial/sdk/node_modules/viem'
 
-export const constructDirectUserOperation = (payload: SigningPayload, signature: Hex, chainId: SupportedChainId): UserOperation | undefined => {
+export const constructDirectUserOperation = (
+  payload: SigningPayload,
+  signature: Hex,
+  chainId: SupportedChainId,
+): UserOperation | undefined => {
   switch (payload.primaryType) {
     case 'DeployAccount':
       return {
@@ -88,7 +92,7 @@ export const constructDirectUserOperation = (payload: SigningPayload, signature:
 export const constructRelayedUserOperation = (
   payload: SigningPayload,
   signatures: RelayedSignatures,
-  chainId: SupportedChainId
+  chainId: SupportedChainId,
 ): UserOperation | undefined => {
   const { innerSignature, outerSignature } = signatures
   switch (payload.primaryType) {
@@ -128,6 +132,15 @@ export const constructRelayedUserOperation = (
           args: [payload.message, outerSignature, innerSignature],
         }),
       }
+    case 'RelayedAccessUpdateBatch':
+      return {
+        target: ControllerAddresses[chainId],
+        data: encodeFunctionData({
+          abi: ControllerAbi,
+          functionName: 'relayAccessUpdateBatch',
+          args: [payload.message, outerSignature, innerSignature],
+        }),
+      }
     default:
       console.warn(`Unknown intent ${payload.primaryType}`)
       break
@@ -139,14 +152,18 @@ export const constructRelayedUserOperation = (
 export const constructUserOperation = (
   signingPayload: SigningPayload,
   signatures: Hex[],
-  chainId: SupportedChainId
+  chainId: SupportedChainId,
 ): UserOperation | undefined => {
   let uo
   if (isRelayedIntent(signingPayload.primaryType)) {
-    uo = constructRelayedUserOperation(signingPayload as SigningPayload, {
-      innerSignature: signatures[0],
-      outerSignature: signatures[1],
-    }, chainId)
+    uo = constructRelayedUserOperation(
+      signingPayload as SigningPayload,
+      {
+        innerSignature: signatures[0],
+        outerSignature: signatures[1],
+      },
+      chainId,
+    )
   } else {
     uo = constructDirectUserOperation(signingPayload as SigningPayload, signatures[0], chainId)
   }
@@ -229,21 +246,18 @@ export const injectUOError = ({
 
 export const fetchMarketsRequestMeta = async (
   sdk: InstanceType<typeof PerennialSDK.default>,
-  chainId: SupportedChainId
+  chainId: SupportedChainId,
 ): Promise<Record<SupportedMarket, UpdateDataRequest>> => {
   const allRequestMeta = marketOraclesToUpdateDataRequest(
-    Object.values(
-      await fetchMarketOracles(
-        chainId,
-        sdk.publicClient as PublicClient,
-        sdk.supportedMarkets
-      )
-    )
+    Object.values(await fetchMarketOracles(chainId, sdk.publicClient as PublicClient, sdk.supportedMarkets)),
   )
-  const marketsRequestMeta = sdk.supportedMarkets.reduce((o: Record<SupportedMarket, UpdateDataRequest>, market: SupportedMarket, index: number) => {
-    o[market] = allRequestMeta[index]
-    return o
-  }, {} as Record<SupportedMarket, UpdateDataRequest>)
+  const marketsRequestMeta = sdk.supportedMarkets.reduce(
+    (o: Record<SupportedMarket, UpdateDataRequest>, market: SupportedMarket, index: number) => {
+      o[market] = allRequestMeta[index]
+      return o
+    },
+    {} as Record<SupportedMarket, UpdateDataRequest>,
+  )
 
   return marketsRequestMeta
 }
@@ -273,7 +287,10 @@ export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
   }
 }
 
-export const constructImmediateTriggerOrder = (intent: PlaceOrderSigningPayload, chainId: SupportedChainId): UserOperation | null => {
+export const constructImmediateTriggerOrder = (
+  intent: PlaceOrderSigningPayload,
+  chainId: SupportedChainId,
+): UserOperation | null => {
   try {
     // Only trigger orders with a comparison of 1 (GTE) and price of 1 (min price)
     if (BigInt(intent.message.order.comparison) !== 1n || BigInt(intent.message.order.price) !== 1n) {
@@ -299,23 +316,20 @@ export const constructImmediateTriggerOrder = (intent: PlaceOrderSigningPayload,
 export const buildPriceCommits = async (
   sdk: InstanceType<typeof PerennialSDK.default>,
   markets: SupportedMarket[],
-  marketsRequestMeta: Record<SupportedMarket, UpdateDataRequest>
-): Promise<({ target: Hex; data: Hex; value: bigint })[]> => {
-
+  marketsRequestMeta: Record<SupportedMarket, UpdateDataRequest>,
+): Promise<{ target: Hex; data: Hex; value: bigint }[]> => {
   const commitments = await sdk.oracles.read.oracleCommitmentsLatest({
     markets: markets,
-    requests: markets.map((market) => marketsRequestMeta[market])
+    requests: markets.map((market) => marketsRequestMeta[market]),
   })
 
-  return (
-    commitments.map((commitment) => {
-      const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })
+  return commitments.map((commitment) => {
+    const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })
 
-      return {
-        target: priceCommitment.to,
-        data: priceCommitment.data,
-        value: priceCommitment.value,
-      }
-    })
-  )
+    return {
+      target: priceCommitment.to,
+      data: priceCommitment.data,
+      value: priceCommitment.value,
+    }
+  })
 }
