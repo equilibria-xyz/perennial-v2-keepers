@@ -20,12 +20,14 @@ import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { Address } from 'hardhat-deploy/dist/types.js'
 import { rateLimit } from 'express-rate-limit'
 import { Big6Math, notEmpty, parseViemContractCustomError } from '@perennial/sdk'
+import { randomBytes } from 'crypto'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
 BigInt.prototype.toJSON = function (): number {
   return this.toString()
 }
+const FeeRejectionThreshold = Big6Math.fromFloatString(process.env.FEE_REJECTION_THRESHOLD ?? '0')
 
 export async function createRelayer() {
   const app = express()
@@ -92,15 +94,18 @@ export async function createRelayer() {
     }
     const account = intents.at(0)?.signingPayload.message.action.common.account
     const signer = intents.at(0)?.signingPayload.message.action.common.signer
+    const shouldCheckFee = FeeRejectionThreshold > 0n
 
     let txHash: Hash | undefined
     try {
-      const latestEthPrice_ = ethOracleFetcher.getLastPriceBig6().catch((e) => {
-        tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
-          chain: Chain.id,
-        })
-        return injectUOError({ uoError: UOError.OracleError, account, signer })(e)
-      })
+      const latestEthPrice_ = shouldCheckFee
+        ? ethOracleFetcher.getLastPriceBig6().catch((e) => {
+            tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
+              chain: Chain.id,
+            })
+            return injectUOError({ uoError: UOError.OracleError, account, signer })(e)
+          })
+        : Promise.resolve(0n)
 
       const marketPriceCommits: Record<Address, Promise<UserOperation>> = {}
       const immediateTriggers: UserOperation[] = []
@@ -126,44 +131,27 @@ export async function createRelayer() {
       const uos = priceCommitsBatch.concat(intentBatch, immediateTriggers)
 
       // Nonce key must be 2 bytes for ZeroDev
-      const nonceKey = BigInt(intents[0].signingPayload.message.action.common.signer.slice(0, 6))
+      const nonceKey = BigInt(`0x${randomBytes(2).toString('hex')}`)
 
       tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
         chain: Chain.id,
       })
 
-      const nonce = await relayerSmartClient.account.getNonce({ key: nonceKey })
+      const [nonce, callData] = await Promise.all([
+        relayerSmartClient.account.getNonce({ key: nonceKey }),
+        relayerSmartClient.account.encodeCalls(
+          uos.map((uo) => ({
+            to: uo.target,
+            data: uo.data,
+            value: uo.value,
+          })),
+        ),
+      ])
       const { uoHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
           const userOp = await relayerSmartClient
-            .prepareUserOperation({
-              callData: await relayerSmartClient.account.encodeCalls(
-                uos.map((uo) => ({
-                  to: uo.target,
-                  data: uo.data,
-                  value: uo.value,
-                })),
-              ),
-              nonce,
-            })
+            .prepareUserOperation({ callData, nonce })
             .catch(injectUOError({ uoError: UOError.FailedBuildOperation, account, signer }))
-          // const userOp = await relayerSmartClient.buildUserOperation({
-          //   uo: uos,
-          //   overrides: {
-          //     callGasLimit: {
-          //       multiplier: CallGasLimitMultiplier,
-          //     },
-          //     maxFeePerGas: {
-          //       multiplier: tipMultiplier,
-          //     },
-          //     maxPriorityFeePerGas: {
-          //       multiplier: tipMultiplier,
-          //     },
-          //     // this is important for parellelization of user ops
-          //     //  extra noise handles more ops in parallel that might have been built around the same time
-          //     nonceKey: nonceKey + BigInt(Date.now()),
-          //   },
-          // })
 
           const latestEthPrice = await latestEthPrice_
           const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
@@ -171,7 +159,7 @@ export async function createRelayer() {
             (o, { signingPayload }) => o + BigInt(signingPayload.message.action.maxFee),
             0n,
           )
-          if (sigMaxFee < maxFeeUsd) {
+          if (shouldCheckFee && sigMaxFee < maxFeeUsd) {
             console.warn(`Max fee is low: ${sigMaxFee} < ${maxFeeUsd}. account: ${account} signer: ${signer}`)
             // this error will not retry. We won't relay a tx if the signature max fee is too low
             if (sigMaxFee < Big6Math.fromFloatString('0')) {
@@ -182,14 +170,10 @@ export async function createRelayer() {
             }
           }
 
-          // const request = await relayerSmartClient
-          //   .signUserOperation({ uoStruct: userOp })
-          //   .catch(injectUOError({ uoError: UOError.FailedSignOperation, account, signer }))
+          const signedUserOp = await relayerSmartClient.signUserOperation({ ...userOp })
+
           const uoHash = await relayerSmartClient
-            .sendUserOperation({
-              callData: userOp.callData,
-              nonce,
-            })
+            .sendUserOperation({ ...signedUserOp })
             .catch(injectUOError({ uoError: UOError.FailedSendOperation, account, signer }))
 
           console.log(`Sent userOp: ${uoHash}`)
@@ -202,7 +186,8 @@ export async function createRelayer() {
             const receipt = await relayerSmartClient
               .waitForUserOperationReceipt({
                 hash: uoHash,
-                retryCount: 4,
+                pollingInterval: 500,
+                retryCount: 6,
               })
               .catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
             txHash = receipt.receipt.transactionHash
