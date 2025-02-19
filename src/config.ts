@@ -6,15 +6,9 @@ import { GraphQLClient } from 'graphql-request'
 import { arbitrum, arbitrumSepolia, base, baseSepolia } from 'viem/chains'
 import { notEmpty } from './utils/arrayUtils.js'
 import PerennialSDK, { chainIdToChainMap, perennial, perennialSepolia, SupportedChainIds } from '@perennial/sdk'
-import {
-  createKernelAccount,
-  createKernelAccountClient,
-  createZeroDevPaymasterClient,
-  getUserOperationGasPrice,
-} from '@zerodev/sdk'
+import { createKernelAccount, createKernelAccountClient, getUserOperationGasPrice } from '@zerodev/sdk'
 import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants'
 import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator'
-import { GetPaymasterDataParameters } from 'viem/account-abstraction'
 
 export const NodeUrls: {
   [key in SupportedChainId]: string
