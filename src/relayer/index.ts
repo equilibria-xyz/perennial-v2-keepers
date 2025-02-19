@@ -10,17 +10,18 @@ import {
   retryUserOpWithIncreasingTip,
   injectUOError,
   requiresPriceCommit,
-  buildPriceCommit,
+  buildPriceCommits,
   getMarketAddressFromIntent,
   constructImmediateTriggerOrder,
+  fetchMarketsRequestMeta,
 } from '../utils/relayerUtils.js'
-import { UserOpStatus, UOError, SigningPayload, UserOperation } from './types.js'
+import { UserOpStatus, UOError, SigningPayload } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
-import { Address } from 'hardhat-deploy/dist/types.js'
 import { rateLimit } from 'express-rate-limit'
-import { Big6Math, notEmpty, parseViemContractCustomError } from '@perennial/sdk'
+import { addressToMarket, Big6Math, notEmpty, nowSeconds, parseViemContractCustomError, unique } from '@perennial/sdk'
 import { randomBytes } from 'crypto'
+import { PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -44,6 +45,9 @@ export async function createRelayer() {
       message: 'Too many requests, please try again later.',
     }),
   )
+
+  // this is a one time fetch the relayer service should be restarted when updating market oracle settings
+  const marketsRequestMeta = await fetchMarketsRequestMeta(SDK, Chain.id)
 
   const ethOracleFetcher = new EthOracleFetcher()
   await ethOracleFetcher.init()
@@ -85,6 +89,8 @@ export async function createRelayer() {
           error = 'Missing signature; requires [signature]'
         } else if (!relayedIntent && signatures.length !== 1) {
           error = 'Missing signatures; requires [innerSignature, outerSignature]'
+        } else if (signingPayload.message.action.common.expiry < nowSeconds(true)) {
+          error = 'Intent has already expired'
         }
       }
       if (error) {
@@ -107,27 +113,28 @@ export async function createRelayer() {
           })
         : Promise.resolve(0n)
 
-      const marketPriceCommits: Record<Address, Promise<UserOperation>> = {}
-      const immediateTriggers: UserOperation[] = []
-      for (const { signingPayload } of intents) {
-        // Add price commit if required
-        if (requiresPriceCommit(signingPayload)) {
-          const marketAddress = getMarketAddressFromIntent(signingPayload)
-          if (marketPriceCommits[marketAddress] === undefined)
-            marketPriceCommits[marketAddress] = buildPriceCommit(SDK, Chain.id, signingPayload)
-        }
-        // Add immediate trigger execution if required
-        if (signingPayload.primaryType === 'PlaceOrderAction') {
-          const immediateTrigger = constructImmediateTriggerOrder(signingPayload)
-          if (immediateTrigger) immediateTriggers.push(immediateTrigger)
-        }
-      }
-      const intentBatch = intents
-        .map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures))
+      const marketsRequiringCommits = unique(
+        intents
+          .filter(({ signingPayload }) => requiresPriceCommit(signingPayload))
+          .map(({ signingPayload }) => addressToMarket(Chain.id, getMarketAddressFromIntent(signingPayload))),
+      )
+      const marketPriceCommits_ = buildPriceCommits(SDK, marketsRequiringCommits, marketsRequestMeta)
+
+      // Add immediate trigger execution if required
+      const immediateTriggers = intents
+        .filter(({ signingPayload }) => signingPayload.primaryType === 'PlaceOrderAction')
+        .map(({ signingPayload }) =>
+          constructImmediateTriggerOrder(signingPayload as PlaceOrderSigningPayload, Chain.id),
+        )
         .filter(notEmpty)
+
+      const intentBatch = intents
+        .map(({ signingPayload, signatures }) => constructUserOperation(signingPayload, signatures, Chain.id))
+        .filter(notEmpty)
+
       if (!intentBatch.length) throw Error(UOError.FailedToConstructUO)
 
-      const priceCommitsBatch = await Promise.all(Object.values(marketPriceCommits))
+      const priceCommitsBatch = await marketPriceCommits_
       const uos = priceCommitsBatch.concat(intentBatch, immediateTriggers)
 
       // Nonce key must be 2 bytes for ZeroDev

@@ -30,6 +30,8 @@ export type UserOperation = {
   value?: bigint // optional
 }
 
+export type IntentBatch = (UserOperation | undefined)[]
+
 export type RelayedSignatures = {
   innerSignature: Hex
   outerSignature: Hex
