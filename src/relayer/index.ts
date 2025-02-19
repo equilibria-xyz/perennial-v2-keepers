@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-import { encodeFunctionData, Hash, Hex, parseAbi, Address } from 'viem'
+import { encodeFunctionData, Hash, Hex, parseAbi } from 'viem'
 import { BridgerChain, Chain, SDK, bridgerRelayerSmartClient, relayerSmartClient } from '../config.js'
 import {
   calcOpMaxFeeUsd,
