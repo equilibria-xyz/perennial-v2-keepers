@@ -3,7 +3,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { SupportedChainId } from './constants/network.js'
 import { EvmPriceServiceConnection } from '@pythnetwork/pyth-evm-js'
 import { GraphQLClient } from 'graphql-request'
-import { arbitrum, arbitrumSepolia } from 'viem/chains'
+import { arbitrum, arbitrumSepolia, base, baseSepolia } from 'viem/chains'
 import { notEmpty } from './utils/arrayUtils.js'
 import PerennialSDK, { chainIdToChainMap, perennial, perennialSepolia, SupportedChainIds } from '@perennial/sdk'
 import { createKernelAccount, createKernelAccountClient, getUserOperationGasPrice } from '@zerodev/sdk'
@@ -17,6 +17,13 @@ export const NodeUrls: {
   [arbitrumSepolia.id]: process.env.ARBITRUM_SEPOLIA_NODE_URL || '',
   [perennial.id]: process.env.PERENNIAL_NODE_URL || '',
   [perennialSepolia.id]: process.env.PERENNIAL_SEPOLIA_NODE_URL || '',
+}
+
+export const BridgerNodeUrls: {
+  [key in typeof base.id | typeof baseSepolia.id]: string
+} = {
+  [base.id]: process.env.BASE_NODE_URL || '',
+  [baseSepolia.id]: process.env.BASE_SEPOLIA_NODE_URL || '',
 }
 
 export const GraphUrls: {
@@ -47,6 +54,15 @@ export const IsMainnet = !([arbitrumSepolia.id] as SupportedChainId[]).includes(
 export const Client = createPublicClient({
   chain: Chain as ViemChain,
   transport: http(NodeUrls[Chain.id]),
+  batch: {
+    multicall: true,
+  },
+}) as PublicClient
+
+export const BridgerChain = Chain.testnet ? baseSepolia : base
+export const BridgerClient = createPublicClient({
+  chain: BridgerChain as ViemChain,
+  transport: http(BridgerNodeUrls[BridgerChain.id]),
   batch: {
     multicall: true,
   },
@@ -147,26 +163,36 @@ const kernelClient = createKernelAccountClient({
   },
 })
 
-// const IsPerennialChain = Chain.id === perennialSepolia.id
-
-// const alchemyChain = {
-//   [arbitrum.id]: alchemyArbitrum,
-//   [arbitrumSepolia.id]: alchemyArbitrumSepolia,
-//   [perennialSepolia.id]: alchemyArbitrumSepolia,
-// }[Chain.id]
-// const alchemyTransport = alchemy({
-//   apiKey: process.env.RELAYER_API_KEY || '',
-// })
-// export const relayerAccount = IsPerennialChain
-//   ? null
-//   : await createLightAccount({
-//       chain: alchemyChain,
-//       transport: alchemyTransport,
-//       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-//       signer: LocalAccountSigner.privateKeyToAccountSigner(process.env.RELAYER_PRIVATE_KEY! as Hex),
-//     })
+const bridgerECDSAValidator = await signerToEcdsaValidator(BridgerClient, {
+  signer: relayerSigner,
+  entryPoint,
+  kernelVersion,
+})
+const bridgerKernelAccount = await createKernelAccount(BridgerClient, {
+  plugins: {
+    sudo: bridgerECDSAValidator,
+  },
+  entryPoint,
+  kernelVersion,
+})
+const bridgerKernelClient = createKernelAccountClient({
+  account: bridgerKernelAccount,
+  chain: BridgerChain as ViemChain,
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  bundlerTransport: http(process.env.ZERODEV_BRIDGER_BUNDLER_URL!),
+  client: BridgerClient,
+  userOperation: {
+    estimateFeesPerGas: async () => {
+      return {
+        maxFeePerGas: BigInt(0),
+        maxPriorityFeePerGas: BigInt(0),
+      }
+    },
+  },
+})
 
 export const relayerSmartClient = kernelClient
+export const bridgerRelayerSmartClient = bridgerKernelClient
 
 const PythUrls = [
   process.env.PYTH_HERMES_URL,
