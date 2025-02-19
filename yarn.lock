@@ -2740,10 +2740,10 @@
   dependencies:
     "@perennial/core" "1.3.0-rc1"
 
-"@perennial/sdk@npm:@perennial/sdk-private@0.0.3-beta.14-perennial.1":
-  version "0.0.3-beta.14-perennial.1"
-  resolved "https://registry.yarnpkg.com/@perennial/sdk-private/-/sdk-private-0.0.3-beta.14-perennial.1.tgz#504f7358a9710ee6b8ed40000c0d2ef6c089f992"
-  integrity sha512-G12fQQPgN2t2lCBMUt8Xo+1ci9DYLpbqjgh+JEVzV3nlWV4Pjtt0A/vta9IZSm8UokdEYvyKPeDMeTxU2fI61A==
+"@perennial/sdk@0.0.4-alpha.0":
+  version "0.0.4-alpha.0"
+  resolved "https://registry.yarnpkg.com/@perennial/sdk/-/sdk-0.0.4-alpha.0.tgz#e5988f79347cb9d58e56ba8d9f62fe3a21fa25b2"
+  integrity sha512-ThKUzwVYQ6ar6rY6iPsuq2RrhxHhhbX8VTJQG/+iu9OpoRa+3Naeb2huuRHY3c6e3htjkR4kNRhCYAcmzUWFXA==
   dependencies:
     "@microsoft/tsdoc" "^0.14.2"
     "@pythnetwork/hermes-client" "^1.0.4"
@@ -15006,3 +15006,8 @@ zod@^3.23.8:
   version "3.23.8"
   resolved "https://registry.yarnpkg.com/zod/-/zod-3.23.8.tgz#e37b957b5d52079769fb8097099b592f0ef4067d"
   integrity sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==
+
+zod@^3.24.2:
+  version "3.24.2"
+  resolved "https://registry.yarnpkg.com/zod/-/zod-3.24.2.tgz#8efa74126287c675e92f46871cfc8d15c34372b3"
+  integrity sha512-lY7CDW43ECgW9u1TcT3IoXHflywfVqDYze4waEz812jR/bZ8FHDsl7pFQoSZTz5N+2NqRXs8GBwnAwo3ZNxqhQ==

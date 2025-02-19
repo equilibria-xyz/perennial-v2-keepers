@@ -1,5 +1,6 @@
-import { Hex, Hash, Address } from 'viem'
-import PerennialSDK from '@perennial/sdk'
+import { Hex, Hash, Address, getAddress } from 'viem'
+import PerennialSDK, { Big6Math } from '@perennial/sdk'
+import { z } from 'zod'
 
 export enum UserOpStatus {
   Complete = 'complete',
@@ -48,3 +49,28 @@ export type SigningPayload =
   | PerennialSDK.eip712.RelayedNonceCancellationSigningPayload
   | PerennialSDK.eip712.RelayedSignerUpdateSigningPayload
   | PerennialSDK.eip712.RelayedOperatorUpdateSigningPayload
+
+export const RelayBridgeBody = z.object({
+  permit: z.object({
+    owner: z.custom<`${Address}`>().transform((val) => getAddress(val)),
+    spender: z.custom<`${Address}`>().transform((val) => getAddress(val)),
+    value: z.custom<`${bigint}`>().transform((val) => BigInt(val)),
+    deadline: z.custom<`${bigint}`>().transform((val) => BigInt(val)),
+    signature: z.custom<`${Hex}`>(),
+  }),
+  bridge: z.object({
+    to: z.custom<`${Address}`>().transform((val) => getAddress(val)),
+    amount: z
+      .custom<`${bigint}`>()
+      .transform((val) => BigInt(val))
+      .refine((val) => val > Big6Math.fromFloatString('5'), {
+        message: 'Amount must be greater than 5 USDC',
+      }),
+    nonce: z.custom<`${bigint}`>().transform((val) => BigInt(val)),
+    deadline: z.custom<`${bigint}`>().transform((val) => BigInt(val)),
+    minGasLimit: z.number(),
+    signature: z.custom<`${Hex}`>(),
+  }),
+})
+
+export type RelayBridgeBody = z.infer<typeof RelayBridgeBody>

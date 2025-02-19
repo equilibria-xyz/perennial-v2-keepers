@@ -1,8 +1,8 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-import { Hash, Hex } from 'viem'
-import { Chain, SDK, relayerSmartClient } from '../config.js'
+import { encodeFunctionData, Hash, Hex, parseAbi, Address } from 'viem'
+import { BridgerChain, Chain, SDK, bridgerRelayerSmartClient, relayerSmartClient } from '../config.js'
 import {
   calcOpMaxFeeUsd,
   constructUserOperation,
@@ -14,13 +14,13 @@ import {
   getMarketAddressFromIntent,
   constructImmediateTriggerOrder,
 } from '../utils/relayerUtils.js'
-import { UserOpStatus, UOError, SigningPayload, UserOperation } from './types.js'
+import { UserOpStatus, UOError, SigningPayload, UserOperation, RelayBridgeBody } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
-import { Address } from 'hardhat-deploy/dist/types.js'
 import { rateLimit } from 'express-rate-limit'
 import { Big6Math, notEmpty, parseViemContractCustomError } from '@perennial/sdk'
 import { randomBytes } from 'crypto'
+import { BridgerAddresses } from '../constants/network.js'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -242,6 +242,63 @@ export async function createRelayer() {
       res.send(JSON.stringify({ success: true, uo }))
     } catch (e) {
       res.send(JSON.stringify({ success: false, hash, error: e.message }))
+    }
+  })
+
+  app.post('/relayBridge/usdc', async (req: Request, res: Response) => {
+    try {
+      const { permit, bridge } = RelayBridgeBody.parse(req.body)
+
+      // Parallelize
+      const nonceKey = BigInt(`0x${randomBytes(2).toString('hex')}`)
+      const [nonce, callData] = await Promise.all([
+        bridgerRelayerSmartClient.account.getNonce({ key: nonceKey }),
+        bridgerRelayerSmartClient.account.encodeCalls([
+          {
+            // Permit goes to USDC
+            to: BridgerAddresses[BridgerChain.id].USDC,
+            data: encodeFunctionData({
+              abi: parseAbi([
+                'function permit(address owner, address spender, uint256 value, uint256 deadline, bytes signature)',
+              ]),
+              args: [permit.owner, permit.spender, permit.value, permit.deadline, permit.signature],
+            }),
+          },
+          {
+            // BridgeMessage goes to bridge
+            to: BridgerAddresses[BridgerChain.id].bridge,
+            data: encodeFunctionData({
+              abi: parseAbi([
+                'function sendMessage(address signer, address to, uint256 amount, bytes signature, uint256 nonce, uint256 deadline, uint32 minGasLimit)',
+              ]),
+              args: [
+                permit.owner,
+                bridge.to,
+                bridge.amount,
+                bridge.signature,
+                bridge.nonce,
+                bridge.deadline,
+                bridge.minGasLimit,
+              ],
+            }),
+          },
+        ]),
+      ])
+
+      const userOp = await bridgerRelayerSmartClient.sendUserOperation({
+        callData,
+        nonce,
+      })
+
+      const receipt = await bridgerRelayerSmartClient.waitForUserOperationReceipt({
+        hash: userOp,
+        pollingInterval: 1000,
+        retryCount: 20,
+      })
+
+      res.send(JSON.stringify({ success: true, uoHash: userOp, txHash: receipt.receipt.transactionHash }))
+    } catch (e) {
+      res.status(400).send(JSON.stringify({ success: false, error: e.message }))
     }
   })
 
