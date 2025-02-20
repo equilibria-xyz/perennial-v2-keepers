@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-import { encodeFunctionData, Hash, Hex, parseAbi } from 'viem'
+import { encodeFunctionData, getAddress, Hash, Hex, maxUint256, parseAbi } from 'viem'
 import { BridgerChain, Chain, SDK, bridgerRelayerSmartClient, relayerSmartClient } from '../config.js'
 import {
   calcOpMaxFeeUsd,
@@ -15,11 +15,19 @@ import {
   constructImmediateTriggerOrder,
   fetchMarketsRequestMeta,
 } from '../utils/relayerUtils.js'
-import { UserOpStatus, UOError, SigningPayload, RelayBridgeBody } from './types.js'
+import { UserOpStatus, UOError, SigningPayload, RelayBridgeBody, RelayPermit2PermitBody } from './types.js'
 import tracer from '../tracer.js'
 import { EthOracleFetcher } from '../utils/ethOracleFetcher.js'
 import { rateLimit } from 'express-rate-limit'
-import { addressToMarket, Big6Math, notEmpty, nowSeconds, parseViemContractCustomError, unique } from '@perennial/sdk'
+import {
+  addressToMarket,
+  Big6Math,
+  notEmpty,
+  nowSeconds,
+  parseViemContractCustomError,
+  unique,
+  USDCAddresses,
+} from '@perennial/sdk'
 import { randomBytes } from 'crypto'
 import { PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 import { BridgerAddresses } from '../constants/network.js'
@@ -184,7 +192,7 @@ export async function createRelayer() {
             .sendUserOperation({ ...signedUserOp })
             .catch(injectUOError({ uoError: UOError.FailedSendOperation, account, signer }))
 
-          console.log(`Sent userOp: ${uoHash}`)
+          console.log(`Sent userOp for ${account} ${signer}: ${uoHash}`)
           tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
             chain: Chain.id,
             tipMultiplier,
@@ -195,11 +203,11 @@ export async function createRelayer() {
               .waitForUserOperationReceipt({
                 hash: uoHash,
                 pollingInterval: 500,
-                retryCount: 6,
+                retryCount: 12,
               })
               .catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
             txHash = receipt.receipt.transactionHash
-            console.log(`UserOp confirmed: ${txHash}`)
+            console.log(`UserOp confirmed for ${account} ${signer}: ${txHash}`)
             if (!receipt.success) {
               throw new Error(`UserOp reverted: ${receipt.reason}`)
             }
@@ -255,6 +263,9 @@ export async function createRelayer() {
 
   app.post('/relayBridge/usdc', async (req: Request, res: Response) => {
     try {
+      tracer.dogstatsd.increment('relayer.bridge.requested', 1, {
+        chain: Chain.id,
+      })
       const { permit, bridge } = RelayBridgeBody.parse(req.body)
 
       // Parallelize
@@ -297,11 +308,75 @@ export async function createRelayer() {
         callData,
         nonce,
       })
+      console.log(`Sent bridge userOp for ${permit.owner} to ${bridge.to}: ${userOp}`)
 
       const receipt = await bridgerRelayerSmartClient.waitForUserOperationReceipt({
         hash: userOp,
         pollingInterval: 1000,
         retryCount: 20,
+      })
+
+      console.log(`Bridge confirmed for ${permit.owner} to ${bridge.to}: ${receipt.receipt.transactionHash}`)
+      tracer.dogstatsd.increment('relayer.bridge.sent', 1, {
+        chain: Chain.id,
+      })
+
+      res.send(JSON.stringify({ success: true, uoHash: userOp, txHash: receipt.receipt.transactionHash }))
+    } catch (e) {
+      res.status(400).send(JSON.stringify({ success: false, error: e.message }))
+    }
+  })
+
+  app.post('/relayPermit2Permit/usdc', async (req: Request, res: Response) => {
+    try {
+      tracer.dogstatsd.increment('relayer.permit2.requested', 1, {
+        chain: Chain.id,
+      })
+      const { permit } = RelayPermit2PermitBody.parse(req.body)
+      const permit2Address = getAddress('0x000000000022D473030F116dDEE9F6B43aC78BA3')
+
+      const currentAllowance = await SDK.publicClient.readContract({
+        address: USDCAddresses[Chain.id],
+        abi: parseAbi(['function allowance(address owner, address spender) view returns (uint256)']),
+        functionName: 'allowance',
+        args: [permit.owner, permit2Address],
+      })
+      if (currentAllowance >= maxUint256 / 2n) {
+        res.send(JSON.stringify({ success: true, uoHash: undefined, txHash: undefined }))
+        return
+      }
+
+      const nonceKey = BigInt(`0x${randomBytes(2).toString('hex')}`)
+      const [nonce, callData] = await Promise.all([
+        relayerSmartClient.account.getNonce({ key: nonceKey }),
+        relayerSmartClient.account.encodeCalls([
+          {
+            to: USDCAddresses[Chain.id],
+            data: encodeFunctionData({
+              abi: parseAbi([
+                'function permit(address owner, address spender, uint256 value, uint256 deadline, bytes signature)',
+              ]),
+              args: [permit.owner, permit2Address, maxUint256, permit.deadline, permit.signature],
+            }),
+          },
+        ]),
+      ])
+
+      const userOp = await relayerSmartClient.sendUserOperation({
+        callData,
+        nonce,
+      })
+      console.log(`Sent permit2 permit userOp for ${permit.owner}: ${userOp}`)
+
+      const receipt = await relayerSmartClient.waitForUserOperationReceipt({
+        hash: userOp,
+        pollingInterval: 500,
+        retryCount: 20,
+      })
+      console.log(`Permit2 permit confirmed for ${permit.owner}: ${receipt.receipt.transactionHash}`)
+
+      tracer.dogstatsd.increment('relayer.permit2.sent', 1, {
+        chain: Chain.id,
       })
 
       res.send(JSON.stringify({ success: true, uoHash: userOp, txHash: receipt.receipt.transactionHash }))

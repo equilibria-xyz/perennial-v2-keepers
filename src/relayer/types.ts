@@ -76,3 +76,13 @@ export const RelayBridgeBody = z.object({
 })
 
 export type RelayBridgeBody = z.infer<typeof RelayBridgeBody>
+
+export const RelayPermit2PermitBody = z.object({
+  permit: z.object({
+    owner: z.custom<`${Address}`>().transform((val) => getAddress(val)),
+    deadline: z.custom<`${bigint}`>().transform((val) => BigInt(val)),
+    signature: z.custom<`${Hex}`>(),
+  }),
+})
+
+export type RelayPermit2PermitBody = z.infer<typeof RelayPermit2PermitBody>
