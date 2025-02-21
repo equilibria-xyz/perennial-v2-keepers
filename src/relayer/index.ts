@@ -186,11 +186,15 @@ export async function createRelayer() {
             }
           }
 
+          const beforeSign = performance.now()
           const signedUserOp = await relayerSmartClient.signUserOperation({ ...userOp })
 
           const uoHash = await relayerSmartClient
             .sendUserOperation({ ...signedUserOp })
             .catch(injectUOError({ uoError: UOError.FailedSendOperation, account, signer }))
+          tracer.dogstatsd.gauge('relayer.time.signSend', performance.now() - beforeSign, {
+            chain: Chain.id,
+          })
 
           console.log(`Sent userOp for ${account} ${signer}: ${uoHash}`)
           tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
@@ -199,13 +203,17 @@ export async function createRelayer() {
           })
 
           if (shouldWait) {
+            const beforeWait = performance.now()
             const receipt = await relayerSmartClient
               .waitForUserOperationReceipt({
                 hash: uoHash,
-                pollingInterval: 500,
-                retryCount: 12,
+                pollingInterval: 250,
+                retryCount: 24,
               })
               .catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
+            tracer.dogstatsd.gauge('relayer.time.receiptWait', performance.now() - beforeWait, {
+              chain: Chain.id,
+            })
             txHash = receipt.receipt.transactionHash
             console.log(`UserOp confirmed for ${account} ${signer}: ${txHash}`)
             if (!receipt.success) {
