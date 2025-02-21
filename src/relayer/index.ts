@@ -149,10 +149,6 @@ export async function createRelayer() {
       // Nonce key must be 2 bytes for ZeroDev
       const nonceKey = BigInt(`0x${randomBytes(2).toString('hex')}`)
 
-      tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
-        chain: Chain.id,
-      })
-
       const [nonce, callData] = await Promise.all([
         relayerSmartClient.account.getNonce({ key: nonceKey }),
         relayerSmartClient.account.encodeCalls(
@@ -165,6 +161,8 @@ export async function createRelayer() {
       ])
       const { uoHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, shouldWait?: boolean) => {
+          const beforeBuild = performance.now()
+
           const userOp = await relayerSmartClient
             .prepareUserOperation({ callData, nonce })
             .catch(injectUOError({ uoError: UOError.FailedBuildOperation, account, signer }))
@@ -185,6 +183,9 @@ export async function createRelayer() {
               throw new Error(UOError.MaxFeeTooLow)
             }
           }
+          tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - beforeBuild, {
+            chain: Chain.id,
+          })
 
           const beforeSign = performance.now()
           const signedUserOp = await relayerSmartClient.signUserOperation({ ...userOp })
