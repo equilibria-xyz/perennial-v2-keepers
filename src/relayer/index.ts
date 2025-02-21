@@ -164,11 +164,20 @@ export async function createRelayer() {
         ),
       ])
       const { uoHash } = await retryUserOpWithIncreasingTip(
-        async (tipMultiplier: number, shouldWait?: boolean) => {
+        async (tipMultiplier: number, tryNumber: number, shouldWait?: boolean) => {
           const prepareStart = performance.now()
 
+          // Hardcode values to speed up initial estimate
           const userOp = await relayerSmartClient
-            .prepareUserOperation({ callData, nonce })
+            .prepareUserOperation({
+              callData,
+              nonce,
+              callGasLimit: tryNumber ? undefined : 10_000_000n,
+              preVerificationGas: tryNumber ? undefined : 500_000n,
+              verificationGasLimit: tryNumber ? undefined : 250_000n,
+              maxFeePerGas: tryNumber ? undefined : 100_554n,
+              maxPriorityFeePerGas: tryNumber ? undefined : 100_252n,
+            })
             .catch(injectUOError({ uoError: UOError.FailedBuildOperation, account, signer }))
 
           const latestEthPrice = await latestEthPrice_

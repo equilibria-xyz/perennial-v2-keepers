@@ -170,7 +170,7 @@ export const constructUserOperation = (
 
 const RetryOnErrors = [UOError.FailedWaitForOperation, UOError.FailedSendOperation, UOError.FailedBuildOperation]
 export const retryUserOpWithIncreasingTip = async (
-  sendUserOp: (tipMultiplier: number, shouldWait?: boolean) => Promise<UOResult>,
+  sendUserOp: (tipMultiplier: number, tryNumber: number, shouldWait?: boolean) => Promise<UOResult>,
   options?: {
     maxRetry?: number
     shouldWait?: boolean
@@ -186,7 +186,7 @@ export const retryUserOpWithIncreasingTip = async (
     // increase tip, alchemy throws if its more than 4 decimals https://github.com/alchemyplatform/aa-sdk/blob/main/aa-sdk/core/src/utils/schema.ts#L34
     const tipMultiplier = parseFloat((baseTipMultiplier + tipPercentageIncrease * retry).toFixed(4))
     try {
-      return await sendUserOp(tipMultiplier, options?.shouldWait)
+      return await sendUserOp(tipMultiplier, retry, options?.shouldWait)
     } catch (e) {
       if (!RetryOnErrors.includes(e.message)) {
         // forward on error we dont want to retry with a higher fee
