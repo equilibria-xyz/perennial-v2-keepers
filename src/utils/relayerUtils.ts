@@ -1,6 +1,6 @@
 import { Hex, encodeFunctionData, Address, zeroAddress } from 'viem'
 
-import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError, IntentBatch } from '../relayer/types.js'
+import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
 import { BaseTipMultiplier, MaxRetries, TipPercentageIncrease } from '../constants/relayer.js'
 
 import PerennialSDK, {

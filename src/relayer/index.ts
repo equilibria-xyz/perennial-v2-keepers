@@ -165,6 +165,7 @@ export async function createRelayer() {
       ])
       const { uoHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, tryNumber: number, shouldWait?: boolean) => {
+          if (tryNumber) console.warn('Retrying user op', tryNumber)
           const prepareStart = performance.now()
 
           // Hardcode values to speed up initial estimate
