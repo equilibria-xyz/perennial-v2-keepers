@@ -86,6 +86,10 @@ export async function createRelayer() {
     for (const { signatures, signingPayload } of intents) {
       let error
       let relayedIntent
+      const expiry =
+        'action' in signingPayload.message
+          ? signingPayload.message.action.common.expiry
+          : signingPayload.message.common.expiry
       if (!signingPayload) {
         error = 'Missing required signature payload'
       } else if (!signatures || !signatures.length) {
@@ -98,7 +102,7 @@ export async function createRelayer() {
           error = 'Missing signature; requires [signature]'
         } else if (!relayedIntent && signatures.length !== 1) {
           error = 'Missing signatures; requires [innerSignature, outerSignature]'
-        } else if (signingPayload.message.action.common.expiry < nowSeconds(true)) {
+        } else if (expiry < nowSeconds(true)) {
           error = 'Intent has already expired'
         }
       }
@@ -107,8 +111,15 @@ export async function createRelayer() {
         return
       }
     }
-    const account = intents.at(0)?.signingPayload.message.action.common.account
-    const signer = intents.at(0)?.signingPayload.message.action.common.signer
+    const firstIntentMessage = intents.at(0)?.signingPayload.message
+    const account =
+      firstIntentMessage && 'action' in firstIntentMessage
+        ? firstIntentMessage?.action?.common?.account
+        : firstIntentMessage?.common.account
+    const signer =
+      firstIntentMessage && 'action' in firstIntentMessage
+        ? firstIntentMessage?.action?.common?.signer
+        : firstIntentMessage?.common.signer
     const shouldCheckFee = FeeRejectionThreshold > 0n
 
     let txHash: Hash | undefined
@@ -184,7 +195,8 @@ export async function createRelayer() {
           const latestEthPrice = await latestEthPrice_
           const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
           const sigMaxFee = intents.reduce(
-            (o, { signingPayload }) => o + BigInt(signingPayload.message.action.maxFee),
+            (o, { signingPayload }) =>
+              o + BigInt('action' in signingPayload.message ? signingPayload.message.action.maxFee : 0n),
             0n,
           )
           if (shouldCheckFee && sigMaxFee < maxFeeUsd) {

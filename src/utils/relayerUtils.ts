@@ -14,6 +14,8 @@ import PerennialSDK, {
   UpdateDataRequest,
   marketOraclesToUpdateDataRequest,
   fetchMarketOracles,
+  MarketFactoryAbi,
+  MarketFactoryAddresses,
 } from '@perennial/sdk'
 
 import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
@@ -79,6 +81,19 @@ export const constructDirectUserOperation = (
           args: [payload.message, signature],
         }),
       }
+    case 'AccessUpdateBatch':
+      // The typing here for some reason has both the relayed and regular access update batch types
+      if (!('action' in payload.message)) {
+        return {
+          target: MarketFactoryAddresses[chainId],
+          data: encodeFunctionData({
+            abi: MarketFactoryAbi,
+            functionName: 'updateAccessBatchWithSignature',
+            args: [payload.message, signature],
+          }),
+        }
+      }
+      break
     default:
       console.warn(`Unknown intent ${payload.primaryType}`)
       break

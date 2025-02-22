@@ -45,6 +45,7 @@ export type SigningPayload =
   | PerennialSDK.eip712.RebalanceConfigChangeSigningPayload
   | PerennialSDK.eip712.PlaceOrderSigningPayload
   | PerennialSDK.eip712.CancelOrderSigningPayload
+  | PerennialSDK.eip712.AccessUpdateBatchSigningPayload
   // Relayed Actions
   | PerennialSDK.eip712.RelayedAccessUpdateBatchSigningPayload
   | PerennialSDK.eip712.RelayedGroupCancellationSigningPayload
