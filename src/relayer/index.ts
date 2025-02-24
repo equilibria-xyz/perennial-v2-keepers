@@ -234,8 +234,8 @@ export async function createRelayer() {
             const receipt = await relayerSmartClient
               .waitForUserOperationReceipt({
                 hash: uoHash,
-                pollingInterval: 250,
-                retryCount: 24,
+                pollingInterval: 1000,
+                retryCount: 20,
               })
               .catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
             tracer.dogstatsd.gauge('relayer.time.receiptWait', performance.now() - beforeWait, {
@@ -406,7 +406,7 @@ export async function createRelayer() {
 
       const receipt = await relayerSmartClient.waitForUserOperationReceipt({
         hash: userOp,
-        pollingInterval: 500,
+        pollingInterval: 1000,
         retryCount: 20,
       })
       console.log(`Permit2 permit confirmed for ${permit.owner}: ${receipt.receipt.transactionHash}`)
