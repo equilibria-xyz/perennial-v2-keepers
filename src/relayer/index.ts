@@ -196,8 +196,8 @@ export async function createRelayer() {
               callData,
               nonce,
               callGasLimit: tryNumber ? undefined : 10_000_000n,
-              preVerificationGas: tryNumber ? undefined : 500_000n,
-              verificationGasLimit: tryNumber ? undefined : 250_000n,
+              preVerificationGas: tryNumber ? undefined : 5_000_000n,
+              verificationGasLimit: tryNumber ? undefined : 500_000n,
               maxFeePerGas: tryNumber ? undefined : 100_554n,
               maxPriorityFeePerGas: tryNumber ? undefined : 100_252n,
             })
@@ -246,15 +246,13 @@ export async function createRelayer() {
             const beforeWait = performance.now()
             const receipt = await Promise.any(
               allHashes.map((hash, i) =>
-                relayerSmartClient
-                  .waitForUserOperationReceipt({
-                    hash,
-                    pollingInterval: 1000,
-                    retryCount: i + 5,
-                  })
-                  .catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer })),
+                relayerSmartClient.waitForUserOperationReceipt({
+                  hash,
+                  pollingInterval: 1000,
+                  retryCount: i + 3,
+                }),
               ),
-            )
+            ).catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
             tracer.dogstatsd.gauge('relayer.time.receiptWait', performance.now() - beforeWait, {
               chain: Chain.id,
             })
