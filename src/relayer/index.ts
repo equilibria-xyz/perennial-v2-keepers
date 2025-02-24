@@ -282,7 +282,7 @@ export async function createRelayer() {
       })
     } catch (e) {
       const parsedError = parseViemContractCustomError(e)
-      console.error(`User op failed to send: parsed: ${parsedError} raw: ${e.message}`)
+      console.error(`User op failed to send for ${account} ${signer}: parsed: ${parsedError} raw: ${e.message}`)
       tracer.dogstatsd.increment('relayer.userOp.reverted', 1, {
         chain: Chain.id,
       })
