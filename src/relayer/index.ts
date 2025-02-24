@@ -174,6 +174,8 @@ export async function createRelayer() {
           })),
         ),
       ])
+      const allHashes: Hex[] = []
+
       const { uoHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, tryNumber: number, shouldWait?: boolean) => {
           if (tryNumber) {
@@ -228,6 +230,8 @@ export async function createRelayer() {
           const uoHash = await relayerSmartClient
             .sendUserOperation({ ...signedUserOp })
             .catch(injectUOError({ uoError: UOError.FailedSendOperation, account, signer }))
+          allHashes.push(uoHash)
+
           tracer.dogstatsd.gauge('relayer.time.signSend', performance.now() - beforeSign, {
             chain: Chain.id,
           })
@@ -240,13 +244,17 @@ export async function createRelayer() {
 
           if (shouldWait) {
             const beforeWait = performance.now()
-            const receipt = await relayerSmartClient
-              .waitForUserOperationReceipt({
-                hash: uoHash,
-                pollingInterval: 1000,
-                retryCount: tryNumber * 3 + 2,
-              })
-              .catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
+            const receipt = await Promise.any(
+              allHashes.map((hash, i) =>
+                relayerSmartClient
+                  .waitForUserOperationReceipt({
+                    hash,
+                    pollingInterval: 750,
+                    retryCount: i + 3,
+                  })
+                  .catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer })),
+              ),
+            )
             tracer.dogstatsd.gauge('relayer.time.receiptWait', performance.now() - beforeWait, {
               chain: Chain.id,
             })
