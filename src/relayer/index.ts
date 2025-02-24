@@ -249,7 +249,7 @@ export async function createRelayer() {
                 relayerSmartClient.waitForUserOperationReceipt({
                   hash,
                   pollingInterval: 1000,
-                  retryCount: i + 3,
+                  retryCount: i + 6,
                 }),
               ),
             ).catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
