@@ -244,7 +244,7 @@ export async function createRelayer() {
               .waitForUserOperationReceipt({
                 hash: uoHash,
                 pollingInterval: 1000,
-                retryCount: tryNumber * 3 + 2,
+                retryCount: tryNumber * 3 + 3,
               })
               .catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
             tracer.dogstatsd.gauge('relayer.time.receiptWait', performance.now() - beforeWait, {
