@@ -20,6 +20,7 @@ import PerennialSDK, {
 
 import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 import { PublicClient } from '@perennial/sdk/node_modules/viem'
+import { MarketPricesFetcher } from './marketPricesFetcher.js'
 
 export const constructDirectUserOperation = (
   payload: SigningPayload,
@@ -280,12 +281,8 @@ export const fetchMarketsRequestMeta = async (
 
 export const requiresPriceCommit = (
   intent: SigningPayload,
-): intent is PlaceOrderSigningPayload | MarketTransferSigningPayload => {
-  return (
-    (intent.primaryType === 'MarketTransfer' && intent.message.amount < 0n) ||
-    intent.primaryType === 'PlaceOrderAction' ||
-    intent.primaryType === 'CancelOrderAction'
-  )
+): intent is MarketTransferSigningPayload | PlaceOrderSigningPayload => {
+  return (intent.primaryType === 'MarketTransfer' && intent.message.amount < 0n) || isImmediateTriggerOrder(intent)
 }
 
 export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
@@ -305,10 +302,8 @@ export const constructImmediateTriggerOrder = (
   chainId: SupportedChainId,
 ): UserOperation | null => {
   try {
-    // Only trigger orders with a comparison of 1 (GTE) and price of 1 (min price)
-    if (BigInt(intent.message.order.comparison) !== 1n || BigInt(intent.message.order.price) !== 1n) {
-      return null
-    }
+    if (!isImmediateTriggerOrder(intent)) return null
+
     const marketAddress = getMarketAddressFromIntent(intent)
     const account = intent.message.action.common.account
     const fnData = encodeFunctionData({
@@ -326,15 +321,20 @@ export const constructImmediateTriggerOrder = (
   }
 }
 
-export const buildPriceCommits = async (
+const isImmediateTriggerOrder = (intent: SigningPayload): intent is PlaceOrderSigningPayload => {
+  return (
+    intent.primaryType === 'PlaceOrderAction' &&
+    BigInt(intent.message.order.comparison) === 1n &&
+    BigInt(intent.message.order.price) === 1n
+  )
+}
+
+export const buildPriceCommits = (
   sdk: InstanceType<typeof PerennialSDK.default>,
+  marketPricesFetcher: MarketPricesFetcher,
   markets: SupportedMarket[],
-  marketsRequestMeta: Record<SupportedMarket, UpdateDataRequest>,
-): Promise<UserOperation[]> => {
-  const commitments = await sdk.oracles.read.oracleCommitmentsLatest({
-    markets: markets,
-    requests: markets.map((market) => marketsRequestMeta[market]),
-  })
+): UserOperation[] => {
+  const commitments = marketPricesFetcher.commitmentsForMarkets(markets)
 
   return commitments.map((commitment) => {
     const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })

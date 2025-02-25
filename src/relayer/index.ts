@@ -13,7 +13,6 @@ import {
   buildPriceCommits,
   getMarketAddressFromIntent,
   constructImmediateTriggerOrder,
-  fetchMarketsRequestMeta,
 } from '../utils/relayerUtils.js'
 import { UserOpStatus, UOError, SigningPayload, RelayBridgeBody, RelayPermit2PermitBody } from './types.js'
 import tracer from '../tracer.js'
@@ -31,6 +30,7 @@ import {
 import { randomBytes } from 'crypto'
 import { PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 import { BridgerAddresses } from '../constants/network.js'
+import { MarketPricesFetcher } from '../utils/marketPricesFetcher.js'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -55,11 +55,11 @@ export async function createRelayer() {
     }),
   )
 
-  // this is a one time fetch the relayer service should be restarted when updating market oracle settings
-  const marketsRequestMeta = await fetchMarketsRequestMeta(SDK, Chain.id)
-
   const ethOracleFetcher = new EthOracleFetcher()
   await ethOracleFetcher.init()
+
+  const marketPricesFetcher = new MarketPricesFetcher()
+  await marketPricesFetcher.init()
 
   // accepts a signed payload and then forwards it on to alchemy if its of the accepted type
   app.post('/relayIntent', async (req: Request, res: Response) => {
@@ -138,7 +138,8 @@ export async function createRelayer() {
           .filter(({ signingPayload }) => requiresPriceCommit(signingPayload))
           .map(({ signingPayload }) => addressToMarket(Chain.id, getMarketAddressFromIntent(signingPayload))),
       )
-      const marketPriceCommits_ = buildPriceCommits(SDK, marketsRequiringCommits, marketsRequestMeta)
+
+      const priceCommitsBatch = buildPriceCommits(SDK, marketPricesFetcher, marketsRequiringCommits)
 
       // Add immediate trigger execution if required
       const immediateTriggers = intents
@@ -154,7 +155,6 @@ export async function createRelayer() {
 
       if (!intentBatch.length) throw Error(UOError.FailedToConstructUO)
 
-      const priceCommitsBatch = await marketPriceCommits_
       const uos = priceCommitsBatch.concat(intentBatch, immediateTriggers)
 
       // Nonce key must be 2 bytes for ZeroDev

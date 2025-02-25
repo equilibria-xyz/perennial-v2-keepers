@@ -3,7 +3,7 @@ import { CodegenConfig } from '@graphql-codegen/cli'
 
 const config: CodegenConfig = {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  schema: [process.env.ARBITRUM_GRAPH_URL!],
+  schema: [process.env.PERENNIAL_GRAPH_URL!],
   documents: ['src/**/*.{ts,tsx}'],
   emitLegacyCommonJSImports: false,
   generates: {

@@ -27,7 +27,7 @@ export const BatchKeeperAddresses = {
   [arbitrum.id]: getAddress('0xb5ae2b4e766f2714129720d88a0934feb6c90ea6'),
   [arbitrumSepolia.id]: getAddress('0x8d97f7b564e30e37d030fbe182b0d677bedbbb1d'),
   [perennial.id]: getAddress('0x7869fd0EdCFff8C05600CB71826e59a3ad860938'),
-  [perennialSepolia.id]: getAddress('0x5b540290baeddaa5266d071113eb1a44fc9ca853'),
+  [perennialSepolia.id]: getAddress('0x25f7ee535010c82764d0ea582af0deafcbd43a96'),
 }
 
 export const BridgerAddresses = {
