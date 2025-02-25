@@ -157,38 +157,24 @@ export async function createRelayer() {
 
       const uos = priceCommitsBatch.concat(intentBatch, immediateTriggers)
 
-      // Nonce key must be 2 bytes for ZeroDev
-      let nonceKey = BigInt(`0x${randomBytes(2).toString('hex')}`)
-
+      const allHashes: Hex[] = []
       tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
         chain: Chain.id,
       })
 
-      let [nonce, callData] = await Promise.all([
-        relayerSmartClient.account.getNonce({ key: nonceKey }),
-        relayerSmartClient.account.encodeCalls(
-          uos.map((uo) => ({
-            to: uo.target,
-            data: uo.data,
-            value: uo.value,
-          })),
-        ),
-      ])
-      const allHashes: Hex[] = []
-
       const { uoHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, tryNumber: number, shouldWait?: boolean) => {
-          if (tryNumber) {
-            console.warn('Retrying user op', tryNumber)
-            nonceKey = BigInt(`0x${randomBytes(2).toString('hex')}`)
-            ;[nonce, callData] = await Promise.all([
-              relayerSmartClient.account.getNonce({ key: nonceKey }),
-              relayerSmartClient.account.encodeCalls(
-                uos.map((uo) => ({ to: uo.target, data: uo.data, value: uo.value })),
-              ),
-            ])
-          }
           const prepareStart = performance.now()
+
+          if (tryNumber) console.warn('Retrying user op', tryNumber)
+          // Nonce key must be 2 bytes for ZeroDev
+          const nonceKey = BigInt(`0x${randomBytes(2).toString('hex')}`)
+          const [nonce, callData] = await Promise.all([
+            relayerSmartClient.account.getNonce({ key: nonceKey }),
+            relayerSmartClient.account.encodeCalls(
+              uos.map((uo) => ({ to: uo.target, data: uo.data, value: uo.value })),
+            ),
+          ])
 
           // Hardcode values to speed up initial estimate
           const userOp = await relayerSmartClient
