@@ -1,8 +1,8 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-import { encodeFunctionData, getAddress, Hash, Hex, maxUint256, parseAbi } from 'viem'
-import { BridgerChain, Chain, SDK, bridgerRelayerSmartClient, relayerSmartClient } from '../config.js'
+import { encodeFunctionData, getAddress, Hash, Hex, maxUint256, multicall3Abi, parseAbi, getContract } from 'viem'
+import { BridgerChain, Chain, SDK, bridgerRelayerSmartClient, relayerSmartClient, settlementSigner } from '../config.js'
 import {
   calcOpMaxFeeUsd,
   constructUserOperation,
@@ -24,6 +24,7 @@ import {
   notEmpty,
   nowSeconds,
   parseViemContractCustomError,
+  perennial,
   unique,
   USDCAddresses,
 } from '@perennial/sdk'
@@ -161,6 +162,86 @@ export async function createRelayer() {
       tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
         chain: Chain.id,
       })
+
+      const multicall4Contract = getContract({
+        abi: parseAbi([
+          'struct Call { address target; bytes callData; }',
+          'struct Call3 { address target; bool allowFailure; bytes callData; }',
+          'struct Call3Value { address target; bool allowFailure; uint256 value; bytes callData; }',
+          'struct Result { bool success; bytes returnData; }',
+          'function aggregate(Call[] calldata calls) public payable returns (uint256 blockNumber, bytes[] memory returnData)',
+          'function aggregate3(Call3[] calldata calls) public payable returns (Result[] memory returnData)',
+          'function aggregate3Value(Call3Value[] calldata calls) public payable returns (Result[] memory returnData)',
+          'function blockAndAggregate(Call[] calldata calls) public payable returns (uint256 blockNumber, bytes32 blockHash, Result[] memory returnData)',
+          'function getBasefee() view returns (uint256 basefee)',
+          'function getBlockHash(uint256 blockNumber) view returns (bytes32 blockHash)',
+          'function getBlockNumber() view returns (uint256 blockNumber)',
+          'function getChainId() view returns (uint256 chainid)',
+          'function getCurrentBlockCoinbase() view returns (address coinbase)',
+          'function getCurrentBlockDifficulty() view returns (uint256 difficulty)',
+          'function getCurrentBlockGasLimit() view returns (uint256 gaslimit)',
+          'function getCurrentBlockTimestamp() view returns (uint256 timestamp)',
+          'function getEthBalance(address addr) view returns (uint256 balance)',
+          'function getLastBlockHash() view returns (bytes32 blockHash)',
+          'function tryAggregate(bool requireSuccess, Call[] calldata calls) public payable returns (Result[] memory returnData)',
+          'function tryBlockAndAggregate(bool requireSuccess, Call[] calldata calls) public payable returns (uint256 blockNumber, bytes32 blockHash, Result[] memory returnData)',
+        ] as const),
+        address: '0xA1e53cC557b563905C4c68C974881C293F81411f',
+        client: settlementSigner,
+      })
+
+      console.log('uos', uos)
+
+      const simRes = await multicall4Contract.simulate.aggregate3Value(
+        [
+          uos.map((uo) => {
+            return {
+              target: uo.target,
+              allowFailure: false,
+              value: uo.value ?? 0n,
+              callData: uo.data,
+            }
+          }),
+          // .concat([
+          //   {
+          //     target: multicall4Contract.address,
+          //     allowFailure: false,
+          //     value: 0n,
+          //     callData: encodeFunctionData({
+          //       abi: Multicall4Abi,
+          //       functionName: 'drain',
+          //       args: [DSUAddresses[Chain.id], settlementSigner.account.address],
+          //     }),
+          //   },
+          //   {
+          //     target: multicall4Contract.address,
+          //     allowFailure: false,
+          //     value: 0n,
+          //     callData: encodeFunctionData({
+          //       abi: Multicall4Abi,
+          //       functionName: 'drain',
+          //       args: [settlementSigner.account.address],
+          //     }),
+          //   },
+          // ]),
+        ],
+        {
+          value: uos.reduce((o, uo) => o + (uo.value ?? 0n), 0n),
+        },
+      )
+
+      console.log('simRes', simRes.result)
+
+      const txHash2 = await settlementSigner.writeContract(simRes.request)
+      // if (meta?.wait) {
+      //   await SDK.publicClient.waitForTransactionReceipt({
+      //     hash: txHash2,
+      //     pollingInterval: 500,
+      //     retryCount: 20,
+      //   })
+      // }
+      res.send(JSON.stringify({ success: true, status: UserOpStatus.Complete, uoHash: '', txHash: txHash2 }))
+      return
 
       const { uoHash } = await retryUserOpWithIncreasingTip(
         async (tipMultiplier: number, tryNumber: number, shouldWait?: boolean) => {
