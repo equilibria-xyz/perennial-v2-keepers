@@ -1,8 +1,8 @@
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-import { encodeFunctionData, getAddress, Hash, Hex, maxUint256, parseAbi } from 'viem'
-import { BridgerChain, Chain, SDK, bridgerRelayerSmartClient, relayerSmartClient } from '../config.js'
+import { encodeFunctionData, getAddress, Hash, Hex, maxUint256, parseAbi, getContract } from 'viem'
+import { BridgerChain, Chain, SDK, bridgerRelayerSmartClient, relayerSmartClient, settlementSigner } from '../config.js'
 import {
   calcOpMaxFeeUsd,
   constructUserOperation,
@@ -26,11 +26,14 @@ import {
   parseViemContractCustomError,
   unique,
   USDCAddresses,
+  DSUAddresses,
 } from '@perennial/sdk'
 import { randomBytes } from 'crypto'
 import { PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 import { BridgerAddresses } from '../constants/network.js'
 import { MarketPricesFetcher } from '../utils/marketPricesFetcher.js'
+import { Multicall4Abi } from '../constants/abi/Multicall4.abi.js'
+import { Multicall4Addresses } from '../constants/network.js'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -120,19 +123,9 @@ export async function createRelayer() {
       firstIntentMessage && 'action' in firstIntentMessage
         ? firstIntentMessage?.action?.common?.signer
         : firstIntentMessage?.common.signer
-    const shouldCheckFee = FeeRejectionThreshold > 0n
 
     let txHash: Hash | undefined
     try {
-      const latestEthPrice_ = shouldCheckFee
-        ? ethOracleFetcher.getLastPriceBig6().catch((e) => {
-            tracer.dogstatsd.increment('relayer.ethOracle.error', 1, {
-              chain: Chain.id,
-            })
-            return injectUOError({ uoError: UOError.OracleError, account, signer })(e)
-          })
-        : Promise.resolve(0n)
-
       const marketsRequiringCommits = unique(
         intents
           .filter(({ signingPayload }) => requiresPriceCommit(signingPayload))
@@ -157,115 +150,58 @@ export async function createRelayer() {
 
       const uos = priceCommitsBatch.concat(intentBatch, immediateTriggers)
 
-      const allHashes: Hex[] = []
       tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
         chain: Chain.id,
       })
 
-      const { uoHash } = await retryUserOpWithIncreasingTip(
-        async (tipMultiplier: number, tryNumber: number, shouldWait?: boolean) => {
-          const prepareStart = performance.now()
+      const multicall4Contract = getContract({
+        abi: Multicall4Abi,
+        address: Multicall4Addresses[Chain.id],
+        client: settlementSigner,
+      })
 
-          if (tryNumber) console.warn('Retrying user op', tryNumber)
-          // Nonce key must be 2 bytes for ZeroDev
-          const nonceKey = BigInt(`0x${randomBytes(2).toString('hex')}`)
-          const [nonce, callData] = await Promise.all([
-            relayerSmartClient.account.getNonce({ key: nonceKey }),
-            relayerSmartClient.account.encodeCalls(
-              uos.map((uo) => ({ to: uo.target, data: uo.data, value: uo.value })),
-            ),
-          ])
-
-          // Hardcode values to speed up initial estimate
-          const userOp = await relayerSmartClient
-            .prepareUserOperation({
-              callData,
-              nonce,
-              callGasLimit: tryNumber ? undefined : 10_000_000n,
-              preVerificationGas: tryNumber ? undefined : 5_000_000n,
-              verificationGasLimit: tryNumber ? undefined : 500_000n,
-              maxFeePerGas: tryNumber ? undefined : 100_554n,
-              maxPriorityFeePerGas: tryNumber ? undefined : 100_252n,
+      const simRes = await multicall4Contract.simulate.aggregate3Value(
+        [
+          uos
+            .map((uo) => {
+              return {
+                target: uo.target,
+                allowFailure: false,
+                value: uo.value ?? 0n,
+                callData: uo.data,
+              }
             })
-            .catch(injectUOError({ uoError: UOError.FailedBuildOperation, account, signer }))
-
-          const latestEthPrice = await latestEthPrice_
-          const maxFeeUsd = calcOpMaxFeeUsd(userOp, latestEthPrice)
-          const sigMaxFee = intents.reduce(
-            (o, { signingPayload }) =>
-              o + BigInt('action' in signingPayload.message ? signingPayload.message.action.maxFee : 0n),
-            0n,
-          )
-          if (shouldCheckFee && sigMaxFee < maxFeeUsd) {
-            console.warn(`Max fee is low: ${sigMaxFee} < ${maxFeeUsd}. account: ${account} signer: ${signer}`)
-            // this error will not retry. We won't relay a tx if the signature max fee is too low
-            if (sigMaxFee < Big6Math.fromFloatString('0')) {
-              tracer.dogstatsd.increment('relayer.maxFee.rejected', 1, {
-                chain: Chain.id,
-              })
-              throw new Error(UOError.MaxFeeTooLow)
-            }
-          }
-          tracer.dogstatsd.gauge('relayer.time.prepare', performance.now() - prepareStart, {
-            chain: Chain.id,
-          })
-
-          const beforeSign = performance.now()
-          const signedUserOp = await relayerSmartClient.signUserOperation({ ...userOp })
-
-          const uoHash = await relayerSmartClient
-            .sendUserOperation({ ...signedUserOp })
-            .catch(injectUOError({ uoError: UOError.FailedSendOperation, account, signer }))
-          allHashes.push(uoHash)
-
-          tracer.dogstatsd.gauge('relayer.time.signSend', performance.now() - beforeSign, {
-            chain: Chain.id,
-          })
-
-          console.log(`Sent userOp for ${account} ${signer}: ${uoHash}`)
-          tracer.dogstatsd.increment('relayer.userOp.sent', 1, {
-            chain: Chain.id,
-            tipMultiplier,
-          })
-
-          if (shouldWait) {
-            const beforeWait = performance.now()
-            const receipt = await Promise.any(
-              allHashes.map((hash, i) =>
-                relayerSmartClient.waitForUserOperationReceipt({
-                  hash,
-                  pollingInterval: 500,
-                  retryCount: i + 10,
+            .concat([
+              {
+                target: multicall4Contract.address,
+                allowFailure: false,
+                value: 0n,
+                callData: encodeFunctionData({
+                  abi: Multicall4Abi,
+                  functionName: 'drain',
+                  args: [DSUAddresses[Chain.id], settlementSigner.account.address],
                 }),
-              ),
-            ).catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
-            tracer.dogstatsd.gauge('relayer.time.receiptWait', performance.now() - beforeWait, {
-              chain: Chain.id,
-            })
-            txHash = receipt.receipt.transactionHash
-            console.log(`UserOp confirmed for ${account} ${signer}: ${txHash}`)
-            if (!receipt.success) {
-              throw new Error(`UserOp reverted: ${receipt.reason}`)
-            }
-          }
-          return {
-            uoHash,
-            txHash,
-          }
-        },
+              },
+              {
+                target: multicall4Contract.address,
+                allowFailure: false,
+                value: 0n,
+                callData: encodeFunctionData({
+                  abi: Multicall4Abi,
+                  functionName: 'drain',
+                  args: [settlementSigner.account.address],
+                }),
+              },
+            ]),
+        ],
         {
-          maxRetry: meta?.maxRetries,
-          shouldWait: meta?.wait,
+          value: uos.reduce((o, uo) => o + (uo.value ?? 0n), 0n),
         },
       )
 
-      const status = txHash ? UserOpStatus.Complete : UserOpStatus.Pending
-      res.send(JSON.stringify({ success: true, status, uoHash, txHash }))
-
-      // sendUserOp time can be derived from relayer.time.total - relayer.time.preUserOp
-      tracer.dogstatsd.gauge('relayer.time.total', performance.now() - startTime, {
-        chain: Chain.id,
-      })
+      const txHash = await settlementSigner.writeContract(simRes.request)
+      res.send(JSON.stringify({ success: true, status: UserOpStatus.Complete, uoHash: '', txHash }))
+      return
     } catch (e) {
       const parsedError = parseViemContractCustomError(e)
       console.error(`User op failed to send for ${account} ${signer}: parsed: ${parsedError} raw: ${e.message}`)

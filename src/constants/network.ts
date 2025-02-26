@@ -23,6 +23,13 @@ export const ReferrerAddresses = {
   [perennialSepolia.id]: getAddress('0x55f566421F44f05C5623415EF150f86975d9CaDb'),
 }
 
+export const Multicall4Addresses = {
+  [perennial.id]: getAddress('0x9b12fF03EdD05318B84B0d89Cb3e5c40138Fe607'),
+  [perennialSepolia.id]: getAddress('0x0092f3a5f211333c5427605a6df76b35DCFDD873'),
+  [arbitrum.id]: getAddress('0x9b12fF03EdD05318B84B0d89Cb3e5c40138Fe607'),
+  [arbitrumSepolia.id]: getAddress('0x0092f3a5f211333c5427605a6df76b35DCFDD873'),
+}
+
 export const BatchKeeperAddresses = {
   [arbitrum.id]: getAddress('0xb5ae2b4e766f2714129720d88a0934feb6c90ea6'),
   [arbitrumSepolia.id]: getAddress('0x8d97f7b564e30e37d030fbe182b0d677bedbbb1d'),
