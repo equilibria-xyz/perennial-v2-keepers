@@ -158,7 +158,7 @@ export async function createRelayer() {
       const uos = priceCommitsBatch.concat(intentBatch, immediateTriggers)
 
       const allHashes: Hex[] = []
-      tracer.dogstatsd.gauge('relayer.time.preUserOp', performance.now() - startTime, {
+      tracer.dogstatsd.distribution('relayer.time.preUserOp', performance.now() - startTime, {
         chain: Chain.id,
       })
 
@@ -206,7 +206,7 @@ export async function createRelayer() {
               throw new Error(UOError.MaxFeeTooLow)
             }
           }
-          tracer.dogstatsd.gauge('relayer.time.prepare', performance.now() - prepareStart, {
+          tracer.dogstatsd.distribution('relayer.time.prepare', performance.now() - prepareStart, {
             chain: Chain.id,
           })
 
@@ -218,7 +218,7 @@ export async function createRelayer() {
             .catch(injectUOError({ uoError: UOError.FailedSendOperation, account, signer }))
           allHashes.push(uoHash)
 
-          tracer.dogstatsd.gauge('relayer.time.signSend', performance.now() - beforeSign, {
+          tracer.dogstatsd.distribution('relayer.time.signSend', performance.now() - beforeSign, {
             chain: Chain.id,
           })
 
@@ -239,7 +239,7 @@ export async function createRelayer() {
                 }),
               ),
             ).catch(injectUOError({ uoError: UOError.FailedWaitForOperation, account, signer }))
-            tracer.dogstatsd.gauge('relayer.time.receiptWait', performance.now() - beforeWait, {
+            tracer.dogstatsd.distribution('relayer.time.receiptWait', performance.now() - beforeWait, {
               chain: Chain.id,
             })
             txHash = receipt.receipt.transactionHash
@@ -263,7 +263,7 @@ export async function createRelayer() {
       res.send(JSON.stringify({ success: true, status, uoHash, txHash }))
 
       // sendUserOp time can be derived from relayer.time.total - relayer.time.preUserOp
-      tracer.dogstatsd.gauge('relayer.time.total', performance.now() - startTime, {
+      tracer.dogstatsd.distribution('relayer.time.total', performance.now() - startTime, {
         chain: Chain.id,
       })
     } catch (e) {
