@@ -1,4 +1,4 @@
-import { Address, formatEther, formatUnits, getAddress, parseAbi } from 'viem'
+import { Address, formatEther, formatUnits, getAddress, parseAbi, zeroAddress } from 'viem'
 import {
   Chain,
   oracleAccount,
@@ -15,6 +15,7 @@ import {
   DSUAddresses,
   MarketFactoryAddresses,
   OracleFactoryAddresses,
+  PerpFunReferrerAddresses,
   ReferrerAddresses,
   USDCAddresses,
 } from '../../constants/network.js'
@@ -280,6 +281,36 @@ export class MetricsListener {
           chain: Chain.id,
           market: marketTag,
         })
+      }
+
+      if (PerpFunReferrerAddresses[Chain.id] !== zeroAddress) {
+        const [, perpFunReferrerLocals] = await Client.multicall({
+          contracts: [
+            {
+              address: marketAddress,
+              abi: MarketAbi,
+              functionName: 'settle',
+              args: [PerpFunReferrerAddresses[Chain.id]],
+            },
+            {
+              address: marketAddress,
+              abi: MarketAbi,
+              functionName: 'locals',
+              args: [PerpFunReferrerAddresses[Chain.id]],
+            },
+          ],
+        })
+
+        if (perpFunReferrerLocals.result) {
+          tracer.dogstatsd.gauge(
+            'market.perpFunReferrer.claimable',
+            Number(formatUnits(perpFunReferrerLocals.result.claimable, 6)),
+            {
+              chain: Chain.id,
+              market: marketTag,
+            },
+          )
+        }
       }
     })
 

@@ -1,5 +1,5 @@
 import { perennial, perennialSepolia, SupportedChainId } from '@perennial/sdk'
-import { getAddress } from 'viem'
+import { getAddress, zeroAddress } from 'viem'
 import { arbitrum, arbitrumSepolia, base, baseSepolia } from 'viem/chains'
 
 export {
@@ -21,6 +21,13 @@ export const ReferrerAddresses = {
   [arbitrumSepolia.id]: getAddress('0xeBc5BC1d2c12030E590EF5240c21f0F2b82ee37c'),
   [perennial.id]: getAddress('0x55f566421F44f05C5623415EF150f86975d9CaDb'),
   [perennialSepolia.id]: getAddress('0x55f566421F44f05C5623415EF150f86975d9CaDb'),
+}
+
+export const PerpFunReferrerAddresses = {
+  [arbitrum.id]: zeroAddress,
+  [arbitrumSepolia.id]: zeroAddress,
+  [perennial.id]: getAddress('0x82808cFa9d86F9FE2C0E4F80136B1cA4745910b3'),
+  [perennialSepolia.id]: getAddress('0x82808cFa9d86F9FE2C0E4F80136B1cA4745910b3'),
 }
 
 export const BatchKeeperAddresses = {
