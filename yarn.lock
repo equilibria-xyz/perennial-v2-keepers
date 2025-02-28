@@ -14206,7 +14206,7 @@ viem@2.9.9:
     isows "1.0.3"
     ws "8.13.0"
 
-viem@^2.23.5:
+viem@^2.22.17:
   version "2.23.5"
   resolved "https://registry.yarnpkg.com/viem/-/viem-2.23.5.tgz#50fb9ea0701d58e6a7a1714ecaa5edfa100bb391"
   integrity sha512-cUfBHdFQHmBlPW0loFXda0uZcoU+uJw3NRYQRwYgkrpH6PgovH8iuVqDn6t1jZk82zny4wQL54c9dCX2W9kLMg==

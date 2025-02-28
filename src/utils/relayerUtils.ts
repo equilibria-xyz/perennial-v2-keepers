@@ -39,7 +39,6 @@ export const constructDirectUserOperation = (
   signature: Hex,
   chainId: SupportedChainId,
 ): UserOperation | undefined => {
-  console.log('payload', payload)
   switch (payload.primaryType) {
     case 'DeployAccount':
       return {
