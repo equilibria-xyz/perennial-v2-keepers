@@ -33,7 +33,10 @@ export class MarketPricesFetcher {
     clearInterval(this.interval)
   }
 
-  commitmentsForMarkets(markets: SupportedMarket[]) {
+  async commitmentsForMarkets(markets: SupportedMarket[], refresh = false) {
+    if (refresh) {
+      await this.loadCommitmentsForMarkets()
+    }
     return markets.map((market) => this.commitments.get(market)).filter(notEmpty)
   }
 }

@@ -279,10 +279,12 @@ export const fetchMarketsRequestMeta = async (
   return marketsRequestMeta
 }
 
-export const requiresPriceCommit = (
-  intent: SigningPayload,
-): intent is MarketTransferSigningPayload | PlaceOrderSigningPayload => {
-  return (intent.primaryType === 'MarketTransfer' && intent.message.amount < 0n) || isImmediateTriggerOrder(intent)
+export const requiresCachedPriceCommit = (intent: SigningPayload): intent is PlaceOrderSigningPayload => {
+  return isImmediateTriggerOrder(intent)
+}
+
+export const requiresFreshPriceCommit = (intent: SigningPayload): intent is MarketTransferSigningPayload => {
+  return intent.primaryType === 'MarketTransfer' && intent.message.amount < 0n
 }
 
 export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
@@ -329,12 +331,13 @@ const isImmediateTriggerOrder = (intent: SigningPayload): intent is PlaceOrderSi
   )
 }
 
-export const buildPriceCommits = (
+export const buildPriceCommits = async (
   sdk: InstanceType<typeof PerennialSDK.default>,
   marketPricesFetcher: MarketPricesFetcher,
   markets: SupportedMarket[],
-): UserOperation[] => {
-  const commitments = marketPricesFetcher.commitmentsForMarkets(markets)
+  refresh = false,
+): Promise<UserOperation[]> => {
+  const commitments = await marketPricesFetcher.commitmentsForMarkets(markets, refresh)
 
   return commitments.map((commitment) => {
     const priceCommitment = sdk.oracles.build.commitPrice({ ...commitment, revertOnFailure: false })

@@ -9,10 +9,11 @@ import {
   isRelayedIntent,
   retryUserOpWithIncreasingTip,
   injectUOError,
-  requiresPriceCommit,
   buildPriceCommits,
   getMarketAddressFromIntent,
   constructImmediateTriggerOrder,
+  requiresCachedPriceCommit,
+  requiresFreshPriceCommit,
 } from '../utils/relayerUtils.js'
 import { UserOpStatus, UOError, SigningPayload, RelayBridgeBody, RelayPermit2PermitBody } from './types.js'
 import tracer from '../tracer.js'
@@ -28,9 +29,9 @@ import {
   USDCAddresses,
 } from '@perennial/sdk'
 import { randomBytes } from 'crypto'
-import { PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 import { BridgerAddresses } from '../constants/network.js'
 import { MarketPricesFetcher } from '../utils/marketPricesFetcher.js'
+import { PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unreachable code error
@@ -135,11 +136,21 @@ export async function createRelayer() {
 
       const marketsRequiringCommits = unique(
         intents
-          .filter(({ signingPayload }) => requiresPriceCommit(signingPayload))
+          .filter(({ signingPayload }) => requiresCachedPriceCommit(signingPayload))
+          .map(({ signingPayload }) => addressToMarket(Chain.id, getMarketAddressFromIntent(signingPayload))),
+      )
+      const marketsRequiringFreshCommits = unique(
+        intents
+          .filter(({ signingPayload }) => requiresFreshPriceCommit(signingPayload))
           .map(({ signingPayload }) => addressToMarket(Chain.id, getMarketAddressFromIntent(signingPayload))),
       )
 
-      const priceCommitsBatch = buildPriceCommits(SDK, marketPricesFetcher, marketsRequiringCommits)
+      const priceCommitsBatch = await buildPriceCommits(
+        SDK,
+        marketPricesFetcher,
+        unique([...marketsRequiringCommits, ...marketsRequiringFreshCommits]),
+        marketsRequiringFreshCommits.length > 0,
+      )
 
       // Add immediate trigger execution if required
       const immediateTriggers = intents
