@@ -1,6 +1,14 @@
 import { Hex, encodeFunctionData, Address, zeroAddress } from 'viem'
 
-import { UserOperation, SigningPayload, RelayedSignatures, UOResult, UOError } from '../relayer/types.js'
+import {
+  UserOperation,
+  SigningPayload,
+  RelayedSignatures,
+  UOResult,
+  UOError,
+  RelayedSigningPayload,
+  DirectSigningPayload,
+} from '../relayer/types.js'
 import { BaseTipMultiplier, MaxRetries, TipPercentageIncrease } from '../constants/relayer.js'
 
 import PerennialSDK, {
@@ -18,15 +26,20 @@ import PerennialSDK, {
   MarketFactoryAddresses,
 } from '@perennial/sdk'
 
-import { MarketTransferSigningPayload, PlaceOrderSigningPayload } from '@perennial/sdk/dist/constants/eip712/index.js'
+import {
+  MarketTransferSigningPayload,
+  PlaceOrderSigningPayload,
+  RelayedTakeSigningPayload,
+} from '@perennial/sdk/dist/constants/eip712/index.js'
 import { PublicClient } from '@perennial/sdk/node_modules/viem'
 import { MarketPricesFetcher } from './marketPricesFetcher.js'
 
 export const constructDirectUserOperation = (
-  payload: SigningPayload,
+  payload: DirectSigningPayload,
   signature: Hex,
   chainId: SupportedChainId,
 ): UserOperation | undefined => {
+  console.log('payload', payload)
   switch (payload.primaryType) {
     case 'DeployAccount':
       return {
@@ -83,18 +96,14 @@ export const constructDirectUserOperation = (
         }),
       }
     case 'AccessUpdateBatch':
-      // The typing here for some reason has both the relayed and regular access update batch types
-      if (!('action' in payload.message)) {
-        return {
-          target: MarketFactoryAddresses[chainId],
-          data: encodeFunctionData({
-            abi: MarketFactoryAbi,
-            functionName: 'updateAccessBatchWithSignature',
-            args: [payload.message, signature],
-          }),
-        }
+      return {
+        target: MarketFactoryAddresses[chainId],
+        data: encodeFunctionData({
+          abi: MarketFactoryAbi,
+          functionName: 'updateAccessBatchWithSignature',
+          args: [payload.message, signature],
+        }),
       }
-      break
     default:
       console.warn(`Unknown intent ${payload.primaryType}`)
       break
@@ -104,7 +113,7 @@ export const constructDirectUserOperation = (
 }
 
 export const constructRelayedUserOperation = (
-  payload: SigningPayload,
+  payload: RelayedSigningPayload,
   signatures: RelayedSignatures,
   chainId: SupportedChainId,
 ): UserOperation | undefined => {
@@ -155,6 +164,15 @@ export const constructRelayedUserOperation = (
           args: [payload.message, outerSignature, innerSignature],
         }),
       }
+    case 'RelayedTake':
+      return {
+        target: ControllerAddresses[chainId],
+        data: encodeFunctionData({
+          abi: ControllerAbi,
+          functionName: 'relayTake',
+          args: [payload.message, outerSignature, innerSignature],
+        }),
+      }
     default:
       console.warn(`Unknown intent ${payload.primaryType}`)
       break
@@ -169,9 +187,9 @@ export const constructUserOperation = (
   chainId: SupportedChainId,
 ): UserOperation | undefined => {
   let uo
-  if (isRelayedIntent(signingPayload.primaryType)) {
+  if (isRelayedIntent(signingPayload)) {
     uo = constructRelayedUserOperation(
-      signingPayload as SigningPayload,
+      signingPayload,
       {
         innerSignature: signatures[0],
         outerSignature: signatures[1],
@@ -179,7 +197,7 @@ export const constructUserOperation = (
       chainId,
     )
   } else {
-    uo = constructDirectUserOperation(signingPayload as SigningPayload, signatures[0], chainId)
+    uo = constructDirectUserOperation(signingPayload, signatures[0], chainId)
   }
   return uo
 }
@@ -226,20 +244,15 @@ export const calcOpMaxFeeUsd = (
   return maxFeeUsd
 }
 
-export const isRelayedIntent = (intent: SigningPayload['primaryType']): boolean => {
-  switch (intent) {
+export const isRelayedIntent = (intent: SigningPayload): intent is RelayedSigningPayload => {
+  switch (intent.primaryType) {
     case 'RelayedNonceCancellation':
     case 'RelayedGroupCancellation':
     case 'RelayedSignerUpdate':
     case 'RelayedOperatorUpdate':
     case 'RelayedAccessUpdateBatch':
+    case 'RelayedTake':
       return true
-    case 'DeployAccount':
-    case 'MarketTransfer':
-    case 'Withdrawal':
-    case 'RebalanceConfigChange':
-    case 'PlaceOrderAction':
-    case 'CancelOrderAction':
     default:
       return false
   }
@@ -279,8 +292,10 @@ export const fetchMarketsRequestMeta = async (
   return marketsRequestMeta
 }
 
-export const requiresCachedPriceCommit = (intent: SigningPayload): intent is PlaceOrderSigningPayload => {
-  return isImmediateTriggerOrder(intent)
+export const requiresCachedPriceCommit = (
+  intent: SigningPayload,
+): intent is PlaceOrderSigningPayload | RelayedTakeSigningPayload => {
+  return isImmediateTriggerOrder(intent) || intent.primaryType === 'RelayedTake'
 }
 
 export const requiresFreshPriceCommit = (intent: SigningPayload): intent is MarketTransferSigningPayload => {
@@ -294,6 +309,8 @@ export const getMarketAddressFromIntent = (intent: SigningPayload): Address => {
       return intent.message.action.market
     case 'MarketTransfer':
       return intent.message.market
+    case 'RelayedTake':
+      return intent.message.take.common.domain
     default:
       return zeroAddress
   }

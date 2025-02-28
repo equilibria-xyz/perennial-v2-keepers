@@ -38,7 +38,16 @@ export type RelayedSignatures = {
   outerSignature: Hex
 }
 
-export type SigningPayload =
+export type RelayedSigningPayload =
+  // Relayed Actions
+  | PerennialSDK.eip712.RelayedAccessUpdateBatchSigningPayload
+  | PerennialSDK.eip712.RelayedGroupCancellationSigningPayload
+  | PerennialSDK.eip712.RelayedNonceCancellationSigningPayload
+  | PerennialSDK.eip712.RelayedSignerUpdateSigningPayload
+  | PerennialSDK.eip712.RelayedOperatorUpdateSigningPayload
+  | PerennialSDK.eip712.RelayedTakeSigningPayload
+
+export type DirectSigningPayload =
   | PerennialSDK.eip712.DeployAccountSigningPayload
   | PerennialSDK.eip712.MarketTransferSigningPayload
   | PerennialSDK.eip712.WithdrawalSigningPayload
@@ -46,12 +55,8 @@ export type SigningPayload =
   | PerennialSDK.eip712.PlaceOrderSigningPayload
   | PerennialSDK.eip712.CancelOrderSigningPayload
   | PerennialSDK.eip712.AccessUpdateBatchSigningPayload
-  // Relayed Actions
-  | PerennialSDK.eip712.RelayedAccessUpdateBatchSigningPayload
-  | PerennialSDK.eip712.RelayedGroupCancellationSigningPayload
-  | PerennialSDK.eip712.RelayedNonceCancellationSigningPayload
-  | PerennialSDK.eip712.RelayedSignerUpdateSigningPayload
-  | PerennialSDK.eip712.RelayedOperatorUpdateSigningPayload
+
+export type SigningPayload = DirectSigningPayload | RelayedSigningPayload
 
 export const RelayBridgeBody = z.object({
   permit: z.object({

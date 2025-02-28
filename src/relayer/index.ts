@@ -98,11 +98,11 @@ export async function createRelayer() {
       } else if (!signingPayload?.primaryType) {
         error = 'Missing signature payload primaryType'
       } else if (signingPayload.primaryType) {
-        relayedIntent = isRelayedIntent(signingPayload.primaryType)
+        relayedIntent = isRelayedIntent(signingPayload)
         if (relayedIntent && signatures.length !== 2) {
-          error = 'Missing signature; requires [signature]'
+          error = 'Missing signature; requires [innerSignature, outerSignature]'
         } else if (!relayedIntent && signatures.length !== 1) {
-          error = 'Missing signatures; requires [innerSignature, outerSignature]'
+          error = 'Missing signatures; requires [signature]'
         } else if (expiry < nowSeconds(true)) {
           error = 'Intent has already expired'
         }
